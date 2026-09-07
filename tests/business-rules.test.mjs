@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 
 import { createCsv } from "../lib/csv.ts";
@@ -77,4 +78,17 @@ test("loads the Excel system catalog with editable suggested quantities", () => 
     VOLIA_SYSTEM_PRODUCTS.some((product) => product.description === "#NAME?"),
     false,
   );
+});
+
+test("ships an installable offline app with branded icons", () => {
+  const manifest = JSON.parse(fs.readFileSync("public/manifest.webmanifest", "utf8"));
+  const serviceWorker = fs.readFileSync("public/service-worker.js", "utf8");
+
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.id, "/");
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "192x192"));
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"));
+  assert.ok(fs.statSync("public/app-icon-512.png").size > 0);
+  assert.match(serviceWorker, /precacheApplication/);
+  assert.match(serviceWorker, /event\.request\.mode === "navigate"/);
 });

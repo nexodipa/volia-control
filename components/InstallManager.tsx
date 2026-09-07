@@ -21,10 +21,22 @@ export default function InstallManager() {
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
   const [memory, setMemory] = useState<MemorySummary>(() => getMemorySummary());
+  const [online, setOnline] = useState(true);
+  const [standalone, setStandalone] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js").catch(() => undefined);
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const refreshConnection = () => setOnline(navigator.onLine);
+    const refreshDisplayMode = () => setStandalone(displayMode.matches);
+    refreshConnection();
+    refreshDisplayMode();
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/service-worker.js", { updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch(() => undefined);
+    }
     const restoreTimer = window.setTimeout(() => {
       const existing = !!localStorage.getItem("volia-pin-hash-v1");
       setHasPin(existing); setLocked(existing);
@@ -33,7 +45,17 @@ export default function InstallManager() {
     const refreshMemory = () => setMemory(getMemorySummary());
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("volia-memory-updated", refreshMemory);
-    return () => { window.clearTimeout(restoreTimer); window.removeEventListener("beforeinstallprompt", handler); window.removeEventListener("volia-memory-updated", refreshMemory); };
+    window.addEventListener("online", refreshConnection);
+    window.addEventListener("offline", refreshConnection);
+    displayMode.addEventListener("change", refreshDisplayMode);
+    return () => {
+      window.clearTimeout(restoreTimer);
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("volia-memory-updated", refreshMemory);
+      window.removeEventListener("online", refreshConnection);
+      window.removeEventListener("offline", refreshConnection);
+      displayMode.removeEventListener("change", refreshDisplayMode);
+    };
   }, []);
 
   const install = async () => {
@@ -94,14 +116,14 @@ export default function InstallManager() {
   if (locked) return <div className="app-lock"><div className="lock-card"><div className="lock-logo">V</div><p className="eyebrow">ACCESO PROTEGIDO</p><h1>Volia Control</h1><p>Ingrese el PIN local para acceder a la información comercial y operativa de este dispositivo.</p><input autoFocus inputMode="numeric" type="password" value={pin} maxLength={8} placeholder="PIN de acceso" onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))} onKeyDown={(event) => event.key === "Enter" && unlock()} /><button className="primary-button" onClick={unlock}>Desbloquear aplicación</button>{message && <small>{message}</small>}</div></div>;
 
   return <>
-    <button className="install-trigger" onClick={() => { setMemory(getMemorySummary()); setOpen(true); }}><span>↓</span> Instalar y respaldar</button>
+    <button className="install-trigger" onClick={() => { setMemory(getMemorySummary()); setOpen(true); }}><span>{standalone ? "✓" : online ? "↓" : "●"}</span>{standalone ? "Aplicación instalada" : online ? "Instalar y respaldar" : "Modo sin conexión"}</button>
     {open && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}><section className="install-modal" role="dialog" aria-modal="true" aria-label="Instalación, memoria y seguridad"><header><div><p className="eyebrow">CENTRO DE LA APLICACIÓN</p><h2>Instalación, memoria, respaldo y seguridad</h2></div><button aria-label="Cerrar" onClick={() => setOpen(false)}>×</button></header>
       <div className="install-options">
-        <article><span className="option-number">01</span><h3>Instalar en esta laptop</h3><p>Abre Volia Control como un programa independiente y permite seguir trabajando aunque la conexión se interrumpa.</p><button className="primary-button" onClick={install}>Instalar Volia Control</button></article>
+        <article><span className="option-number">01</span><h3>Instalar en esta laptop</h3><p>Abre Volia Control en su propia ventana, con el nuevo icono corporativo, y mantiene disponibles los módulos y registros locales aunque no haya internet.</p><div className={`install-readiness ${online ? "online" : "offline"}`}><span></span>{standalone ? "Instalada en este equipo" : online ? "Lista para instalar" : "Trabajando sin conexión"}</div><button className="primary-button" disabled={standalone} onClick={install}>{standalone ? "Aplicación instalada" : "Instalar Volia Control"}</button></article>
         <article><span className="option-number">02</span><h3>Copia de seguridad</h3><p>Descarga todos los registros locales en un archivo recuperable. Guárdelo en una ubicación segura.</p><div className="inline-actions"><button className="secondary-button" onClick={exportBackup}>Descargar respaldo</button><button className="secondary-button" onClick={() => importRef.current?.click()}>Restaurar</button></div><input ref={importRef} hidden type="file" accept="application/json,.json" onChange={(event) => importBackup(event.target.files?.[0])} /></article>
         <article><span className="option-number">03</span><h3>Bloqueo con PIN</h3><p>Protege los datos guardados en esta laptop frente a accesos casuales. No sustituye el cifrado del dispositivo.</p><div className="pin-row"><input inputMode="numeric" type="password" value={pin} maxLength={8} placeholder="PIN de 4–8 dígitos" onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))} />{hasPin ? <><button className="secondary-button" onClick={() => setLocked(true)}>Bloquear</button><button className="text-danger" onClick={removePin}>Quitar PIN</button></> : <button className="secondary-button" onClick={savePin}>Crear PIN</button>}</div></article>
         <article className="memory-option"><span className="option-number">04</span><h3>Memoria Volia</h3><p>Integra en un solo respaldo las ofertas, cirugías, inventario, movimientos, finanzas y documentos de esta laptop.</p><div className="memory-stats"><span><strong>{memory.quotes}</strong> ofertas</span><span><strong>{memory.cases}</strong> casos</span><span><strong>{memory.movements}</strong> movimientos</span><span><strong>{memory.finance}</strong> finanzas</span></div><small>{memory.lastBackup ? `Último respaldo: ${new Date(memory.lastBackup).toLocaleString("es-EC")}` : "Todavía no se ha descargado un respaldo."}</small></article>
-      </div>{message && <div className="install-message">{message}</div>}<footer><strong>Datos locales</strong><span>Volia Control no sincroniza información entre computadoras. Use el respaldo para trasladar o recuperar registros.</span></footer>
+      </div>{message && <div className="install-message">{message}</div>}<footer><strong>Trabajo local y nube opcional</strong><span>Sin internet, los datos continúan guardándose en este equipo. Cuando vuelva la conexión, puede crear una copia cifrada desde “Nube”.</span></footer>
     </section></div>}
   </>;
 }

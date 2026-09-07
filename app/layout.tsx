@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   themeColor: "#102d29",
   appleWebApp: { capable: true, title: "Volia Control", statusBarStyle: "black-translucent" },
   other: { "codex-preview": "development" },
-  icons: { icon: "/app-icon.svg", shortcut: "/app-icon.svg", apple: "/app-icon.svg" },
+  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/apple-touch-icon.png" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
