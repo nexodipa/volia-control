@@ -1,6 +1,6 @@
 # Volia Control
 
-**Aplicación en línea:** https://volia-auditor-ia.jospu.chatgpt.site
+**Aplicación en línea:** https://nexodipa.github.io/volia-control/
 
 Sistema local de gestión comercial, operativa y financiera para **VOLIA S.A.S.** Permite preparar cotizaciones, auditar documentos, controlar cirugías y cobros, administrar inventario, registrar movimientos, revisar indicadores financieros y generar documentos institucionales.
 
@@ -38,7 +38,7 @@ Sistema local de gestión comercial, operativa y financiera para **VOLIA S.A.S.*
 ## Instalación para desarrollo
 
 ```bash
-git clone https://github.com/JosueST-B/volia-control.git
+git clone https://github.com/nexodipa/volia-control.git
 cd volia-control
 npm ci
 npm run dev

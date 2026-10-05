@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Volia">
+  <defs><linearGradient id="b" x1="8" y1="6" x2="56" y2="58"><stop stop-color="#047FB8"/><stop offset="1" stop-color="#18B9DE"/></linearGradient></defs>
+  <rect width="64" height="64" rx="15" fill="url(#b)"/>
+  <path d="M8 34h10l4-11 7 24 7-31 5 18h15" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
