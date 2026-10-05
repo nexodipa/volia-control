@@ -1,5 +1,7 @@
 # Volia Control
 
+**Aplicación en línea:** https://volia-auditor-ia.jospu.chatgpt.site
+
 Sistema local de gestión comercial, operativa y financiera para **VOLIA S.A.S.** Permite preparar cotizaciones, auditar documentos, controlar cirugías y cobros, administrar inventario, registrar movimientos, revisar indicadores financieros y generar documentos institucionales.
 
 ## Principios del sistema
