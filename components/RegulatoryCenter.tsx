@@ -8,6 +8,7 @@ import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
 import { pullRegulatory, pushRegulatory } from "../lib/regulatory-sync";
+import { mergeRegulatory } from "../lib/regulatory-api";
 
 const LABEL: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "Vencido", critico: "Menos de 30 días", proximo: "Menos de 90 días", vigente: "Vigente", "sin-fecha": "Sin fecha" };
 const DOT: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "red", critico: "red", proximo: "yellow", vigente: "green", "sin-fecha": "yellow" };
@@ -29,10 +30,14 @@ export default function RegulatoryCenter() {
       const remote = await pullRegulatory();
       if (cancelled) return;
       if (!remote.ok) { setServer({ mode: "local", message: `Solo en este equipo: ${remote.reason}`, pending: [] }); return; }
-      if (remote.data.length) { setRecords(remote.data); setServer({ mode: "server", message: "Sincronizado con la base de datos.", pending: [] }); return; }
-      const pushed = await pushRegulatory(local); // base vacía: se carga lo que tiene este equipo
+      const { merged, toPush } = mergeRegulatory(local, remote.data);
+      setRecords(merged);
+      if (!toPush.length) { setServer({ mode: "server", message: "Sincronizado con la base de datos.", pending: [] }); return; }
+      const pushed = await pushRegulatory(toPush); // lo que este equipo tiene más nuevo o el servidor no tiene
       if (cancelled) return;
-      setServer(pushed.ok ? { mode: "server", message: `Base de datos inicializada con ${pushed.data} documentos.`, pending: [] } : { mode: "local", message: `Solo en este equipo: ${pushed.reason}`, pending: [] });
+      setServer(pushed.ok
+        ? { mode: "server", message: remote.data.length ? `Sincronizado; se subieron ${pushed.data} cambio(s) de este equipo.` : `Base de datos inicializada con ${pushed.data} documentos.`, pending: [] }
+        : { mode: "server", message: `No se pudieron subir los cambios de este equipo: ${pushed.reason}`, pending: toPush.map((r) => r.id) });
     }, 0);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, []);
@@ -57,7 +62,7 @@ export default function RegulatoryCenter() {
   const setDate = (id: string, expiresAt: string) => {
     const rec = records.find((x) => x.id === id);
     if (!rec) return;
-    const updated = { ...rec, expiresAt: expiresAt || null };
+    const updated = { ...rec, expiresAt: expiresAt || null, updatedAt: new Date().toISOString() };
     setRecords((current) => current.map((x) => x.id === id ? updated : x));
     recordActivity("Documentos regulatorios", "Vigencia actualizada", `${rec.reference} · ${expiresAt || "sin fecha"}`, "update");
     void sendToServer([updated]);

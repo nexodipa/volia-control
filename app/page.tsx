@@ -6,6 +6,7 @@ import { auditFilesLocally, type AuditResult } from "../lib/local-audit";
 import QuoteBuilder from "../components/QuoteBuilder";
 import CaseTracker from "../components/CaseTracker";
 import InventoryTracker from "../components/InventoryTracker";
+import MarketCenter from "../components/MarketCenter";
 import RegulatoryCenter from "../components/RegulatoryCenter";
 import MovementAnalytics from "../components/MovementAnalytics";
 import FinanceCenter from "../components/FinanceCenter";
@@ -38,6 +39,7 @@ type Module =
   | "inventory"
   | "regulatory"
   | "analytics"
+  | "market"
   | "documents"
   | "activity"
   | "knowledge"
@@ -53,6 +55,7 @@ const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
   inventory: { eyebrow: "TRAZABILIDAD", title: "Inventario, lotes y caducidades" },
   regulatory: { eyebrow: "CUMPLIMIENTO", title: "Registros sanitarios y vigencias" },
   analytics: { eyebrow: "ANÁLISIS OPERATIVO", title: "Movimientos y estadísticas" },
+  market: { eyebrow: "INTELIGENCIA DE MERCADO", title: "Mercado público SERCOP" },
   documents: { eyebrow: "GESTIÓN ADMINISTRATIVA", title: "Generador de documentos" },
   activity: { eyebrow: "CONTROL INTERNO", title: "Historial de actividad" },
   knowledge: { eyebrow: "INTELIGENCIA Y MEMORIA", title: "Memoria y Base de Conocimiento" },
@@ -529,6 +532,13 @@ export default function Home() {
           >
             <Icon name="analytics" />
             Estadísticas
+          </button>
+          <button
+            className={`nav-item ${module === "market" ? "active" : ""}`}
+            onClick={() => navigateTo("market")}
+          >
+            <Icon name="analytics" />
+            Mercado SERCOP
           </button>
           <button
             className={`nav-item ${module === "documents" ? "active" : ""}`}
@@ -1100,6 +1110,8 @@ export default function Home() {
             <RegulatoryCenter />
           ) : module === "analytics" ? (
             <MovementAnalytics />
+          ) : module === "market" ? (
+            <MarketCenter />
           ) : module === "documents" ? (
             <DocumentGenerator />
           ) : module === "knowledge" ? (

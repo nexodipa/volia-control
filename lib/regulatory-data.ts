@@ -12,6 +12,7 @@ export type RegulatoryRecord = {
   items: string; // ítems del informe de necesidad que respalda
   expiresAt: string | null; // YYYY-MM-DD
   note: string;
+  updatedAt?: string; // ISO; última modificación, para combinar cambios entre equipos
 };
 
 const r = (id: string, kind: RegulatoryKind, reference: string, subject: string, items: string, expiresAt: string | null, note = ""): RegulatoryRecord => ({ id, kind, reference, subject, items, expiresAt, note });

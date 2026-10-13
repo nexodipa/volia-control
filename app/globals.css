@@ -5140,3 +5140,11 @@ textarea:focus-visible {
 }
 .module-sync-status.ok { background: var(--mint); color: var(--green); }
 .module-sync-status.warn { background: var(--amber-bg); color: var(--amber); }
+
+/* Mercado SERCOP */
+.module-note { font-size: 11px; color: var(--muted); margin: 10px 0 0; }
+.market-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.market-ranking { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.market-ranking li { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; font-size: 12px; }
+.market-ranking li span { overflow-wrap: anywhere; }
+.market-ranking li small { grid-column: 1 / -1; color: var(--muted); }
