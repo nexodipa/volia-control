@@ -6,6 +6,7 @@ import { auditFilesLocally, type AuditResult } from "../lib/local-audit";
 import QuoteBuilder from "../components/QuoteBuilder";
 import CaseTracker from "../components/CaseTracker";
 import InventoryTracker from "../components/InventoryTracker";
+import RegulatoryCenter from "../components/RegulatoryCenter";
 import MovementAnalytics from "../components/MovementAnalytics";
 import FinanceCenter from "../components/FinanceCenter";
 import DocumentGenerator from "../components/DocumentGenerator";
@@ -35,6 +36,7 @@ type Module =
   | "cases"
   | "finance"
   | "inventory"
+  | "regulatory"
   | "analytics"
   | "documents"
   | "activity"
@@ -49,6 +51,7 @@ const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
   cases: { eyebrow: "CONTROL OPERATIVO", title: "Cirugías, facturación y cobros" },
   finance: { eyebrow: "DIRECCIÓN FINANCIERA", title: "Centro financiero y tesorería" },
   inventory: { eyebrow: "TRAZABILIDAD", title: "Inventario, lotes y caducidades" },
+  regulatory: { eyebrow: "CUMPLIMIENTO", title: "Registros sanitarios y vigencias" },
   analytics: { eyebrow: "ANÁLISIS OPERATIVO", title: "Movimientos y estadísticas" },
   documents: { eyebrow: "GESTIÓN ADMINISTRATIVA", title: "Generador de documentos" },
   activity: { eyebrow: "CONTROL INTERNO", title: "Historial de actividad" },
@@ -512,6 +515,13 @@ export default function Home() {
           >
             <Icon name="inventory" />
             Inventario
+          </button>
+          <button
+            className={`nav-item ${module === "regulatory" ? "active" : ""}`}
+            onClick={() => navigateTo("regulatory")}
+          >
+            <Icon name="shield" />
+            Vigencias
           </button>
           <button
             className={`nav-item ${module === "analytics" ? "active" : ""}`}
@@ -1086,6 +1096,8 @@ export default function Home() {
             <FinanceCenter />
           ) : module === "inventory" ? (
             <InventoryTracker />
+          ) : module === "regulatory" ? (
+            <RegulatoryCenter />
           ) : module === "analytics" ? (
             <MovementAnalytics />
           ) : module === "documents" ? (
