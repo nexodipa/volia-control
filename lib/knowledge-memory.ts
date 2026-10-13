@@ -24,14 +24,14 @@ export interface KnowledgeItem {
 }
 
 export interface AISettings {
-  geminiApiKey: string;
+  /** Obsoleto: la clave ahora es un secreto del servidor. Se borra del navegador al leer la configuración. */
+  geminiApiKey?: string;
   model: string;
   temperature: number;
   autoExtract: boolean;
 }
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
-  geminiApiKey: "",
   model: "gemini-2.0-flash",
   temperature: 0.2,
   autoExtract: true,
@@ -87,7 +87,25 @@ export function saveKnowledgeItems(items: KnowledgeItem[]) {
 
 export function getAISettings(): AISettings {
   if (typeof window === "undefined") return DEFAULT_AI_SETTINGS;
-  return readStoredObject<AISettings>(STORAGE_KEYS.aiSettings, DEFAULT_AI_SETTINGS);
+  const stored = readStoredObject<AISettings>(STORAGE_KEYS.aiSettings, DEFAULT_AI_SETTINGS);
+  if (stored.geminiApiKey !== undefined) {
+    // Migración: la clave ya no se guarda en el navegador (cualquier script de la página podía leerla).
+    const { geminiApiKey: _removed, ...clean } = stored;
+    void _removed;
+    writeStoredJson(STORAGE_KEYS.aiSettings, clean);
+    return clean;
+  }
+  return stored;
+}
+
+/** Indica si el servidor tiene configurada la IA (secreto GEMINI_API_KEY del worker). */
+export async function isServerAIConfigured(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/ai", { cache: "no-store" });
+    return res.ok && (await res.json())?.configured === true;
+  } catch {
+    return false;
+  }
 }
 
 export function saveAISettings(settings: Partial<AISettings>) {
@@ -284,10 +302,14 @@ export async function queryVoliaMemory(question: string): Promise<{
   }
 
   const knowledge = getKnowledgeItems();
-  const quotes = readStoredArray<any>(STORAGE_KEYS.quoteHistory);
-  const cases = readStoredArray<any>(STORAGE_KEYS.cases);
-  const inventory = readStoredArray<any>(STORAGE_KEYS.inventory);
-  const finances = readStoredArray<any>(STORAGE_KEYS.financeRecords);
+  // Formas mínimas de lo que guardan los módulos (solo los campos que usa la memoria).
+  type QuoteLite = { number?: string; customer?: string; total?: number; date?: string };
+  type CaseLite = { patient?: string; hospital?: string; surgeryDate?: string; amount?: number; status?: string };
+  type InventoryLite = { code?: string; product?: string; description?: string; stock?: number; reserved?: number; unitCost?: number };
+  const quotes = readStoredArray<QuoteLite>(STORAGE_KEYS.quoteHistory);
+  const cases = readStoredArray<CaseLite>(STORAGE_KEYS.cases);
+  const inventory = readStoredArray<InventoryLite>(STORAGE_KEYS.inventory);
+  const finances = readStoredArray<Record<string, unknown>>(STORAGE_KEYS.financeRecords);
 
   // Filtrado de fuentes relevantes
   const relevantKnowledge = knowledge.filter(
@@ -324,17 +346,17 @@ export async function queryVoliaMemory(question: string): Promise<{
 
   const aiSettings = getAISettings();
 
-  // Si existe clave de API de Google Gemini, utilizamos el modelo para razonamiento avanzado
-  if (aiSettings.geminiApiKey.trim()) {
-    try {
-      const contextSummary = JSON.stringify({
-        knowledgeRules: relevantKnowledge.slice(0, 8).map((k) => ({ entity: k.entity, title: k.title, content: k.content })),
-        relatedQuotes: relevantQuotes.slice(0, 6).map((q) => ({ number: q.number, customer: q.customer, total: q.total, date: q.date })),
-        relatedCases: relevantCases.slice(0, 6).map((c) => ({ patient: c.patient, hospital: c.hospital, surgeryDate: c.surgeryDate, amount: c.amount, status: c.status })),
-        relatedInventory: relevantInventory.slice(0, 6).map((i) => ({ code: i.code, product: i.product, stock: i.stock, reserved: i.reserved, unitCost: i.unitCost })),
-      });
+  // Si el servidor tiene configurada la IA, se usa para razonamiento avanzado (la clave nunca llega al navegador).
+  // No se envían nombres de pacientes ni datos que los identifiquen.
+  try {
+    const contextSummary = JSON.stringify({
+      knowledgeRules: relevantKnowledge.slice(0, 8).map((k) => ({ entity: k.entity, title: k.title, content: k.content })),
+      relatedQuotes: relevantQuotes.slice(0, 6).map((q) => ({ number: q.number, customer: q.customer, total: q.total, date: q.date })),
+      relatedCases: relevantCases.slice(0, 6).map((c) => ({ hospital: c.hospital, surgeryDate: c.surgeryDate, amount: c.amount, status: c.status })),
+      relatedInventory: relevantInventory.slice(0, 6).map((i) => ({ code: i.code, product: i.product, stock: i.stock, reserved: i.reserved, unitCost: i.unitCost })),
+    });
 
-      const promptText = `Eres el Asistente de Memoria Operativa de VOLIA S.A.S. (Ecuador), una empresa especializada en insumos y dispositivos medicos-quirurgicos.
+    const promptText = `Eres el Asistente de Memoria Operativa de VOLIA S.A.S. (Ecuador), una empresa especializada en insumos y dispositivos medicos-quirurgicos.
 Tu objetivo es responder de manera profesional, precisa y estructurada a la siguiente consulta del equipo, basandote estrictamente en la memoria corporativa e informacion suministrada.
 No utilices emojis. Manten un lenguaje formal, claro y corporativo.
 
@@ -346,35 +368,20 @@ ${question}
 
 Respuesta profesional y analitica:`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model || "gemini-2.0-flash"}:generateContent?key=${aiSettings.geminiApiKey.trim()}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: {
-              temperature: aiSettings.temperature || 0.2,
-            },
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const json = await response.json();
-        const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (generatedText) {
-          recordActivity("Memoria", "Consulta analitica IA (Gemini)", question.slice(0, 80), "system");
-          return {
-            answer: generatedText,
-            sourceCount: totalSources,
-            provider: "gemini",
-          };
-        }
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: aiSettings.model || "gemini-2.0-flash", temperature: aiSettings.temperature ?? 0.2, prompt: promptText }),
+    });
+    if (response.ok) {
+      const generatedText = (await response.json())?.text;
+      if (typeof generatedText === "string" && generatedText.trim()) {
+        recordActivity("Memoria", "Consulta analitica IA (Gemini)", question.slice(0, 80), "system");
+        return { answer: generatedText, sourceCount: totalSources, provider: "gemini" };
       }
-    } catch (err) {
-      console.warn("Fallo en consulta Gemini API, usando motor semantico local:", err);
     }
+  } catch (err) {
+    console.warn("IA del servidor no disponible, usando motor semantico local:", err);
   }
 
   // Motor de respuesta semantico local sin dependencias externas
@@ -424,7 +431,7 @@ Respuesta profesional y analitica:`;
   if (relevantInventory.length > 0) {
     localAnswer += `DISPONIBILIDAD EN INVENTARIO:\n`;
     relevantInventory.forEach((i) => {
-      localAnswer += `- ${i.product} (Codigo: ${i.code || "S/C"}): Stock fisico ${i.stock} | Reservado ${i.reserved} | Disponible ${Math.max(0, i.stock - i.reserved)} unid.\n`;
+      localAnswer += `- ${i.product} (Codigo: ${i.code || "S/C"}): Stock fisico ${i.stock} | Reservado ${i.reserved} | Disponible ${Math.max(0, (i.stock ?? 0) - (i.reserved ?? 0))} unid.\n`;
     });
   }
 

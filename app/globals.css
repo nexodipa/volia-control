@@ -5162,3 +5162,31 @@ textarea:focus-visible {
 .line-regulatory.vencido, .line-regulatory.critico { color: var(--red); }
 .line-regulatory.proximo, .line-regulatory.sin-fecha { color: var(--amber); }
 .line-regulatory.vigente { color: var(--green); }
+
+/* Estado de la sincronización compartida */
+.shared-sync-pill { font-size: 11px; padding: 6px 10px; border-radius: 999px; background: var(--surface-soft, #f1f6f4); color: var(--muted); white-space: nowrap; }
+.shared-sync-pill.ok { background: var(--mint); color: var(--green); }
+.shared-sync-pill.warn { background: var(--amber-bg); color: var(--amber); }
+@media (max-width: 760px) { .shared-sync-pill { display: none; } }
+
+/* Pegar requerimiento */
+.requirement-input { width: 100%; font: inherit; font-size: 13px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; resize: vertical; }
+.requirement-rows { display: grid; gap: 10px; margin: 12px 0; }
+.requirement-row { display: grid; grid-template-columns: minmax(180px, 2fr) 90px minmax(200px, 3fr); gap: 10px; align-items: end; padding: 10px; border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; }
+.requirement-row.via-alias { border-left-color: var(--green); }
+.requirement-row.via-similar { border-left-color: var(--amber); }
+.requirement-row.via-none { border-left-color: var(--muted); }
+.requirement-row label { display: grid; gap: 4px; font-size: 11px; }
+.requirement-row select, .requirement-row input[type="number"] { font: inherit; font-size: 12px; padding: 6px; }
+.requirement-text { display: grid; gap: 2px; font-size: 12px; }
+.requirement-text small { color: var(--muted); }
+.requirement-remember { grid-column: 1 / -1; display: flex !important; align-items: center; gap: 6px; }
+@media (max-width: 760px) { .requirement-row { grid-template-columns: 1fr; } }
+.requirement-row select, .requirement-row input[type="number"] { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.requirement-suggest { justify-self: start; margin-top: 4px; font-size: 11px; padding: 4px 8px; }
+.requirement-row > * { min-width: 0; }
+.requirement-row select { width: 100%; max-width: 100%; }
+.requirement-importer .primary-button { background: var(--green); border-color: var(--green); color: #fff; }
+.requirement-importer .primary-button:disabled { opacity: .5; }
+.ai-server-status { display: grid; gap: 4px; font-size: 12px; }
+.ai-server-status small { color: var(--muted); }

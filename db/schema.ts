@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const cloudSnapshots = sqliteTable("cloud_snapshots", {
   ownerId: text("owner_id").primaryKey(),
@@ -239,4 +239,22 @@ export const auditEvents = sqliteTable(
     at: text("at").notNull(),
   },
   (t) => [index("audit_entity_idx").on(t.entity, t.entityId), index("audit_at_idx").on(t.at)],
+);
+
+// Registros compartidos entre equipos para módulos que hoy viven en el navegador (inventario, movimientos, finanzas).
+// Cada registro es el JSON del módulo; se fusiona por id con la marca de tiempo más reciente. Los borrados son lápidas.
+// No se usa para datos de pacientes: esos quedan solo en el respaldo cifrado.
+export const SHARED_COLLECTIONS = ["inventory", "movements", "finance"] as const;
+
+export const sharedRecords = sqliteTable(
+  "shared_records",
+  {
+    collection: text("collection", { enum: SHARED_COLLECTIONS }).notNull(),
+    recordId: text("record_id").notNull(),
+    data: text("data").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    deleted: integer("deleted", { mode: "boolean" }).notNull().default(false),
+    updatedBy: text("updated_by"),
+  },
+  (t) => [primaryKey({ columns: [t.collection, t.recordId] }), index("shared_records_updated_idx").on(t.collection, t.updatedAt)],
 );

@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import MarketHint from "./MarketHint";
+import RequirementImporter, { type ImportedLine } from "./RequirementImporter";
 import { findRegulatoryDoc, type LineRegulatoryStatus } from "../lib/regulatory-check";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { useEffect, useMemo, useState } from "react";
@@ -283,6 +284,13 @@ export default function QuoteBuilder() {
   };
 
   const addItem = () => setItems((current) => [...current, { id: uid(), code: "", description: "", brand: "", origin: "", quantity: 1, unitCost: 0, unitPrice: 0 }]);
+  const addRequirementLines = (lines: ImportedLine[]) => setItems((current) => {
+    const mapped: QuoteItem[] = lines.map((line) => line.product
+      ? { id: uid(), code: line.product.code, description: line.product.description, brand: line.product.brand, origin: line.product.origin, quantity: line.quantity, unitCost: line.product.unitCost, unitPrice: line.product.salePrice }
+      : { id: uid(), code: "", description: line.text, brand: "", origin: "", quantity: line.quantity, unitCost: 0, unitPrice: 0 });
+    const onlyPlaceholder = current.length === 1 && current[0].id === "initial";
+    return onlyPlaceholder ? mapped : [...current, ...mapped];
+  });
   const removeItem = (id: string) => setItems((current) => current.length === 1 ? current : current.filter((item) => item.id !== id));
 
   const resetDraft = () => {
@@ -480,6 +488,7 @@ export default function QuoteBuilder() {
               </div>}
               {systemMessage && <p className="system-message" role="status">{systemMessage}</p>}
             </section>
+            <RequirementImporter catalog={catalog} customer={meta.customer} onAdd={addRequirementLines} />
             <div className="quote-items">
               {items.map((item, index) => {
                 const lineSale = item.quantity * item.unitPrice;

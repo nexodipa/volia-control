@@ -9,6 +9,7 @@ interface Env {
   VOLIA_AUTH_MODE?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
+  GEMINI_API_KEY?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -35,9 +36,11 @@ const worker = {
       __VOLIA_DB__?: D1Database;
       __VOLIA_ALLOWED_OWNER_IDS__?: string;
       __VOLIA_AUTH__?: { mode?: string; teamDomain?: string; aud?: string };
+      __VOLIA_GEMINI_KEY__?: string;
     };
     runtime.__VOLIA_DB__ = env.DB;
     runtime.__VOLIA_ALLOWED_OWNER_IDS__ = env.VOLIA_ALLOWED_OWNER_IDS;
+    runtime.__VOLIA_GEMINI_KEY__ = env.GEMINI_API_KEY;
     runtime.__VOLIA_AUTH__ = { mode: env.VOLIA_AUTH_MODE, teamDomain: env.CF_ACCESS_TEAM_DOMAIN, aud: env.CF_ACCESS_AUD };
     const url = new URL(request.url);
 
