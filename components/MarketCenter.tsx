@@ -80,7 +80,7 @@ export default function MarketCenter() {
 
     <section className="business-card"><div className="section-heading"><div><p className="eyebrow">FILTROS</p><h3>Explorar el mercado</h3></div>
       <input className="module-search" placeholder="Buscar comprador, producto, proveedor o código" value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} /></div>
-      <div className="record-actions">
+      <div className="market-filters">
         {(["todas", "insumos", "trauma"] as const).map((c) => <button key={c} className={filter.category === c ? "primary-button" : "secondary-button"} onClick={() => setFilter({ ...filter, category: c })}>{c === "todas" ? "Todas" : c === "insumos" ? "Insumos y dispositivos" : "Traumatología"}</button>)}
       </div>
     </section>

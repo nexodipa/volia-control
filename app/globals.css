@@ -5148,3 +5148,11 @@ textarea:focus-visible {
 .market-ranking li { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; font-size: 12px; }
 .market-ranking li span { overflow-wrap: anywhere; }
 .market-ranking li small { grid-column: 1 / -1; color: var(--muted); }
+.market-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.market-filters button { flex: 0 0 auto; }
+
+/* Contexto de mercado en el cotizador */
+.market-hint { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--mint); color: var(--ink); font-size: 12px; display: grid; gap: 4px; }
+.market-hint.risk-medio, .market-hint.risk-alto { background: var(--amber-bg); }
+.market-hint-risk { font-weight: 600; color: var(--amber); }
+.market-hint.risk-alto .market-hint-risk { color: var(--red); }
