@@ -3,7 +3,7 @@
 // Subconjunto de OCDS 1.1 que se usa aquí; el resto de campos se ignora.
 type OcdsValue = { amount?: number | string };
 type OcdsItem = { id?: string; description?: string; quantity?: number | string; unit?: { name?: string; value?: OcdsValue }; classification?: { id?: string } };
-type OcdsAward = { suppliers?: { name?: string }[]; items?: OcdsItem[] };
+type OcdsAward = { suppliers?: { name?: string }[]; items?: OcdsItem[]; value?: OcdsValue; date?: string };
 export type OcdsRelease = {
   ocid?: string;
   date?: string;
@@ -77,7 +77,7 @@ export function extractMarketItems(release: OcdsRelease, cpcPrefixes: string[]):
 type OcdsParty = { name?: string };
 type OcdsReleaseFull = OcdsRelease & {
   tender?: NonNullable<OcdsRelease["tender"]> & { title?: string; description?: string; value?: OcdsValue; tenderers?: OcdsParty[] };
-  awards?: (OcdsAward & { value?: OcdsValue; date?: string })[];
+  awards?: OcdsAward[];
 };
 
 export type ProcessSummary = {
