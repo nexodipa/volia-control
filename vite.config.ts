@@ -22,6 +22,9 @@ const deployVars = Object.fromEntries(
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // Solo la dirección workers.dev (protegida por Cloudflare Access); sin URLs de vista previa por versión.
+  workers_dev: true,
+  preview_urls: false,
   ...(Object.keys(deployVars).length ? { vars: deployVars } : {}),
   d1_databases: d1
     ? [
