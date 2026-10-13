@@ -97,3 +97,29 @@ export function compareWithAward(costCents: number, priceCents: number, awardCen
       "Nuestro precio es competitivo frente al adjudicado.",
   };
 }
+
+/** Perfil de una entidad compradora (búsqueda por nombre, sin tildes). Null si la búsqueda es muy corta o no hay coincidencias. */
+export function buyerProfile(list: MarketProcess[], buyerQuery: string) {
+  const q = norm(buyerQuery).replace(/\s+/g, " ").trim();
+  if (q.length < 4) return null;
+  const terms = q.split(" ").filter((t) => t.length > 2);
+  const matches = list.filter((p) => { const b = norm(p.b); return terms.every((t) => b.includes(t)); });
+  if (!matches.length) return null;
+  const withT = matches.filter((p) => p.o > 0);
+  return {
+    buyers: [...new Set(matches.map((p) => p.b))],
+    processes: matches.length,
+    avgTenderers: withT.length ? Math.round((withT.reduce((s, p) => s + p.o, 0) / withT.length) * 10) / 10 : null,
+    topWinners: winnerRanking(matches, 3),
+    ourBids: matches.filter((p) => p.vb).length,
+    ourWins: matches.filter((p) => p.vw).length,
+  };
+}
+
+/** Advertencia de precio: margen alto frente a competencia fuerte. Umbrales conservadores, ajustables. */
+export function pricingRisk(marginPct: number, avgTenderers: number | null) {
+  if (avgTenderers === null || marginPct <= 0) return null;
+  if (avgTenderers >= 3 && marginPct >= 40) return { level: "alto" as const, message: `Con ${avgTenderers} oferentes promedio, un margen de ${marginPct.toFixed(1)} % tiene alto riesgo de perder la subasta.` };
+  if (avgTenderers >= 3 && marginPct >= 30) return { level: "medio" as const, message: `Con ${avgTenderers} oferentes promedio, un margen de ${marginPct.toFixed(1)} % deja poco espacio en la puja.` };
+  return null;
+}

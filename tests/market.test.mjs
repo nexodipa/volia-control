@@ -42,3 +42,22 @@ test("compare with award: informe de necesidad vs Prodimeda's winning bid", () =
   assert.match(r.verdict, /muy por encima/);
   assert.equal(compareWithAward(1000, 1100, 900).belowOurCost, true);
 });
+
+import { buyerProfile, pricingRisk } from "../lib/market.ts";
+
+test("buyer profile matches by words without accents", () => {
+  const prof = buyerProfile(list, "gad dmq");
+  assert.equal(prof.processes, 2);
+  assert.equal(prof.ourBids, 2);
+  assert.equal(prof.ourWins, 1);
+  assert.equal(buyerProfile(list, "xyz"), null);
+  assert.equal(buyerProfile(list, "no existe nadie"), null);
+});
+
+test("pricing risk flags high margins against strong competition", () => {
+  assert.equal(pricingRisk(48.3, 4).level, "alto");
+  assert.equal(pricingRisk(33, 3.7).level, "medio");
+  assert.equal(pricingRisk(20, 5), null);
+  assert.equal(pricingRisk(60, 1.5), null);
+  assert.equal(pricingRisk(50, null), null);
+});

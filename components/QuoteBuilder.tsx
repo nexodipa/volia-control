@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import MarketHint from "./MarketHint";
 import { useEffect, useMemo, useState } from "react";
 import { exportBusinessWord, type BusinessExport } from "../lib/business-exports";
 import { downloadCsv } from "../lib/csv";
@@ -502,6 +503,7 @@ export default function QuoteBuilder() {
         <aside className="profit-panel">
           <div className="profit-heading"><SmallIcon name="calculator" /><div><p className="eyebrow">ANÁLISIS INTERNO</p><h3>Rentabilidad de la oferta</h3></div></div>
           <div className={`profit-status ${risk}`}><SmallIcon name={risk === "healthy" ? "check" : "warning"} /><div><strong>{risk === "healthy" ? "Margen saludable" : risk === "danger" ? "Oferta con pérdida" : risk === "warning" ? "Margen inferior al objetivo" : "Ingrese todos los costos"}</strong><span>{risk === "healthy" ? `Supera el objetivo de ${meta.minimumMargin.toFixed(1)} %.` : risk === "incomplete" ? `Faltan costos en ${totals.missingCosts} línea(s).` : "Revise precios o costos antes de enviar."}</span></div></div>
+          <MarketHint buyers={[meta.customer, meta.hospital]} marginPct={totals.margin} />
           <dl className="profit-list">
             <div><dt>Subtotal antes de descuento</dt><dd>{money(totals.grossSubtotal)}</dd></div>
             <div className="discount-value"><dt>Descuento comercial</dt><dd>- {money(totals.discount)}</dd></div>
