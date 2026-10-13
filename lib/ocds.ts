@@ -72,3 +72,60 @@ export function extractMarketItems(release: OcdsRelease, cpcPrefixes: string[]):
   }
   return out;
 }
+
+// ---- Nivel proceso: la mayoría de procesos 2026 no trae ítems, pero sí comprador, oferentes y ganador.
+type OcdsParty = { name?: string };
+type OcdsReleaseFull = OcdsRelease & {
+  tender?: NonNullable<OcdsRelease["tender"]> & { title?: string; description?: string; value?: OcdsValue; tenderers?: OcdsParty[] };
+  awards?: (OcdsAward & { value?: OcdsValue; date?: string })[];
+};
+
+export type ProcessSummary = {
+  ocid: string;
+  date: string;
+  buyer: string;
+  method: string;
+  status: string;
+  description: string;
+  budget: number | null;
+  tenderers: number;
+  winners: string;
+  awardedAmount: number | null;
+  weBid: boolean;
+  weWon: boolean;
+};
+
+const nameMatches = (name: string | undefined, ours: string) => !!name && name.toUpperCase().includes(ours.toUpperCase());
+
+export function summarizeProcess(release: OcdsReleaseFull, ourName = "VOLIA"): ProcessSummary {
+  const t = release?.tender ?? {};
+  const awards = Array.isArray(release?.awards) ? release.awards : [];
+  const winners = awards.flatMap((a) => (a.suppliers ?? []).map((s) => s.name ?? "")).filter(Boolean);
+  const amounts = awards.map((a) => num(a.value?.amount)).filter((v): v is number => v !== null);
+  const tenderers = Array.isArray(t.tenderers) ? t.tenderers : [];
+  return {
+    ocid: String(release?.ocid ?? ""),
+    date: String(release?.date ?? "").slice(0, 10),
+    buyer: String(release?.buyer?.name ?? ""),
+    method: String(t.procurementMethodDetails ?? t.procurementMethod ?? ""),
+    status: String(t.status ?? ""),
+    description: String(t.description || t.title || "").replace(/\s+/g, " ").trim(),
+    budget: num(t.value?.amount),
+    tenderers: tenderers.length,
+    winners: [...new Set(winners)].join(" / "),
+    awardedAmount: amounts.length ? Math.round(amounts.reduce((s, v) => s + v, 0) * 100) / 100 : null,
+    weBid: tenderers.some((p) => nameMatches(p.name, ourName)) || winners.some((w) => nameMatches(w, ourName)),
+    weWon: winners.some((w) => nameMatches(w, ourName)),
+  };
+}
+
+/** Procesos de insumos y dispositivos médicos, sin el catálogo electrónico de limpieza ni medicamentos. */
+export const MEDICAL_PROCESS_PATTERN = /insumos? m[eé]dic|dispositivos? m[eé]dic|material (de )?curaci|guante|jeringa|gasa\b|mascarilla|papanicol|esterilizaci|indicador biol|osteos[ií]ntesis|traumatolog|ortop|pr[oó]tesis|implante/i;
+
+export function isRelevantProcess(release: OcdsReleaseFull, pattern = MEDICAL_PROCESS_PATTERN, ourName = "VOLIA") {
+  const t = release?.tender ?? {};
+  const method = String(t.procurementMethodDetails ?? "");
+  if (/cat[aá]logo electr[oó]nico/i.test(method) && /limpieza|medicamentos/i.test(method)) return false;
+  const s = summarizeProcess(release, ourName);
+  return s.weBid || pattern.test(`${t.title ?? ""} ${t.description ?? ""}`);
+}

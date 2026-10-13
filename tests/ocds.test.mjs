@@ -24,3 +24,23 @@ test("extracts only items with the CPC and links the award", () => {
   assert.equal(items[0].awardedSupplier, "VOLIA S.A.S.");
   assert.equal(items[0].method, "Subasta Inversa Electrónica");
 });
+
+import { isRelevantProcess, summarizeProcess } from "../lib/ocds.ts";
+
+test("process summary detects our bid and win and sums award values", () => {
+  const rel = { ocid: "p1", buyer: { name: "GAD DMQ" }, tender: { description: "Adquisición de dispositivos médicos de uso general", procurementMethodDetails: "Subasta Inversa Electrónica", tenderers: [{ name: "VOLIA S.A.S." }, { name: "OTRA" }] }, awards: [{ suppliers: [{ name: "VOLIA S.A.S." }], value: { amount: 100.5 } }, { suppliers: [{ name: "VOLIA S.A.S." }], value: { amount: 50.25 } }] };
+  const s = summarizeProcess(rel);
+  assert.equal(s.weBid, true);
+  assert.equal(s.weWon, true);
+  assert.equal(s.tenderers, 2);
+  assert.equal(s.awardedAmount, 150.75);
+  assert.equal(s.winners, "VOLIA S.A.S.");
+  assert.equal(isRelevantProcess(rel), true);
+});
+
+test("cleaning-supplies catalog and unrelated processes are excluded", () => {
+  const cleaning = { tender: { description: "GUANTES DE CAUCHO", procurementMethodDetails: "Catálogo electrónico - Insumos de limpieza" } };
+  const transport = { tender: { description: "Servicio de transporte de personal" } };
+  assert.equal(isRelevantProcess(cleaning), false);
+  assert.equal(isRelevantProcess(transport), false);
+});
