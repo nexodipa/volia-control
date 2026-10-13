@@ -42,9 +42,13 @@ export function readStoredObject<T extends object>(key: string, fallback: T): T 
   }
 }
 
+export const STORAGE_WRITE_EVENT = "volia-storage-write";
+
 export function writeStoredJson(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    // Avisa al motor de sincronización compartida (lib/shared-sync.ts) que este equipo cambió datos.
+    try { window.dispatchEvent(new CustomEvent(STORAGE_WRITE_EVENT, { detail: { key } })); } catch { /* fuera del navegador */ }
     return true;
   } catch {
     return false;

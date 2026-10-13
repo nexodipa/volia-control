@@ -1,0 +1,72 @@
+// Motor de sincronización de colecciones del navegador con /api/records (inventario, movimientos, finanzas).
+// Ciclo: subir lo que cambió en este equipo → bajar todo → dejar el equipo igual al servidor.
+// Si el usuario cambió algo mientras viajaba la red, no se pisa: se sincroniza en la siguiente vuelta.
+import { applyRemote, computeLocalChanges, type Shadow, type SharedCollection, type SharedRecord } from "./shared-records.ts";
+import { readStoredArray, STORAGE_KEYS } from "./storage.ts";
+
+export const SYNCED_COLLECTIONS: { collection: SharedCollection; key: string }[] = [
+  { collection: "inventory", key: STORAGE_KEYS.inventory },
+  { collection: "movements", key: STORAGE_KEYS.movements },
+  { collection: "finance", key: STORAGE_KEYS.financeRecords },
+];
+export const SYNCED_KEYS = new Set(SYNCED_COLLECTIONS.map((c) => c.key));
+
+const ENDPOINT = "/api/records";
+const CHUNK = 100;
+const shadowKey = (c: SharedCollection) => `volia-shared-shadow-${c}`;
+
+export type SyncOutcome = { ok: true; changedLocally: boolean; uploaded: number } | { ok: false; reason: string };
+
+function readShadow(c: SharedCollection): Shadow {
+  try { const v = JSON.parse(localStorage.getItem(shadowKey(c)) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch { return {}; }
+}
+
+async function reason(res: Response) {
+  try { const body = await res.json(); if (body?.error) return String(body.error); } catch { /* sin JSON */ }
+  return `Error ${res.status}`;
+}
+
+async function syncOne(collection: SharedCollection, key: string): Promise<SyncOutcome> {
+  const local = readStoredArray<{ id: string }>(key);
+  const changes = computeLocalChanges(local, readShadow(collection), new Date().toISOString());
+  for (let i = 0; i < changes.length; i += CHUNK) {
+    const res = await fetch(ENDPOINT, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collection, records: changes.slice(i, i + CHUNK) }) });
+    if (!res.ok) return { ok: false, reason: await reason(res) };
+  }
+  const res = await fetch(`${ENDPOINT}?collection=${collection}`, { cache: "no-store" });
+  if (!res.ok) return { ok: false, reason: await reason(res) };
+  const remote = ((await res.json())?.records ?? []) as SharedRecord[];
+  const current = readStoredArray<{ id: string }>(key);
+  if (JSON.stringify(current) !== JSON.stringify(local)) return { ok: true, changedLocally: false, uploaded: changes.length }; // cambió mientras tanto
+  const { next, shadow, changed } = applyRemote(local, remote);
+  try {
+    localStorage.setItem(key, JSON.stringify(next)); // sin evento: no es un cambio del usuario
+    localStorage.setItem(shadowKey(collection), JSON.stringify(shadow));
+  } catch { return { ok: false, reason: "No se pudo guardar en este equipo." }; }
+  return { ok: true, changedLocally: changed, uploaded: changes.length };
+}
+
+let inFlight: Promise<SyncOutcome> | null = null;
+
+/** Sincroniza todas las colecciones, una a la vez. Llamadas simultáneas comparten la misma ejecución. */
+export function syncAll(): Promise<SyncOutcome> {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    let changedLocally = false;
+    let uploaded = 0;
+    try {
+      for (const { collection, key } of SYNCED_COLLECTIONS) {
+        const r = await syncOne(collection, key);
+        if (!r.ok) return r;
+        changedLocally ||= r.changedLocally;
+        uploaded += r.uploaded;
+      }
+      return { ok: true as const, changedLocally, uploaded };
+    } catch {
+      return { ok: false as const, reason: "Sin conexión con el servidor." };
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}

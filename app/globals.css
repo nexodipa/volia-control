@@ -5162,3 +5162,9 @@ textarea:focus-visible {
 .line-regulatory.vencido, .line-regulatory.critico { color: var(--red); }
 .line-regulatory.proximo, .line-regulatory.sin-fecha { color: var(--amber); }
 .line-regulatory.vigente { color: var(--green); }
+
+/* Estado de la sincronización compartida */
+.shared-sync-pill { font-size: 11px; padding: 6px 10px; border-radius: 999px; background: var(--surface-soft, #f1f6f4); color: var(--muted); white-space: nowrap; }
+.shared-sync-pill.ok { background: var(--mint); color: var(--green); }
+.shared-sync-pill.warn { background: var(--amber-bg); color: var(--amber); }
+@media (max-width: 760px) { .shared-sync-pill { display: none; } }

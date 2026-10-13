@@ -15,6 +15,13 @@
       "when": 1791913541340,
       "tag": "0001_negocio",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791924281016,
+      "tag": "0002_registros_compartidos",
+      "breakpoints": true
     }
   ]
 }

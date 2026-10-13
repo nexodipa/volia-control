@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { auditFilesLocally, type AuditResult } from "../lib/local-audit";
 import QuoteBuilder from "../components/QuoteBuilder";
 import CaseTracker from "../components/CaseTracker";
@@ -13,6 +13,7 @@ import FinanceCenter from "../components/FinanceCenter";
 import DocumentGenerator from "../components/DocumentGenerator";
 import InstallManager from "../components/InstallManager";
 import CloudSyncModal from "../components/CloudSyncModal";
+import SharedSyncStatus from "../components/SharedSyncStatus";
 import HomeDashboard from "../components/HomeDashboard";
 import ProductCatalog from "../components/ProductCatalog";
 import HelpCenter from "../components/HelpCenter";
@@ -285,6 +286,8 @@ function Icon({
 
 export default function Home() {
   const [module, setModule] = useState<Module>("home");
+  // Sube cuando llegan cambios de otro equipo; remonta los módulos que leen esos datos.
+  const [dataVersion, setDataVersion] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [state, setState] = useState<AuditState>("ready");
   const [files, setFiles] = useState<File[]>([]);
@@ -580,6 +583,7 @@ export default function Home() {
             <h1>{MODULE_INFO[module].title}</h1>
           </div>
           <div className="topbar-actions">
+            <SharedSyncStatus onRemoteChange={() => setDataVersion((v) => v + 1)} />
             <CloudSyncModal />
             <AccessibilityToolbar onHelp={() => navigateTo("help")} />
             <InstallManager />
@@ -660,6 +664,7 @@ export default function Home() {
             <button className={`module-tab ${module === "activity" ? "active" : ""}`} onClick={() => setModule("activity")} role="tab" aria-selected={module === "activity"}><Icon name="activity" />Historial</button>
             <button className={`module-tab ${module === "help" ? "active" : ""}`} onClick={() => setModule("help")} role="tab" aria-selected={module === "help"}><Icon name="help" />Ayuda</button>
           </div>
+          <Fragment key={["home", "inventory", "analytics", "finance"].includes(module) ? `datos-${dataVersion}` : "fijo"}>
           {module === "home" ? (
             <HomeDashboard onNavigate={(target) => setModule(target as Module)} />
           ) : module === "audit" ? (
@@ -1121,6 +1126,7 @@ export default function Home() {
           ) : (
             <HelpCenter />
           )}
+          </Fragment>
         </div>
       </section>
       <nav className="mobile-bottom-nav" aria-label="Accesos rápidos">
