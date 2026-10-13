@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifyAccessJwt } from "../lib/cf-access";
 
 export type ChatGPTUser = {
   displayName: string;
@@ -16,8 +17,29 @@ const SIGN_IN_PATH = "/signin-with-chatgpt";
 const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
+type AuthRuntime = { mode?: string; teamDomain?: string; aud?: string };
+
+/**
+ * Modo de autenticación según dónde corre la app:
+ * - "cloudflare-access": solo se acepta el token firmado de Cloudflare Access (las cabeceras oai-* se ignoran,
+ *   porque en Cloudflare cualquiera podría enviarlas a mano).
+ * - "openai": cabeceras que inyecta el hosting de OpenAI.
+ * Cualquier otro valor rechaza a todos (falla cerrado).
+ */
+export function authMode(): string {
+  const auth = (globalThis as typeof globalThis & { __VOLIA_AUTH__?: AuthRuntime }).__VOLIA_AUTH__ ?? {};
+  return auth.mode?.trim() || (auth.aud ? "cloudflare-access" : "openai");
+}
+
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
+  const mode = authMode();
+  if (mode === "cloudflare-access") {
+    const auth = (globalThis as typeof globalThis & { __VOLIA_AUTH__?: AuthRuntime }).__VOLIA_AUTH__ ?? {};
+    const accessEmail = await verifyAccessJwt(requestHeaders.get("cf-access-jwt-assertion"), { teamDomain: auth.teamDomain ?? "", aud: auth.aud ?? "" });
+    return accessEmail ? { displayName: accessEmail, email: accessEmail, fullName: null } : null;
+  }
+  if (mode !== "openai") return null;
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) return null;
 
