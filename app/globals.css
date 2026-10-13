@@ -5188,3 +5188,5 @@ textarea:focus-visible {
 .requirement-row select { width: 100%; max-width: 100%; }
 .requirement-importer .primary-button { background: var(--green); border-color: var(--green); color: #fff; }
 .requirement-importer .primary-button:disabled { opacity: .5; }
+.ai-server-status { display: grid; gap: 4px; font-size: 12px; }
+.ai-server-status small { color: var(--muted); }

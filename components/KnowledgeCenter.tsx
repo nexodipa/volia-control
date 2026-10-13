@@ -6,6 +6,7 @@ import {
   deleteKnowledgeItem,
   getAISettings,
   getKnowledgeItems,
+  isServerAIConfigured,
   queryVoliaMemory,
   saveAISettings,
   type AISettings,
@@ -47,17 +48,16 @@ export default function KnowledgeCenter() {
 
   // Configuracion de IA
   const [aiSettings, setAiSettings] = useState<AISettings>(() => getAISettings());
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
+  const [serverAI, setServerAI] = useState<boolean | null>(null);
 
   useEffect(() => {
     const load = () => {
       setItems(getKnowledgeItems());
       const s = getAISettings();
       setAiSettings(s);
-      setApiKeyInput(s.geminiApiKey || "");
     };
     load();
+    void isServerAIConfigured().then(setServerAI);
     window.addEventListener("volia-knowledge-updated", load);
     window.addEventListener("volia-ai-settings-updated", load);
     return () => {
@@ -129,7 +129,6 @@ export default function KnowledgeCenter() {
 
   const handleSaveAISettings = () => {
     saveAISettings({
-      geminiApiKey: apiKeyInput.trim(),
       autoExtract: aiSettings.autoExtract,
       model: aiSettings.model,
     });
@@ -167,28 +166,15 @@ export default function KnowledgeCenter() {
           </div>
           <p className="settings-desc">
             El sistema funciona de forma autonoma y local con su motor semantico. Opcionalmente,
-            puede ingresar una clave de API de Google Gemini para habilitar respuestas avanzadas en
-            lenguaje natural.
+            se puede activar Google Gemini en el servidor para respuestas avanzadas en lenguaje natural.
+            A Gemini no se envían nombres de pacientes.
           </p>
           <div className="business-form">
-            <label>
-              <span>Google Gemini API Key</span>
-              <div className="pin-row">
-                <input
-                  type={showApiKey ? "text" : "password"}
-                  placeholder="AIzaSy..."
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                />
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                >
-                  {showApiKey ? "Ocultar" : "Ver"}
-                </button>
-              </div>
-            </label>
+            <div className="ai-server-status">
+              <span>Estado de la IA</span>
+              <strong>{serverAI === null ? "Comprobando…" : serverAI ? "Configurada en el servidor" : "No configurada"}</strong>
+              <small>La clave de Google Gemini se guarda como secreto del servidor, nunca en este navegador. Para configurarla o cambiarla, el administrador ejecuta <code>configurar-ia.cmd</code> en el computador que publica la app.</small>
+            </div>
             <label>
               <span>Modelo de IA</span>
               <select
@@ -309,7 +295,7 @@ export default function KnowledgeCenter() {
             <h3>Preguntar a la Memoria Corporativa</h3>
           </div>
           <span className="source-indicator">
-            {aiSettings.geminiApiKey ? "Modo: Google Gemini AI + Memoria Local" : "Modo: Motor Semantico Local"}
+            {serverAI ? "Modo: Google Gemini AI + Memoria Local" : "Modo: Motor Semantico Local"}
           </span>
         </div>
 
