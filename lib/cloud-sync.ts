@@ -130,7 +130,7 @@ async function deriveKey(password: string, salt: Uint8Array) {
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt,
+      salt: new Uint8Array(salt), // copia con ArrayBuffer propio: mismo contenido, tipo aceptado por Web Crypto
       iterations: PBKDF2_ITERATIONS,
       hash: "SHA-256",
     },
