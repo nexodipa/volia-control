@@ -41,8 +41,15 @@ function saveEnvValue(key, value) {
   writeFileSync(envFile, next);
 }
 
-function run(args, { env = {} } = {}) {
+// interactive: la salida va directo a la consola para que wrangler pueda preguntar (por ejemplo, el subdominio workers.dev).
+function run(args, { env = {}, interactive = false } = {}) {
   appendFileSync(logFile, `\n$ npx ${args.join(" ")}\n`);
+  if (interactive) {
+    const res = spawnSync(npx, args, { cwd: root, env: { ...process.env, ...env }, stdio: "inherit", shell: isWin });
+    appendFileSync(logFile, `(salida en consola; código ${res.status})\n`);
+    if (res.status !== 0) fail(`Falló: npx ${args.join(" ")}`);
+    return "";
+  }
   const res = spawnSync(npx, args, { cwd: root, env: { ...process.env, ...env }, stdio: ["inherit", "pipe", "pipe"], encoding: "utf8", shell: isWin, maxBuffer: 64 * 1024 * 1024 });
   const out = `${res.stdout ?? ""}${res.stderr ?? ""}`;
   process.stdout.write(out);
@@ -92,7 +99,8 @@ log("Compilando (1 a 3 minutos)");
 run(["vinext", "build"], { env: buildEnv });
 
 log(checkOnly ? "Validando el paquete (sin publicar)" : "Publicando");
-run(["wrangler", "deploy", ...(checkOnly ? ["--dry-run"] : [])], { env: buildEnv });
+if (!checkOnly) note("Si wrangler pregunta por un subdominio workers.dev, responda Y y escriba el nombre elegido (por ejemplo: nexodipa).");
+run(["wrangler", "deploy", ...(checkOnly ? ["--dry-run"] : [])], { env: buildEnv, interactive: !checkOnly });
 
 note(`\n✔ ${checkOnly ? "Validación completa." : "Publicado."} Usuarios autorizados: ${emails.join(", ")}`);
 if (!accessReady && !checkOnly) note("Siguiente paso: Workers & Pages → volia-control → Settings → Domains & Routes → workers.dev → Enable Cloudflare Access. Copie el AUD tag y el Team domain en .env.cloudflare y ejecute este script otra vez.");
