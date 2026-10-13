@@ -80,6 +80,9 @@ export const products = sqliteTable(
     unit: text("unit").notNull().default("UNIDAD"),
     cpc: text("cpc"),
     cudim: text("cudim"),
+    // Valores vigentes que usa el cotizador; el historial por proveedor y tarifa queda en supplier_offers y price_tiers.
+    referenceCostCents: integer("reference_cost_cents").notNull().default(0),
+    salePriceCents: integer("sale_price_cents").notNull().default(0),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
