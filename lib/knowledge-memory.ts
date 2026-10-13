@@ -431,7 +431,7 @@ Respuesta profesional y analitica:`;
   if (relevantInventory.length > 0) {
     localAnswer += `DISPONIBILIDAD EN INVENTARIO:\n`;
     relevantInventory.forEach((i) => {
-      localAnswer += `- ${i.product} (Codigo: ${i.code || "S/C"}): Stock fisico ${i.stock} | Reservado ${i.reserved} | Disponible ${Math.max(0, i.stock - i.reserved)} unid.\n`;
+      localAnswer += `- ${i.product} (Codigo: ${i.code || "S/C"}): Stock fisico ${i.stock} | Reservado ${i.reserved} | Disponible ${Math.max(0, (i.stock ?? 0) - (i.reserved ?? 0))} unid.\n`;
     });
   }
 
