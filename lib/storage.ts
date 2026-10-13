@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   lastBackup: "volia-last-backup-v1",
   memoryUpdated: "volia-memory-updated-v1",
   regulatoryDocs: "volia-regulatory-docs-v1",
+  requirementAliases: "volia-requirement-aliases-v1",
 } as const;
 
 export const BACKUP_KEYS = new Set<string>(Object.values(STORAGE_KEYS));
@@ -72,6 +73,7 @@ export function isValidBackupValue(key: string, value: string) {
       STORAGE_KEYS.activityLog,
       STORAGE_KEYS.knowledgeMemory,
       STORAGE_KEYS.regulatoryDocs,
+      STORAGE_KEYS.requirementAliases,
     ]);
     if (arrayKeys.has(key)) return Array.isArray(parsed);
     return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
