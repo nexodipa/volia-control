@@ -88,7 +88,7 @@ export default function KnowledgeCenter() {
     try {
       const res = await queryVoliaMemory(textToAsk);
       setQueryResponse(res);
-    } catch (err) {
+    } catch {
       setQueryResponse({
         answer: "Ocurrio un error al procesar la consulta en la memoria.",
         sourceCount: 0,
@@ -361,7 +361,7 @@ export default function KnowledgeCenter() {
               <span>Categoria</span>
               <select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value as any)}
+                onChange={(e) => setSelectedCategory(e.target.value as KnowledgeCategory | "all")}
               >
                 {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>

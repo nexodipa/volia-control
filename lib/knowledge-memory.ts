@@ -302,10 +302,14 @@ export async function queryVoliaMemory(question: string): Promise<{
   }
 
   const knowledge = getKnowledgeItems();
-  const quotes = readStoredArray<any>(STORAGE_KEYS.quoteHistory);
-  const cases = readStoredArray<any>(STORAGE_KEYS.cases);
-  const inventory = readStoredArray<any>(STORAGE_KEYS.inventory);
-  const finances = readStoredArray<any>(STORAGE_KEYS.financeRecords);
+  // Formas mínimas de lo que guardan los módulos (solo los campos que usa la memoria).
+  type QuoteLite = { number?: string; customer?: string; total?: number; date?: string };
+  type CaseLite = { patient?: string; hospital?: string; surgeryDate?: string; amount?: number; status?: string };
+  type InventoryLite = { code?: string; product?: string; description?: string; stock?: number; reserved?: number; unitCost?: number };
+  const quotes = readStoredArray<QuoteLite>(STORAGE_KEYS.quoteHistory);
+  const cases = readStoredArray<CaseLite>(STORAGE_KEYS.cases);
+  const inventory = readStoredArray<InventoryLite>(STORAGE_KEYS.inventory);
+  const finances = readStoredArray<Record<string, unknown>>(STORAGE_KEYS.financeRecords);
 
   // Filtrado de fuentes relevantes
   const relevantKnowledge = knowledge.filter(
