@@ -17,6 +17,8 @@ verifica la firma del token de Access en cada consulta (si falta o no es válida
 
 ## Primera publicación
 
+La forma más simple en Windows: doble clic en `publicar-cloudflare.cmd`. Inicia sesión en Wrangler si hace falta y ejecuta el script; el detalle queda en `deploy-log.txt`. Equivale a:
+
 ```powershell
 node scripts/deploy-cloudflare.mjs
 ```
@@ -35,7 +37,7 @@ En este primer paso los datos quedan cerrados para todos, porque Access todavía
 
 ## Publicaciones siguientes
 
-`node scripts/deploy-cloudflare.mjs` (aplica migraciones nuevas si las hay, compila y publica).
+`node scripts/deploy-cloudflare.mjs` (o doble clic en `publicar-cloudflare.cmd`) (aplica migraciones nuevas si las hay, compila y publica).
 Para validar sin publicar: `node scripts/deploy-cloudflare.mjs --check`.
 
 ## Agregar o quitar usuarios

@@ -8,7 +8,7 @@
 //   node scripts/deploy-cloudflare.mjs --check    solo valida la configuración y compila, sin publicar
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -18,8 +18,12 @@ const checkOnly = process.argv.includes("--check");
 const isWin = process.platform === "win32";
 const npx = isWin ? "npx.cmd" : "npx";
 
-const log = (msg) => console.log(`\n▸ ${msg}`);
-const fail = (msg) => { console.error(`\n✖ ${msg}`); process.exit(1); };
+// Todo queda también en deploy-log.txt (sin secretos: Wrangler usa su propio inicio de sesión).
+const logFile = join(root, "deploy-log.txt");
+writeFileSync(logFile, `Volia Control · despliegue ${new Date().toISOString()}${checkOnly ? " (--check)" : ""}\n`);
+const note = (text) => { console.log(text); appendFileSync(logFile, `${text}\n`); };
+const log = (msg) => note(`\n▸ ${msg}`);
+const fail = (msg) => { console.error(`\n✖ ${msg}`); appendFileSync(logFile, `\n✖ ${msg}\n`); process.exit(1); };
 
 function readEnv() {
   if (!existsSync(envFile)) fail(`Falta ${envFile}. Copie .env.cloudflare.example como .env.cloudflare y complete los datos.`);
@@ -37,13 +41,14 @@ function saveEnvValue(key, value) {
   writeFileSync(envFile, next);
 }
 
-function run(args, { env = {}, capture = false } = {}) {
-  const res = spawnSync(npx, args, { cwd: root, env: { ...process.env, ...env }, stdio: capture ? ["inherit", "pipe", "pipe"] : "inherit", encoding: "utf8", shell: isWin });
-  if (res.status !== 0) {
-    if (capture) console.error(res.stdout, res.stderr);
-    fail(`Falló: npx ${args.join(" ")}`);
-  }
-  return capture ? `${res.stdout}\n${res.stderr}` : "";
+function run(args, { env = {} } = {}) {
+  appendFileSync(logFile, `\n$ npx ${args.join(" ")}\n`);
+  const res = spawnSync(npx, args, { cwd: root, env: { ...process.env, ...env }, stdio: ["inherit", "pipe", "pipe"], encoding: "utf8", shell: isWin, maxBuffer: 64 * 1024 * 1024 });
+  const out = `${res.stdout ?? ""}${res.stderr ?? ""}`;
+  process.stdout.write(out);
+  appendFileSync(logFile, out);
+  if (res.status !== 0) fail(`Falló: npx ${args.join(" ")}`);
+  return out;
 }
 
 const ownerId = (email) => createHash("sha256").update(`volia-cloud:${email.trim().toLowerCase()}`).digest("hex");
@@ -53,17 +58,17 @@ const dbName = env.VOLIA_D1_DATABASE_NAME || "volia-control-db";
 const emails = (env.VOLIA_ALLOWED_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 if (!emails.length) fail("VOLIA_ALLOWED_EMAILS está vacío: indique los correos autorizados separados por coma.");
 const accessReady = !!(env.CF_ACCESS_TEAM_DOMAIN && env.CF_ACCESS_AUD);
-if (!accessReady) console.warn("\n⚠ Cloudflare Access aún no está configurado (CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD). Se publicará con el acceso a datos cerrado para todos; actívelo y vuelva a ejecutar este script.");
+if (!accessReady) note("\n⚠ Cloudflare Access aún no está configurado (CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD). Se publicará con el acceso a datos cerrado para todos; actívelo y vuelva a ejecutar este script.");
 
 let dbId = env.VOLIA_D1_DATABASE_ID;
 if (!dbId) {
   if (checkOnly) fail("Falta VOLIA_D1_DATABASE_ID; ejecute sin --check para crear la base.");
   log(`Creando la base D1 "${dbName}"`);
-  const out = run(["wrangler", "d1", "create", dbName], { capture: true });
+  const out = run(["wrangler", "d1", "create", dbName]);
   dbId = out.match(/"?database_id"?\s*[:=]\s*"([0-9a-f-]{36})"/i)?.[1];
   if (!dbId) fail(`No se pudo leer el identificador de la base en la salida de wrangler:\n${out}`);
   saveEnvValue("VOLIA_D1_DATABASE_ID", dbId);
-  console.log(`Base creada: ${dbId} (guardada en .env.cloudflare)`);
+  note(`Base creada: ${dbId} (guardada en .env.cloudflare)`);
 }
 
 const buildEnv = {
@@ -83,11 +88,11 @@ if (!checkOnly) {
   run(["wrangler", "d1", "migrations", "apply", dbName, "--remote", "--config", cfg], { env: { CI: "1" } });
 }
 
-log("Compilando");
+log("Compilando (1 a 3 minutos)");
 run(["vinext", "build"], { env: buildEnv });
 
 log(checkOnly ? "Validando el paquete (sin publicar)" : "Publicando");
 run(["wrangler", "deploy", ...(checkOnly ? ["--dry-run"] : [])], { env: buildEnv });
 
-console.log(`\n✔ ${checkOnly ? "Validación completa." : "Publicado."} Usuarios autorizados: ${emails.join(", ")}`);
-if (!accessReady && !checkOnly) console.log("Siguiente paso: Workers & Pages → volia-control → Settings → Domains & Routes → workers.dev → Enable Cloudflare Access. Copie el AUD tag y el Team domain en .env.cloudflare y ejecute este script otra vez.");
+note(`\n✔ ${checkOnly ? "Validación completa." : "Publicado."} Usuarios autorizados: ${emails.join(", ")}`);
+if (!accessReady && !checkOnly) note("Siguiente paso: Workers & Pages → volia-control → Settings → Domains & Routes → workers.dev → Enable Cloudflare Access. Copie el AUD tag y el Team domain en .env.cloudflare y ejecute este script otra vez.");

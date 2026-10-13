@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Se regenera desde @tesseract.js-data/spa durante npm install
 /public/spa.traineddata.gz
+
+# Registro local del despliegue
+deploy-log.txt
