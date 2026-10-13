@@ -11,15 +11,27 @@ const { d1, r2 } = hostingConfig;
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
+// Despliegue propio en Cloudflare: scripts/deploy-cloudflare.mjs define estas variables al compilar.
+// En desarrollo local quedan vacías y se usa la base local de relleno.
+const deployVars = Object.fromEntries(
+  ["VOLIA_AUTH_MODE", "CF_ACCESS_TEAM_DOMAIN", "CF_ACCESS_AUD", "VOLIA_ALLOWED_OWNER_IDS"]
+    .filter((key) => process.env[key])
+    .map((key) => [key, process.env[key] as string]),
+);
+
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // Solo la dirección workers.dev (protegida por Cloudflare Access); sin URLs de vista previa por versión.
+  workers_dev: true,
+  preview_urls: false,
+  ...(Object.keys(deployVars).length ? { vars: deployVars } : {}),
   d1_databases: d1
     ? [
         {
           binding: d1,
-          database_name: "site-creator-d1",
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
+          database_name: process.env.VOLIA_D1_DATABASE_NAME || "site-creator-d1",
+          database_id: process.env.VOLIA_D1_DATABASE_ID || SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
         },
       ]
     : [],

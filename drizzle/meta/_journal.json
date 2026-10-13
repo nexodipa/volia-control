@@ -8,6 +8,13 @@
       "when": 1787953547705,
       "tag": "0000_groovy_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791913541340,
+      "tag": "0001_negocio",
+      "breakpoints": true
     }
   ]
 }

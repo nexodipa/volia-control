@@ -5126,3 +5126,39 @@ textarea:focus-visible {
   margin: 2px 0 0;
   line-height: 1.45;
 }
+
+/* Estado de sincronización de un módulo con la base de datos */
+.module-sync-status {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.module-sync-status.ok { background: var(--mint); color: var(--green); }
+.module-sync-status.warn { background: var(--amber-bg); color: var(--amber); }
+
+/* Mercado SERCOP */
+.module-note { font-size: 11px; color: var(--muted); margin: 10px 0 0; }
+.market-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.market-ranking { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.market-ranking li { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; font-size: 12px; }
+.market-ranking li span { overflow-wrap: anywhere; }
+.market-ranking li small { grid-column: 1 / -1; color: var(--muted); }
+.market-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.market-filters button { flex: 0 0 auto; }
+
+/* Contexto de mercado en el cotizador */
+.market-hint { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--mint); color: var(--ink); font-size: 12px; display: grid; gap: 4px; }
+.market-hint.risk-medio, .market-hint.risk-alto { background: var(--amber-bg); }
+.market-hint-risk { font-weight: 600; color: var(--amber); }
+.market-hint.risk-alto .market-hint-risk { color: var(--red); }
+
+/* Estado regulatorio por línea en el cotizador */
+.line-regulatory { margin: 6px 0 0; font-size: 11px; color: var(--muted); }
+.line-regulatory.vencido, .line-regulatory.critico { color: var(--red); }
+.line-regulatory.proximo, .line-regulatory.sin-fecha { color: var(--amber); }
+.line-regulatory.vigente { color: var(--green); }
