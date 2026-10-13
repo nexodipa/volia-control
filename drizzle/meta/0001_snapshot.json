@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ae3db592-4892-463c-a0a8-6be54e669636",
+  "id": "1b9564ad-0480-4ed6-9376-6499f99fca6a",
   "prevId": "3f8680ab-9b5d-4989-8322-206d017c4502",
   "tables": {
     "app_users": {
@@ -451,6 +451,22 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "reference_cost_cents": {
+          "name": "reference_cost_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "sale_price_cents": {
+          "name": "sale_price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "active": {
           "name": "active",

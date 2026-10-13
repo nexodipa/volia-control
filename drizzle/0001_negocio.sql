@@ -47,6 +47,8 @@ CREATE TABLE `products` (
 	`unit` text DEFAULT 'UNIDAD' NOT NULL,
 	`cpc` text,
 	`cudim` text,
+	`reference_cost_cents` integer DEFAULT 0 NOT NULL,
+	`sale_price_cents` integer DEFAULT 0 NOT NULL,
 	`active` integer DEFAULT true NOT NULL,
 	`created_at` text NOT NULL,
 	`updated_at` text NOT NULL
