@@ -36,7 +36,7 @@ export async function PUT(request: Request) {
   const statements = checked.records.flatMap((r) => {
     const row = toRow(r);
     return [
-      upsert.bind(row.code, row.kind, row.reference, row.subject, row.covered_items, row.expires_at, row.note, now),
+      upsert.bind(row.code, row.kind, row.reference, row.subject, row.covered_items, row.expires_at, row.note, row.updated_at ?? now),
       audit.bind(row.code, `${access.email}: vence ${row.expires_at ?? "sin fecha"}`, now),
     ];
   });

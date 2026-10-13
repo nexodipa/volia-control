@@ -120,12 +120,16 @@ export function summarizeProcess(release: OcdsReleaseFull, ourName = "VOLIA"): P
 }
 
 /** Procesos de insumos y dispositivos médicos, sin el catálogo electrónico de limpieza ni medicamentos. */
-export const MEDICAL_PROCESS_PATTERN = /insumos? m[eé]dic|dispositivos? m[eé]dic|material (de )?curaci|guante|jeringa|gasa\b|mascarilla|papanicol|esterilizaci|indicador biol|osteos[ií]ntesis|traumatolog|ortop|pr[oó]tesis|implante/i;
+export const MEDICAL_PROCESS_PATTERN = /insumos? m[eé]dic|dispositivos? m[eé]dic|material (de )?curaci|guante|jeringa|gasa\b|mascarilla|papanicol|indicador(es)? (biol|qu[ií]mic)|osteos[ií]ntesis|traumatolog|ortop|pr[oó]tesis|implante/i;
+/** Servicios (mantenimiento, auditoría, transporte…) no son mercado de Volia salvo que haya ofertado. */
+const SERVICE_PATTERN = /^\s*(contrataci[oó]n (del|de) )?servicios?\b|auditor[ií]a|mantenimiento|consultor[ií]a|transporte|arrendamiento/i;
 
 export function isRelevantProcess(release: OcdsReleaseFull, pattern = MEDICAL_PROCESS_PATTERN, ourName = "VOLIA") {
   const t = release?.tender ?? {};
   const method = String(t.procurementMethodDetails ?? "");
   if (/cat[aá]logo electr[oó]nico/i.test(method) && /limpieza|medicamentos/i.test(method)) return false;
   const s = summarizeProcess(release, ourName);
-  return s.weBid || pattern.test(`${t.title ?? ""} ${t.description ?? ""}`);
+  if (s.weBid) return true;
+  const text = `${t.title ?? ""} ${t.description ?? ""}`;
+  return pattern.test(text) && !SERVICE_PATTERN.test(t.description || t.title || "");
 }

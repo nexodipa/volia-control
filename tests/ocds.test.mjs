@@ -44,3 +44,10 @@ test("cleaning-supplies catalog and unrelated processes are excluded", () => {
   assert.equal(isRelevantProcess(cleaning), false);
   assert.equal(isRelevantProcess(transport), false);
 });
+
+test("services are excluded unless we bid", () => {
+  assert.equal(isRelevantProcess({ tender: { description: "AUDITORIAS AMBIENTALES DE LA PLANTA DE ESTERILIZACION DE RESIDUOS" } }), false);
+  assert.equal(isRelevantProcess({ tender: { description: "Contratación del servicio de mantenimiento de equipos médicos, insumos médicos incluidos" } }), false);
+  assert.equal(isRelevantProcess({ tender: { description: "Mantenimiento de equipos de quirófano", tenderers: [{ name: "VOLIA S.A.S." }] } }), true);
+  assert.equal(isRelevantProcess({ tender: { description: "Adquisición de insumos médicos para el área de emergencia" } }), true);
+});
