@@ -80,19 +80,29 @@ CREATE TABLE `quotes` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `quotes_number_idx` ON `quotes` (`number`);--> statement-breakpoint
 CREATE INDEX `quotes_customer_idx` ON `quotes` (`customer_id`);--> statement-breakpoint
+CREATE TABLE `regulatory_document_products` (
+	`document_id` integer NOT NULL,
+	`product_id` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `regulatory_doc_product_idx` ON `regulatory_document_products` (`document_id`,`product_id`);--> statement-breakpoint
 CREATE TABLE `regulatory_documents` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`product_id` integer NOT NULL,
+	`code` text NOT NULL,
 	`kind` text NOT NULL,
-	`reference` text,
+	`reference` text NOT NULL,
+	`subject` text DEFAULT '' NOT NULL,
+	`covered_items` text DEFAULT '' NOT NULL,
 	`issued_at` text,
 	`expires_at` text,
 	`file_ref` text,
-	`created_at` text NOT NULL
+	`note` text DEFAULT '' NOT NULL,
+	`created_at` text NOT NULL,
+	`updated_at` text NOT NULL
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `regulatory_code_idx` ON `regulatory_documents` (`code`);--> statement-breakpoint
 CREATE INDEX `regulatory_expiry_idx` ON `regulatory_documents` (`expires_at`);--> statement-breakpoint
-CREATE INDEX `regulatory_product_idx` ON `regulatory_documents` (`product_id`,`kind`);--> statement-breakpoint
 CREATE TABLE `requirement_aliases` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`normalized_text` text NOT NULL,

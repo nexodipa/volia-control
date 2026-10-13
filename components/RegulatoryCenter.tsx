@@ -7,6 +7,7 @@ import { businessIsoDate } from "../lib/date-utils";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
+import { pullRegulatory, pushRegulatory } from "../lib/regulatory-sync";
 
 const LABEL: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "Vencido", critico: "Menos de 30 días", proximo: "Menos de 90 días", vigente: "Vigente", "sin-fecha": "Sin fecha" };
 const DOT: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "red", critico: "red", proximo: "yellow", vigente: "green", "sin-fecha": "yellow" };
@@ -15,15 +16,25 @@ export default function RegulatoryCenter() {
   const [records, setRecords] = useState<RegulatoryRecord[]>([]);
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
+  const [server, setServer] = useState<{ mode: "local" | "server"; message: string; pending: string[] }>({ mode: "local", message: "Conectando con el servidor…", pending: [] });
   const today = businessIsoDate();
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
       const stored = readStoredArray<RegulatoryRecord>(STORAGE_KEYS.regulatoryDocs);
-      setRecords(stored.length ? stored : REGULATORY_SEED);
+      const local = stored.length ? stored : REGULATORY_SEED;
+      setRecords(local);
       setReady(true);
+      const remote = await pullRegulatory();
+      if (cancelled) return;
+      if (!remote.ok) { setServer({ mode: "local", message: `Solo en este equipo: ${remote.reason}`, pending: [] }); return; }
+      if (remote.data.length) { setRecords(remote.data); setServer({ mode: "server", message: "Sincronizado con la base de datos.", pending: [] }); return; }
+      const pushed = await pushRegulatory(local); // base vacía: se carga lo que tiene este equipo
+      if (cancelled) return;
+      setServer(pushed.ok ? { mode: "server", message: `Base de datos inicializada con ${pushed.data} documentos.`, pending: [] } : { mode: "local", message: `Solo en este equipo: ${pushed.reason}`, pending: [] });
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, []);
   useEffect(() => { if (ready) writeStoredJson(STORAGE_KEYS.regulatoryDocs, records); }, [records, ready]);
 
@@ -36,11 +47,22 @@ export default function RegulatoryCenter() {
 
   const visible = rows.filter((row) => [row.reference, row.subject, row.items, row.kind].some((v) => v.toLowerCase().includes(query.toLowerCase())));
   const count = (s: string) => rows.filter((row) => row.status === s).length;
-  const setDate = (id: string, expiresAt: string) => {
-    setRecords((current) => current.map((rec) => rec.id === id ? { ...rec, expiresAt: expiresAt || null } : rec));
-    const rec = records.find((x) => x.id === id);
-    if (rec) recordActivity("Documentos regulatorios", "Vigencia actualizada", `${rec.reference} · ${expiresAt || "sin fecha"}`, "update");
+  const sendToServer = async (changed: RegulatoryRecord[]) => {
+    if (server.mode !== "server") return;
+    const result = await pushRegulatory(changed);
+    setServer((cur) => result.ok
+      ? { mode: "server", message: "Sincronizado con la base de datos.", pending: cur.pending.filter((id) => !changed.some((c) => c.id === id)) }
+      : { ...cur, message: `No se pudo guardar en el servidor: ${result.reason}`, pending: [...new Set([...cur.pending, ...changed.map((c) => c.id)])] });
   };
+  const setDate = (id: string, expiresAt: string) => {
+    const rec = records.find((x) => x.id === id);
+    if (!rec) return;
+    const updated = { ...rec, expiresAt: expiresAt || null };
+    setRecords((current) => current.map((x) => x.id === id ? updated : x));
+    recordActivity("Documentos regulatorios", "Vigencia actualizada", `${rec.reference} · ${expiresAt || "sin fecha"}`, "update");
+    void sendToServer([updated]);
+  };
+  const retry = () => void sendToServer(records.filter((r) => server.pending.includes(r.id)));
   const exportCsv = () => {
     downloadCsv([["Tipo", "Referencia", "Descripción", "Ítems", "Vence", "Días", "Estado", "Nota"], ...rows.map((r) => [r.kind, r.reference, r.subject, r.items, r.expiresAt ?? "", r.days ?? "", LABEL[r.status], r.note])], `vencimientos-regulatorios-${today}.csv`);
     recordActivity("Documentos regulatorios", "Vencimientos exportados en CSV", `${rows.length} documentos`, "export");
@@ -48,6 +70,7 @@ export default function RegulatoryCenter() {
 
   return <section className="business-module">
     <div className="module-hero"><div><p className="eyebrow">CUMPLIMIENTO</p><h2>Registros sanitarios y vigencias</h2><p>Controla qué documentos respaldan cada ítem y cuándo vencen, para no presentar una oferta con papeles caducados.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
+    <p className={`module-sync-status ${server.mode === "server" && !server.pending.length ? "ok" : "warn"}`} role="status">{server.message}{server.pending.length > 0 && <> · {server.pending.length} cambio(s) pendiente(s) <button className="secondary-button" onClick={retry}>Reintentar</button></>}</p>
     <div className="business-kpis">
       <article className={count("vencido") ? "danger" : ""}><span>VENCIDOS</span><strong>{count("vencido")}</strong><small>No usar en ofertas</small></article>
       <article className={count("critico") ? "danger" : ""}><span>MENOS DE 30 DÍAS</span><strong>{count("critico")}</strong><small>Renovar ya</small></article>

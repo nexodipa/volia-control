@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8966b0b4-99e1-4686-95c3-9837481b8298",
+  "id": "ae3db592-4892-463c-a0a8-6be54e669636",
   "prevId": "3f8680ab-9b5d-4989-8322-206d017c4502",
   "tables": {
     "app_users": {
@@ -661,6 +661,39 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "regulatory_document_products": {
+      "name": "regulatory_document_products",
+      "columns": {
+        "document_id": {
+          "name": "document_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "regulatory_doc_product_idx": {
+          "name": "regulatory_doc_product_idx",
+          "columns": [
+            "document_id",
+            "product_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "regulatory_documents": {
       "name": "regulatory_documents",
       "columns": {
@@ -671,9 +704,9 @@
           "notNull": true,
           "autoincrement": true
         },
-        "product_id": {
-          "name": "product_id",
-          "type": "integer",
+        "code": {
+          "name": "code",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -689,8 +722,24 @@
           "name": "reference",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "covered_items": {
+          "name": "covered_items",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
         },
         "issued_at": {
           "name": "issued_at",
@@ -713,8 +762,23 @@
           "notNull": false,
           "autoincrement": false
         },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "created_at": {
           "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -722,18 +786,17 @@
         }
       },
       "indexes": {
+        "regulatory_code_idx": {
+          "name": "regulatory_code_idx",
+          "columns": [
+            "code"
+          ],
+          "isUnique": true
+        },
         "regulatory_expiry_idx": {
           "name": "regulatory_expiry_idx",
           "columns": [
             "expires_at"
-          ],
-          "isUnique": false
-        },
-        "regulatory_product_idx": {
-          "name": "regulatory_product_idx",
-          "columns": [
-            "product_id",
-            "kind"
           ],
           "isUnique": false
         }

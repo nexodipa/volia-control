@@ -40,7 +40,7 @@ export const cloudSnapshotVersions = sqliteTable(
 
 export const USER_ROLES = ["propietario", "ventas", "bodega", "lectura"] as const;
 export const PRICE_TIERS = ["volia", "clinicas", "contado", "pvp"] as const;
-export const DOCUMENT_KINDS = ["registro_sanitario", "ficha_tecnica"] as const;
+export const DOCUMENT_KINDS = ["registro_sanitario", "notificacion_sanitaria", "ficha_tecnica", "iso", "autorizacion_distribuidor", "otro"] as const;
 export const QUOTE_STATUSES = ["borrador", "revision", "aprobada", "facturada", "anulada"] as const;
 export const TENDER_OUTCOMES = ["pendiente", "ganado", "perdido", "desierto"] as const;
 
@@ -116,22 +116,36 @@ export const priceTiers = sqliteTable(
 );
 
 // Registro sanitario y ficha técnica, con vencimiento vigilable por consulta.
+// Un documento puede respaldar varios productos (o ninguno, como un ISO o una autorización).
 export const regulatoryDocuments = sqliteTable(
   "regulatory_documents",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    productId: integer("product_id").notNull(),
+    code: text("code").notNull(),
     kind: text("kind", { enum: DOCUMENT_KINDS }).notNull(),
-    reference: text("reference"),
+    reference: text("reference").notNull(),
+    subject: text("subject").notNull().default(""),
+    coveredItems: text("covered_items").notNull().default(""),
     issuedAt: text("issued_at"),
     expiresAt: text("expires_at"),
     fileRef: text("file_ref"),
+    note: text("note").notNull().default(""),
     createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
   },
   (t) => [
+    uniqueIndex("regulatory_code_idx").on(t.code),
     index("regulatory_expiry_idx").on(t.expiresAt),
-    index("regulatory_product_idx").on(t.productId, t.kind),
   ],
+);
+
+export const regulatoryDocumentProducts = sqliteTable(
+  "regulatory_document_products",
+  {
+    documentId: integer("document_id").notNull(),
+    productId: integer("product_id").notNull(),
+  },
+  (t) => [uniqueIndex("regulatory_doc_product_idx").on(t.documentId, t.productId)],
 );
 
 export const customers = sqliteTable(

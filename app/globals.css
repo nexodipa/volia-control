@@ -5126,3 +5126,17 @@ textarea:focus-visible {
   margin: 2px 0 0;
   line-height: 1.45;
 }
+
+/* Estado de sincronización de un módulo con la base de datos */
+.module-sync-status {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.module-sync-status.ok { background: var(--mint); color: var(--green); }
+.module-sync-status.warn { background: var(--amber-bg); color: var(--amber); }

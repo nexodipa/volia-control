@@ -1,6 +1,16 @@
 // Extrae de un proceso OCDS (SERCOP) lo que sirve para inteligencia de precios:
 // ítems por CPC, presupuesto referencial, adjudicaciones y proveedores ganadores.
-export type OcdsRelease = any; // estructura OCDS 1.1, demasiado amplia para tiparla entera
+// Subconjunto de OCDS 1.1 que se usa aquí; el resto de campos se ignora.
+type OcdsValue = { amount?: number | string };
+type OcdsItem = { id?: string; description?: string; quantity?: number | string; unit?: { name?: string; value?: OcdsValue }; classification?: { id?: string } };
+type OcdsAward = { suppliers?: { name?: string }[]; items?: OcdsItem[] };
+export type OcdsRelease = {
+  ocid?: string;
+  date?: string;
+  buyer?: { name?: string };
+  tender?: { status?: string; procurementMethod?: string; procurementMethodDetails?: string; tenderPeriod?: { startDate?: string }; items?: OcdsItem[] };
+  awards?: OcdsAward[];
+};
 
 export type MarketItem = {
   ocid: string;
@@ -25,8 +35,8 @@ export function cpcMatches(cpc: string, prefixes: string[]) {
 }
 
 export function extractMarketItems(release: OcdsRelease, cpcPrefixes: string[]): MarketItem[] {
-  const tender = release?.tender ?? {};
-  const awards: any[] = Array.isArray(release?.awards) ? release.awards : [];
+  const tender: NonNullable<OcdsRelease["tender"]> = release?.tender ?? {};
+  const awards: OcdsAward[] = Array.isArray(release?.awards) ? release.awards : [];
   const base = {
     ocid: String(release?.ocid ?? ""),
     buyer: String(release?.buyer?.name ?? ""),
@@ -35,16 +45,16 @@ export function extractMarketItems(release: OcdsRelease, cpcPrefixes: string[]):
     status: String(tender.status ?? ""),
   };
   const out: MarketItem[] = [];
-  const items: any[] = Array.isArray(tender.items) ? tender.items : [];
+  const items: OcdsItem[] = Array.isArray(tender.items) ? tender.items : [];
   for (const item of items) {
     const cpc = String(item?.classification?.id ?? "");
     if (!cpcMatches(cpc, cpcPrefixes)) continue;
     let awardedSupplier = "";
     let awardedUnitPrice: number | null = null;
     for (const a of awards) {
-      const match = (Array.isArray(a.items) ? a.items : []).find((ai: any) => ai.id === item.id || (ai.description && ai.description === item.description));
+      const match = (Array.isArray(a.items) ? a.items : []).find((ai) => ai.id === item.id || (ai.description && ai.description === item.description));
       if (match || awards.length === 1) {
-        awardedSupplier = (Array.isArray(a.suppliers) ? a.suppliers : []).map((s: any) => s.name).filter(Boolean).join(" / ");
+        awardedSupplier = (Array.isArray(a.suppliers) ? a.suppliers : []).map((s) => s.name).filter(Boolean).join(" / ");
         awardedUnitPrice = num(match?.unit?.value?.amount);
         break;
       }
