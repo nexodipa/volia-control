@@ -30,6 +30,12 @@ export default function ProductCatalog() {
   };
   const edit = (product: CatalogProduct) => { setDraft({ ...product }); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const toggle = (product: CatalogProduct) => { const next = products.map((entry) => entry.id === product.id ? { ...entry, active: !entry.active, updatedAt: new Date().toISOString() } : entry); setProducts(next); saveCatalog(next); recordActivity("Catálogo", product.active ? "Producto desactivado" : "Producto activado", product.code); };
+  const remove = (product: CatalogProduct) => {
+    if (!window.confirm(`¿Eliminar ${product.code} · ${product.description} del catálogo? Las cotizaciones guardadas no cambian.`)) return;
+    const next = products.filter((entry) => entry.id !== product.id);
+    setProducts(next); saveCatalog(next); recordActivity("Catálogo", "Producto eliminado", `${product.code} · ${product.description}`);
+    if (draft.id === product.id) close();
+  };
   const exportCsv = () => {
     downloadCsv([["Código", "Descripción", "Marca", "Procedencia", "Categoría", "Costo", "Precio de venta", "Margen %", "Activo"], ...products.map((product) => [product.code, product.description, product.brand, product.origin, product.category, product.unitCost, product.salePrice, margin(product).toFixed(2), product.active ? "Sí" : "No"])], "catalogo-maestro-volia.csv");
     recordActivity("Catálogo", "Catálogo exportado en CSV", `${products.length} producto(s) exportado(s)`, "export");
