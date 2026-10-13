@@ -5156,3 +5156,9 @@ textarea:focus-visible {
 .market-hint.risk-medio, .market-hint.risk-alto { background: var(--amber-bg); }
 .market-hint-risk { font-weight: 600; color: var(--amber); }
 .market-hint.risk-alto .market-hint-risk { color: var(--red); }
+
+/* Estado regulatorio por línea en el cotizador */
+.line-regulatory { margin: 6px 0 0; font-size: 11px; color: var(--muted); }
+.line-regulatory.vencido, .line-regulatory.critico { color: var(--red); }
+.line-regulatory.proximo, .line-regulatory.sin-fecha { color: var(--amber); }
+.line-regulatory.vigente { color: var(--green); }

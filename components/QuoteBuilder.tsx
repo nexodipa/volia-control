@@ -2,12 +2,14 @@
 /* eslint-disable @next/next/no-img-element */
 
 import MarketHint from "./MarketHint";
+import { findRegulatoryDoc, type LineRegulatoryStatus } from "../lib/regulatory-check";
+import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { useEffect, useMemo, useState } from "react";
 import { exportBusinessWord, type BusinessExport } from "../lib/business-exports";
 import { downloadCsv } from "../lib/csv";
 import { businessIsoDate } from "../lib/date-utils";
 import { exportQuotePdf } from "../lib/quote-pdf";
-import { STORAGE_KEYS, writeStoredJson } from "../lib/storage";
+import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import {
   getSavedQuotes,
   removeQuoteFromMemory,
@@ -189,6 +191,26 @@ export default function QuoteBuilder() {
     return { grossSubtotal, discount, netSubtotal, baseCost, totalCost, profit, margin, markup, iva, total, recommendedSubtotal, missingCosts };
   }, [items, meta.overhead, meta.minimumMargin, meta.applyVat, meta.discountType, meta.discountValue]);
 
+  const [regulatoryDocs, setRegulatoryDocs] = useState<RegulatoryRecord[]>(REGULATORY_SEED);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { const stored = readStoredArray<RegulatoryRecord>(STORAGE_KEYS.regulatoryDocs); if (stored.length) setRegulatoryDocs(stored); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const regulatoryByLine = useMemo(() => {
+    const todayIso = today();
+    return new Map<string, LineRegulatoryStatus | null>(items.map((item) => [item.id, item.description.trim() ? findRegulatoryDoc(item.description, regulatoryDocs, todayIso) : null]));
+  }, [items, regulatoryDocs]);
+  const regulatorySummary = useMemo(() => {
+    const described = items.filter((item) => item.description.trim());
+    const statuses = described.map((item) => regulatoryByLine.get(item.id) ?? null);
+    return {
+      expired: statuses.filter((s) => s?.status === "vencido").length,
+      soon: statuses.filter((s) => s?.status === "critico" || s?.status === "proximo").length,
+      undated: statuses.filter((s) => s?.status === "sin-fecha").length,
+      missing: statuses.filter((s) => !s).length,
+      total: described.length,
+    };
+  }, [items, regulatoryByLine]);
   const risk = totals.missingCosts ? "incomplete" : totals.profit < 0 ? "danger" : totals.margin < meta.minimumMargin ? "warning" : "healthy";
   const setField = <K extends keyof QuoteMeta>(field: K, value: QuoteMeta[K]) => setMeta((current) => ({ ...current, [field]: value }));
   const updateItem = (id: string, patch: Partial<QuoteItem>) => setItems((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
@@ -476,6 +498,7 @@ export default function QuoteBuilder() {
                     <label className="price-field"><span>Precio unitario ofertado</span><input type="number" min="0" step="0.01" value={item.unitPrice || ""} onChange={(event) => updateItem(item.id, { unitPrice: decimal(event.target.value) })} /></label>
                   </div>
                   <div className="line-result"><span>Venta: <strong>{money(lineSale)}</strong></span><span>Costo real: <strong>{item.unitCost ? money(lineCost) : "Pendiente"}</strong></span><span>Margen: <strong className={item.unitCost && lineMargin < meta.minimumMargin ? "negative" : ""}>{item.unitCost ? `${lineMargin.toFixed(1)} %` : "Pendiente"}</strong></span></div>
+                  {item.description.trim() && (() => { const reg = regulatoryByLine.get(item.id); return <p className={`line-regulatory ${reg ? reg.status : "sin-documento"}`}>{reg ? <>Registro probable <strong>{reg.record.reference}</strong> · {reg.status === "vigente" ? `vigente (${reg.days} días)` : reg.status === "sin-fecha" ? "sin fecha de vencimiento cargada" : reg.status === "vencido" ? `vencido hace ${-(reg.days ?? 0)} días` : `vence en ${reg.days} días`}</> : "Sin registro sanitario identificado en Vigencias"}</p>; })()}
                 </article>;
               })}
             </div>
@@ -504,6 +527,7 @@ export default function QuoteBuilder() {
           <div className="profit-heading"><SmallIcon name="calculator" /><div><p className="eyebrow">ANÁLISIS INTERNO</p><h3>Rentabilidad de la oferta</h3></div></div>
           <div className={`profit-status ${risk}`}><SmallIcon name={risk === "healthy" ? "check" : "warning"} /><div><strong>{risk === "healthy" ? "Margen saludable" : risk === "danger" ? "Oferta con pérdida" : risk === "warning" ? "Margen inferior al objetivo" : "Ingrese todos los costos"}</strong><span>{risk === "healthy" ? `Supera el objetivo de ${meta.minimumMargin.toFixed(1)} %.` : risk === "incomplete" ? `Faltan costos en ${totals.missingCosts} línea(s).` : "Revise precios o costos antes de enviar."}</span></div></div>
           <MarketHint buyers={[meta.customer, meta.hospital]} marginPct={totals.margin} />
+          {regulatorySummary.total > 0 && (regulatorySummary.expired + regulatorySummary.soon + regulatorySummary.undated + regulatorySummary.missing) > 0 && <div className={`market-hint ${regulatorySummary.expired ? "risk-alto" : "risk-medio"}`} role="note"><strong>Documentos regulatorios</strong><span>{[regulatorySummary.expired && `${regulatorySummary.expired} línea(s) con registro vencido`, regulatorySummary.soon && `${regulatorySummary.soon} con registro por vencer en 90 días`, regulatorySummary.undated && `${regulatorySummary.undated} con registro sin fecha cargada`, regulatorySummary.missing && `${regulatorySummary.missing} sin registro identificado`].filter(Boolean).join(" · ")}.</span><span>Verifique en Vigencias antes de presentar la oferta.</span></div>}
           <dl className="profit-list">
             <div><dt>Subtotal antes de descuento</dt><dd>{money(totals.grossSubtotal)}</dd></div>
             <div className="discount-value"><dt>Descuento comercial</dt><dd>- {money(totals.discount)}</dd></div>
