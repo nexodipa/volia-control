@@ -1,7 +1,8 @@
 // Sincronización genérica de colecciones del navegador (arreglos de objetos con `id`) contra shared_records.
+// Los adaptadores por colección (ids derivados, campos privados) viven en shared-adapters.ts.
 // Funciones puras: el cliente las usa para calcular qué subir y cómo quedar después de bajar; el servidor, para validar.
 
-export const SHARED_COLLECTION_NAMES = ["inventory", "movements", "finance"] as const;
+export const SHARED_COLLECTION_NAMES = ["inventory", "movements", "finance", "quotes", "aliases"] as const;
 export type SharedCollection = (typeof SHARED_COLLECTION_NAMES)[number];
 
 export type SharedRecord = { id: string; data: unknown; updatedAt: string; deleted: boolean };
@@ -46,7 +47,7 @@ export function applyRemote<T extends WithId>(local: T[], remote: SharedRecord[]
 }
 
 const MAX_RECORDS = 200;
-const MAX_DATA_CHARS = 20_000;
+const MAX_DATA_CHARS = 200_000; // una cotización grande (40+ ítems) cabe holgada
 
 export function isSharedCollection(value: unknown): value is SharedCollection {
   return typeof value === "string" && (SHARED_COLLECTION_NAMES as readonly string[]).includes(value);

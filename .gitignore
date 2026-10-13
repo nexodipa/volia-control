@@ -48,3 +48,4 @@ next-env.d.ts
 
 # Registro local del despliegue
 deploy-log.txt
+.dev.vars
