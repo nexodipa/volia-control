@@ -150,7 +150,7 @@ export default function QuoteBuilder() {
         if (saved) {
           const parsed = JSON.parse(saved) as { meta?: QuoteMeta; items?: QuoteItem[] };
           if (parsed.meta) setMeta({ ...INITIAL_META, ...parsed.meta });
-          if (parsed.items?.length) setItems(parsed.items.map((item) => ({ brand: "", origin: "", ...item })));
+          if (parsed.items?.length) setItems(parsed.items.map((item) => ({ ...item, brand: item.brand ?? "", origin: item.origin ?? "" })));
         } else setMeta((current) => ({ ...current, date: today(), number: nextQuoteNumber() }));
       } catch { /* El borrador local es auxiliar; un valor dañado se ignora. */ }
       setSavedQuotes(getSavedQuotes());
@@ -377,7 +377,7 @@ export default function QuoteBuilder() {
     const snapshot = saved.data as { meta?: QuoteMeta; items?: QuoteItem[] };
     if (!snapshot.meta || !snapshot.items?.length) return;
     setMeta({ ...INITIAL_META, ...snapshot.meta });
-    setItems(snapshot.items.map((item) => ({ brand: "", origin: "", ...item })));
+    setItems(snapshot.items.map((item) => ({ ...item, brand: item.brand ?? "", origin: item.origin ?? "" })));
     setMemoryMessage(`Oferta ${saved.number || "sin número"} abierta`);
     recordActivity("Cotizador", "Oferta restaurada", `${saved.number || "Sin número"} · ${saved.customer || "Cliente"}`, "update");
     window.scrollTo({ top: 0, behavior: "smooth" });
