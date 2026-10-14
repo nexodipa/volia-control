@@ -241,10 +241,11 @@ export const auditEvents = sqliteTable(
   (t) => [index("audit_entity_idx").on(t.entity, t.entityId), index("audit_at_idx").on(t.at)],
 );
 
-// Registros compartidos entre equipos para módulos que hoy viven en el navegador (inventario, movimientos, finanzas).
+// Registros compartidos entre equipos para módulos que hoy viven en el navegador
+// (inventario, movimientos, finanzas, historial de cotizaciones sin datos del paciente, equivalencias de requerimientos).
 // Cada registro es el JSON del módulo; se fusiona por id con la marca de tiempo más reciente. Los borrados son lápidas.
 // No se usa para datos de pacientes: esos quedan solo en el respaldo cifrado.
-export const SHARED_COLLECTIONS = ["inventory", "movements", "finance"] as const;
+export const SHARED_COLLECTIONS = ["inventory", "movements", "finance", "quotes", "aliases"] as const;
 
 export const sharedRecords = sqliteTable(
   "shared_records",

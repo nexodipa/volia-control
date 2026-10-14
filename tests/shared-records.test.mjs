@@ -39,6 +39,6 @@ test("validation", () => {
   assert.equal(validateSharedRecords([{ id: "a", data: { id: "b" }, updatedAt: now }]).ok, false);
   assert.equal(validateSharedRecords([{ id: "a b", data: { id: "a b" }, updatedAt: now }]).ok, false);
   assert.equal(validateSharedRecords([{ id: "a", data: [1], updatedAt: now }]).ok, false);
-  assert.equal(validateSharedRecords([{ id: "a", data: { id: "a", big: "x".repeat(30000) }, updatedAt: now }]).ok, false);
+  assert.equal(validateSharedRecords([{ id: "a", data: { id: "a", big: "x".repeat(210000) }, updatedAt: now }]).ok, false);
   assert.equal(validateSharedRecords([{ id: "a", data: { id: "a" }, updatedAt: "ayer" }]).ok, false);
 });

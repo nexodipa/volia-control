@@ -7,7 +7,7 @@ import { SYNCED_KEYS, syncAll } from "../lib/shared-sync";
 const INTERVAL_MS = 60_000;
 const DEBOUNCE_MS = 2_000;
 
-/** Sincroniza inventario, movimientos y finanzas con la base compartida y muestra el estado. */
+/** Sincroniza inventario, movimientos, finanzas, cotizaciones y equivalencias con la base compartida y muestra el estado. */
 export default function SharedSyncStatus({ onRemoteChange }: { onRemoteChange: () => void }) {
   const [state, setState] = useState<{ ok: boolean | null; text: string }>({ ok: null, text: "Datos compartidos: conectando…" });
   const debounce = useRef<number | null>(null);
@@ -22,7 +22,7 @@ export default function SharedSyncStatus({ onRemoteChange }: { onRemoteChange: (
       if (r.ok) {
         const time = new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
         setState({ ok: true, text: `Datos compartidos al día · ${time}` });
-        if (r.changedLocally) onChange.current();
+        if (r.changedLocally) { onChange.current(); window.dispatchEvent(new Event("volia-memory-updated")); }
       } else {
         setState({ ok: false, text: `Solo en este equipo: ${r.reason}` });
       }
@@ -48,5 +48,5 @@ export default function SharedSyncStatus({ onRemoteChange }: { onRemoteChange: (
     };
   }, []);
 
-  return <span className={`shared-sync-pill ${state.ok === false ? "warn" : state.ok ? "ok" : ""}`} role="status" title="Inventario, movimientos y finanzas se comparten entre los equipos autorizados.">{state.text}</span>;
+  return <span className={`shared-sync-pill ${state.ok === false ? "warn" : state.ok ? "ok" : ""}`} role="status" title="Inventario, movimientos, finanzas, cotizaciones (sin datos del paciente) y equivalencias se comparten entre los equipos autorizados.">{state.text}</span>;
 }

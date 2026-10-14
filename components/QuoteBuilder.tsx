@@ -161,6 +161,13 @@ export default function QuoteBuilder() {
     return () => window.clearTimeout(restoreTimer);
   }, []);
 
+  // El historial también llega desde otros equipos por la base compartida.
+  useEffect(() => {
+    const refresh = () => setSavedQuotes(getSavedQuotes());
+    window.addEventListener("volia-memory-updated", refresh);
+    return () => window.removeEventListener("volia-memory-updated", refresh);
+  }, []);
+
   useEffect(() => {
     const refresh = () => setCatalog(getCatalog());
     window.addEventListener("volia-catalog-updated", refresh);

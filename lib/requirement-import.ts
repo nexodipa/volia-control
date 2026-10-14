@@ -1,9 +1,10 @@
 // Importación de requerimientos pegados (desde Excel, un pliego o un correo) hacia líneas de cotización.
 // Usa el motor de equivalencias: lo confirmado se aplica solo, lo parecido se propone y una persona decide.
+import { aliasId } from "./shared-adapters.ts";
 import { matchRequirement, normalizeRequirementText, type AliasEntry, type CatalogEntry } from "./requirement-matcher.ts";
 
 export type RequirementLine = { text: string; quantity: number; raw: string };
-export type StoredAlias = { normalizedText: string; customerKey: string; code: string; confirmedAt: string };
+export type StoredAlias = { id?: string; normalizedText: string; customerKey: string; code: string; confirmedAt: string };
 export type ImportCatalogItem = { code: string; description: string };
 export type LineMatch = RequirementLine & {
   via: "alias" | "similar" | "none";
@@ -72,5 +73,5 @@ export function rememberAlias(aliases: StoredAlias[], text: string, customer: st
   const normalizedText = normalizeRequirementText(text);
   const customerKey = customerKeyOf(customer);
   const rest = aliases.filter((a) => !(a.normalizedText === normalizedText && a.customerKey === customerKey));
-  return [{ normalizedText, customerKey, code, confirmedAt: now }, ...rest];
+  return [{ id: aliasId({ customerKey, normalizedText }), normalizedText, customerKey, code, confirmedAt: now }, ...rest];
 }

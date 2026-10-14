@@ -1,3 +1,4 @@
+import { quoteId } from "./shared-adapters";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "./storage";
 
 export type MemorySummary = {
@@ -11,6 +12,8 @@ export type MemorySummary = {
 };
 
 export type StoredQuote = {
+  /** Derivado de número (o fecha:cliente); lo usa la base compartida. */
+  id?: string;
   number: string;
   date: string;
   customer: string;
@@ -62,7 +65,7 @@ export function saveQuoteToMemory(snapshot: StoredQuote) {
   const history = getSavedQuotes();
   const identity = snapshot.number.trim() || `${snapshot.date}:${snapshot.customer}`;
   const next = [
-    snapshot,
+    { ...snapshot, id: quoteId(snapshot) },
     ...history.filter(
       (entry) =>
         (entry.number.trim() || `${entry.date}:${entry.customer}`) !== identity,
