@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: "Volia Control",
   description: "Sistema local de control comercial, documental, inventario, cirugías y cobros de Volia S.A.S.",
   applicationName: "Volia Control",
-  manifest: "/manifest.webmanifest",
   themeColor: "#102d29",
   appleWebApp: { capable: true, title: "Volia Control", statusBarStyle: "black-translucent" },
   other: { "codex-preview": "development" },
@@ -17,5 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body></html>;
+  // El manifiesto se pide con credenciales: detrás de Cloudflare Access, sin la cookie de sesión la respuesta es una
+  // redirección al inicio de sesión y el navegador no ofrece instalar la app.
+  return <html lang="es"><head><link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" /></head><body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body></html>;
 }

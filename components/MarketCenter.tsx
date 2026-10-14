@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { downloadCsv } from "../lib/csv";
+import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
+import { linkQuotesToProcesses } from "../lib/quote-market";
 import { buyerRanking, compareWithAward, filterProcesses, ourRecord, winnerRanking, type MarketFilter, type MarketProcess } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
@@ -14,6 +16,14 @@ export default function MarketCenter() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<MarketFilter>({ category: "todas", query: "", onlyOurs: false });
   const [cmp, setCmp] = useState({ processId: "SIE-MDMQ-2026-2503-41357", cost: "10219.34", price: "19779.24" });
+
+  const [quotes, setQuotes] = useState<StoredQuote[]>([]);
+  useEffect(() => {
+    const load = () => setQuotes(getSavedQuotes());
+    load();
+    window.addEventListener("volia-memory-updated", load);
+    return () => window.removeEventListener("volia-memory-updated", load);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,11 +40,13 @@ export default function MarketCenter() {
   const winners = useMemo(() => winnerRanking(visible, 10), [visible]);
   const buyers = useMemo(() => buyerRanking(visible, 10), [visible]);
   const ours = useMemo(() => all.filter((p) => p.vb).sort((a, b) => (b.a ?? 0) - (a.a ?? 0)), [all]);
+  const links = useMemo(() => linkQuotesToProcesses(ours.map((p) => p.id), quotes), [ours, quotes]);
   const awardedTotal = visible.reduce((s, p) => s + (p.a ?? 0), 0);
   const withTenderers = visible.filter((p) => p.o > 0);
   const avgTenderers = withTenderers.length ? withTenderers.reduce((s, p) => s + p.o, 0) / withTenderers.length : 0;
 
   const selected = all.find((p) => p.id === cmp.processId.trim());
+  const selectedLink = selected ? links.get(selected.id) : undefined;
   const comparison = selected?.a ? compareWithAward(toCents(cmp.cost), toCents(cmp.price), Math.round(selected.a * 100)) : null;
 
   const exportCsv = () => downloadCsv([
@@ -61,6 +73,7 @@ export default function MarketCenter() {
         <label><span>Nuestro costo total (USD)</span><input inputMode="decimal" value={cmp.cost} onChange={(e) => setCmp({ ...cmp, cost: e.target.value })} /></label>
         <label><span>Nuestro precio ofertado (USD)</span><input inputMode="decimal" value={cmp.price} onChange={(e) => setCmp({ ...cmp, price: e.target.value })} /></label>
       </div>
+      {selectedLink && <div className="inline-actions"><button type="button" className="secondary-button" onClick={() => setCmp({ ...cmp, cost: selectedLink.costCents !== null ? (selectedLink.costCents / 100).toFixed(2) : cmp.cost, price: (selectedLink.netCents / 100).toFixed(2) })}>Usar mi cotización {selectedLink.number} (subtotal sin IVA)</button></div>}
       <datalist id="market-our-processes">{ours.map((p) => <option key={p.id} value={p.id}>{p.b}</option>)}</datalist>
       {!selected && <p className="module-sync-status warn">No encuentro ese proceso en los datos de 2026.</p>}
       {selected && !selected.a && <p className="module-sync-status warn">Ese proceso todavía no tiene monto adjudicado.</p>}
@@ -68,13 +81,13 @@ export default function MarketCenter() {
         <strong>{comparison.verdict}</strong>
         <span>Ganó {selected.w} con {money(selected.a)}. Nuestro precio está {comparison.gapPct}% sobre ese monto; el precio ganador nos habría dejado {comparison.awardOverCostPct}% sobre nuestro costo.</span>
       </div>}
-      <p className="module-note">Los montos de SERCOP pueden excluir IVA o sumar varios lotes. Confirme con el acta antes de decidir un precio.</p>
+      <p className="module-note">Los montos de SERCOP pueden excluir IVA o sumar varios lotes. Confirme con el acta antes de decidir un precio. Para que una cotización aparezca aquí, escriba el código del proceso en «Contrato / proceso» del Cotizador y guárdela.</p>
     </section>
 
     <section className="business-card"><div className="section-heading"><div><p className="eyebrow">HISTORIAL</p><h3>Procesos donde ofertó Volia</h3></div></div>
       <div className="inventory-list">{ours.map((p) => <article className="inventory-row" key={p.id}>
         <div className="inventory-name"><span className={`status-dot ${p.vw ? "green" : p.w ? "red" : "yellow"}`}></span><div><strong>{p.id}</strong><small>{p.b} · {METHOD[p.m]} · {p.o} oferentes</small><small>{p.t}</small></div></div>
-        <div className="inventory-metrics"><div><span>RESULTADO</span><strong>{p.vw ? "Ganado" : p.w ? "Perdido" : "Sin adjudicar"}</strong><small>{p.vw ? "" : p.w}</small></div><div><span>ADJUDICADO</span><strong>{money(p.a)}</strong></div></div>
+        <div className="inventory-metrics"><div><span>RESULTADO</span><strong>{p.vw ? "Ganado" : p.w ? "Perdido" : "Sin adjudicar"}</strong><small>{p.vw ? "" : p.w}</small></div><div><span>ADJUDICADO</span><strong>{money(p.a)}</strong></div>{(() => { const l = links.get(p.id); if (!l) return null; const gap = p.a ? Math.round(((l.netCents / 100 - p.a) / p.a) * 1000) / 10 : null; return <div><span>NUESTRA OFERTA</span><strong>{money(l.netCents / 100)}</strong><small>{l.number}{gap !== null ? ` · ${gap > 0 ? "+" : ""}${gap}% vs adjudicado` : ""}</small></div>; })()}</div>
       </article>)}</div>
     </section>
 

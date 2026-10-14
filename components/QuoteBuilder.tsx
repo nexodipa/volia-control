@@ -435,7 +435,7 @@ export default function QuoteBuilder() {
               <label><span>RUC / identificación</span><input placeholder="Opcional" value={meta.taxId} onChange={(event) => setField("taxId", event.target.value)} /></label>
               <label><span>Hospital / dependencia</span><input placeholder="Unidad o área solicitante" value={meta.hospital} onChange={(event) => setField("hospital", event.target.value)} /></label>
               <label><span>Contacto</span><input placeholder="Nombre del responsable" value={meta.contact} onChange={(event) => setField("contact", event.target.value)} /></label>
-              <label><span>Contrato / proceso</span><input placeholder="Número de contrato o proceso" value={meta.contract} onChange={(event) => setField("contract", event.target.value)} /></label>
+              <label><span>Contrato / proceso</span><input placeholder="Ej. SIE-MDMQ-2026-2503 (enlaza con Mercado)" value={meta.contract} onChange={(event) => setField("contract", event.target.value)} /></label>
               <label><span>Validez (días)</span><input type="number" min="1" value={meta.validity} onChange={(event) => setField("validity", decimal(event.target.value))} /></label>
               <label><span>Paciente</span><input placeholder="Nombre completo" value={meta.patient} onChange={(event) => setField("patient", event.target.value)} /></label>
               <label><span>Historia clínica (HC)</span><input placeholder="Número de historia clínica" value={meta.hcl} onChange={(event) => setField("hcl", event.target.value)} /></label>
