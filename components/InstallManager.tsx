@@ -59,7 +59,7 @@ export default function InstallManager() {
   }, []);
 
   const install = async () => {
-    if (!installPrompt) { setMessage("En Chrome o Edge abre el menú del navegador y elige “Instalar Volia Control”."); return; }
+    if (!installPrompt) { setMessage("Abre el menú del navegador (las tres rayas o los tres puntos, arriba a la derecha). En Brave: Guardar y compartir → Instalar Volia Control. En Chrome o Edge: Instalar Volia Control. Si no aparece, recarga la página una vez y vuelve a intentar."); return; }
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice;
     setMessage(choice.outcome === "accepted" ? "Instalación iniciada correctamente." : "Instalación cancelada.");
