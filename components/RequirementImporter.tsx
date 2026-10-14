@@ -48,7 +48,7 @@ export default function RequirementImporter({ catalog, customer, onAdd }: { cata
   };
 
   return <section className="quote-card requirement-importer">
-    <div className="quote-card-title"><div><span>↧</span><div><p className="eyebrow">AHORRO DE TIEMPO</p><h3>Pegar requerimiento</h3></div></div>
+    <div className="quote-card-title"><div><span>↧</span><div><p className="eyebrow">Ahorro de tiempo</p><h3>Pegar requerimiento</h3></div></div>
       <button type="button" className="secondary-button" onClick={() => setOpen((v) => !v)}>{open ? "Cerrar" : "Abrir"}</button></div>
     {open && <>
       <p className="module-note">Copie las filas del informe de necesidad, del pliego o del correo (con o sin columnas) y péguelas aquí. Lo que ya confirmó antes para este cliente se reconoce solo; lo parecido se propone y usted decide.</p>

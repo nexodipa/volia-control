@@ -412,7 +412,7 @@ export default function QuoteBuilder() {
   return (
     <section className="quote-module">
       <div className="quote-hero">
-        <div><p className="eyebrow">MÓDULO COMERCIAL</p><h2>Cotizador y calculador de rentabilidad</h2><p>Construye la oferta, verifica el margen antes de enviarla y genera una versión limpia para el cliente.</p></div>
+        <div><p className="eyebrow">Módulo comercial</p><h2>Cotizador y calculador de rentabilidad</h2><p>Construye la oferta, verifica el margen antes de enviarla y genera una versión limpia para el cliente.</p></div>
         <div className="draft-state"><span></span>BORRADOR LOCAL AUTOGUARDADO</div>
       </div>
 
@@ -427,7 +427,7 @@ export default function QuoteBuilder() {
       <div className="quote-layout">
         <div className="quote-main">
           <section className="quote-card" id="quote-customer">
-            <div className="quote-card-title"><div><span>01</span><div><p className="eyebrow">ENCABEZADO</p><h3>Datos de la oferta comercial</h3></div></div><button className="quote-link" onClick={resetDraft}>Nueva oferta</button></div>
+            <div className="quote-card-title"><div><span>01</span><div><p className="eyebrow">Encabezado</p><h3>Datos de la oferta comercial</h3></div></div><button className="quote-link" onClick={resetDraft}>Nueva oferta</button></div>
             <div className="quote-form-grid">
               <label><span>N.º de oferta</span><input value={meta.number} onChange={(event) => setField("number", event.target.value)} /></label>
               <label><span>Fecha</span><input type="date" value={meta.date} onChange={(event) => setField("date", event.target.value)} /></label>
@@ -459,11 +459,11 @@ export default function QuoteBuilder() {
           </section>
 
           <section className="quote-card" id="quote-products">
-            <div className="quote-card-title"><div><span>02</span><div><p className="eyebrow">PRODUCTOS</p><h3>Implantes y consumibles</h3></div></div><button className="quote-link" onClick={addItem}><SmallIcon name="plus" />Agregar línea</button></div>
+            <div className="quote-card-title"><div><span>02</span><div><p className="eyebrow">Productos</p><h3>Implantes y consumibles</h3></div></div><button className="quote-link" onClick={addItem}><SmallIcon name="plus" />Agregar línea</button></div>
             <p className="catalog-warning">Los precios precargados son referenciales y provienen de los documentos previamente revisados. Confírmalos contra el contrato vigente.</p>
             <section className="system-assistant" aria-label="Asistente de sistemas del Excel">
               <div className="system-assistant-heading">
-                <div><p className="eyebrow">LISTA SISTEMA VOLIA</p><h4>Buscar y rellenar automáticamente</h4><span>Escriba el nombre del sistema, producto o código. El sistema completo mostrará sus componentes y cantidades sugeridas.</span></div>
+                <div><p className="eyebrow">Lista sistema Volia</p><h4>Buscar y rellenar automáticamente</h4><span>Escriba el nombre del sistema, producto o código. El sistema completo mostrará sus componentes y cantidades sugeridas.</span></div>
                 <b>{VOLIA_SYSTEMS.length} sistemas · {VOLIA_SYSTEM_PRODUCTS.length} productos</b>
               </div>
               <label className="system-search-field">
@@ -522,7 +522,7 @@ export default function QuoteBuilder() {
           </section>
 
           <section className="quote-card" id="quote-terms">
-            <div className="quote-card-title"><div><span>03</span><div><p className="eyebrow">CONDICIONES</p><h3>Costos y términos comerciales</h3></div></div></div>
+            <div className="quote-card-title"><div><span>03</span><div><p className="eyebrow">Condiciones</p><h3>Costos y términos comerciales</h3></div></div></div>
             <div className="commercial-grid">
               <label><span>Costos adicionales sobre compra (%)</span><input type="number" min="0" step="0.1" value={meta.overhead} onChange={(event) => setField("overhead", decimal(event.target.value))} /><small>Flete, importación, logística u otros costos indirectos.</small></label>
               <label><span>Margen mínimo objetivo (%)</span><input type="number" min="0" max="95" step="0.5" value={meta.minimumMargin} onChange={(event) => setField("minimumMargin", Math.min(95, decimal(event.target.value)))} /><small>El sistema advertirá si la oferta queda por debajo.</small></label>
@@ -540,7 +540,7 @@ export default function QuoteBuilder() {
         </div>
 
         <aside className="profit-panel">
-          <div className="profit-heading"><SmallIcon name="calculator" /><div><p className="eyebrow">ANÁLISIS INTERNO</p><h3>Rentabilidad de la oferta</h3></div></div>
+          <div className="profit-heading"><SmallIcon name="calculator" /><div><p className="eyebrow">Análisis interno</p><h3>Rentabilidad de la oferta</h3></div></div>
           <div className={`profit-status ${risk}`}><SmallIcon name={risk === "healthy" ? "check" : "warning"} /><div><strong>{risk === "healthy" ? "Margen saludable" : risk === "danger" ? "Oferta con pérdida" : risk === "warning" ? "Margen inferior al objetivo" : "Ingrese todos los costos"}</strong><span>{risk === "healthy" ? `Supera el objetivo de ${meta.minimumMargin.toFixed(1)} %.` : risk === "incomplete" ? `Faltan costos en ${totals.missingCosts} línea(s).` : "Revise precios o costos antes de enviar."}</span></div></div>
           <MarketHint buyers={[meta.customer, meta.hospital]} marginPct={totals.margin} />
           {regulatorySummary.total > 0 && (regulatorySummary.expired + regulatorySummary.soon + regulatorySummary.undated + regulatorySummary.missing) > 0 && <div className={`market-hint ${regulatorySummary.expired ? "risk-alto" : "risk-medio"}`} role="note"><strong>Documentos regulatorios</strong><span>{[regulatorySummary.expired && `${regulatorySummary.expired} línea(s) con registro vencido`, regulatorySummary.soon && `${regulatorySummary.soon} con registro por vencer en 90 días`, regulatorySummary.undated && `${regulatorySummary.undated} con registro sin fecha cargada`, regulatorySummary.missing && `${regulatorySummary.missing} sin registro identificado`].filter(Boolean).join(" · ")}.</span><span>Verifique en Vigencias antes de presentar la oferta.</span></div>}

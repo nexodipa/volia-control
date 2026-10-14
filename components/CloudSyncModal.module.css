@@ -1,12 +1,13 @@
 .trigger {
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid rgba(21, 111, 85, 0.28);
-  border-radius: 12px;
-  background: #eef8f3;
-  color: #0d5f47;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line, #dce5e3);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink, #172524);
   font: inherit;
-  font-weight: 750;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }

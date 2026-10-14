@@ -148,17 +148,17 @@ export default function CaseTracker() {
   };
 
   return <section className="case-module">
-    <div className="case-hero"><div><p className="eyebrow">CONTROL OPERATIVO</p><h2>Cirugías, facturación y cobros</h2><p>Centraliza cada caso, detecta documentos pendientes y vigila el dinero por cobrar.</p></div><div className="case-actions export-actions"><button className="secondary-button" onClick={exportPdf}>PDF</button><button className="secondary-button" onClick={exportWord}>Word</button><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button><button className="primary-button" onClick={() => setShowForm((value) => !value)}>{showForm ? "Cerrar registro" : "+ Registrar cirugía"}</button></div></div>
+    <div className="case-hero"><div><p className="eyebrow">Control operativo</p><h2>Cirugías, facturación y cobros</h2><p>Centraliza cada caso, detecta documentos pendientes y vigila el dinero por cobrar.</p></div><div className="case-actions export-actions"><button className="secondary-button" onClick={exportPdf}>PDF</button><button className="secondary-button" onClick={exportWord}>Word</button><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button><button className="primary-button" onClick={() => setShowForm((value) => !value)}>{showForm ? "Cerrar registro" : "+ Registrar cirugía"}</button></div></div>
 
     <div className="case-kpis">
-      <article><span>POR COBRAR</span><strong>{money(kpis.pending)}</strong><small>Valor aún no recuperado</small></article>
-      <article><span>COBRADO</span><strong>{money(kpis.collected)}</strong><small>Pagos registrados</small></article>
-      <article className={kpis.incomplete ? "warn" : ""}><span>EXPEDIENTES INCOMPLETOS</span><strong>{kpis.incomplete}</strong><small>Requieren documentos</small></article>
-      <article className={kpis.overdue ? "danger" : ""}><span>COBROS VENCIDOS</span><strong>{kpis.overdue}</strong><small>Necesitan seguimiento</small></article>
+      <article><span>Por cobrar</span><strong>{money(kpis.pending)}</strong><small>Valor aún no recuperado</small></article>
+      <article><span>Cobrado</span><strong>{money(kpis.collected)}</strong><small>Pagos registrados</small></article>
+      <article className={kpis.incomplete ? "warn" : ""}><span>Expedientes incompletos</span><strong>{kpis.incomplete}</strong><small>Requieren documentos</small></article>
+      <article className={kpis.overdue ? "danger" : ""}><span>Cobros vencidos</span><strong>{kpis.overdue}</strong><small>Necesitan seguimiento</small></article>
     </div>
 
     {showForm && <section className="case-form-card">
-      <div className="case-section-title"><div><p className="eyebrow">NUEVO CASO</p><h3>Registrar cirugía o entrega</h3></div><span>Los campos con * son obligatorios</span></div>
+      <div className="case-section-title"><div><p className="eyebrow">Nuevo caso</p><h3>Registrar cirugía o entrega</h3></div><span>Los campos con * son obligatorios</span></div>
       <div className="case-form-grid">
         <label><span>Paciente *</span><input value={draft.patient} placeholder="Nombre completo" onChange={(event) => setDraft({ ...draft, patient: event.target.value })} /></label>
         <label><span>Fecha de cirugía *</span><input type="date" value={draft.surgeryDate} onChange={(event) => setDraft({ ...draft, surgeryDate: event.target.value })} /></label>
@@ -190,7 +190,7 @@ export default function CaseTracker() {
     </section>}
 
     <section className="case-table-card">
-      <div className="case-toolbar"><div><p className="eyebrow">SEGUIMIENTO</p><h3>Expedientes registrados</h3></div><div className="case-filters"><input aria-label="Buscar expedientes" placeholder="Buscar paciente, factura o contrato" value={search} onChange={(event) => setSearch(event.target.value)} /><select aria-label="Filtrar por estado" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}><option value="all">Todos los estados</option>{Object.entries(STATUS).map(([value, status]) => <option value={value} key={value}>{status.label}</option>)}<option value="overdue">Solo vencidos</option></select></div></div>
+      <div className="case-toolbar"><div><p className="eyebrow">Seguimiento</p><h3>Expedientes registrados</h3></div><div className="case-filters"><input aria-label="Buscar expedientes" placeholder="Buscar paciente, factura o contrato" value={search} onChange={(event) => setSearch(event.target.value)} /><select aria-label="Filtrar por estado" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}><option value="all">Todos los estados</option>{Object.entries(STATUS).map(([value, status]) => <option value={value} key={value}>{status.label}</option>)}<option value="overdue">Solo vencidos</option></select></div></div>
       <div className="case-list">{visible.map((record) => {
         const completeCount = Object.values(record.documents).filter(Boolean).length;
         return <article className={`case-row ${record.overdue ? "is-overdue" : ""}`} key={record.id}>
