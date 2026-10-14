@@ -58,16 +58,16 @@ export default function MarketCenter() {
   if (!data) return <section className="business-module"><div className="module-empty">Cargando procesos de SERCOP…</div></section>;
 
   return <section className="business-module">
-    <div className="module-hero"><div><p className="eyebrow">INTELIGENCIA DE MERCADO</p><h2>Mercado público de insumos y dispositivos médicos</h2><p>Quién compra, quién gana y por cuánto en las contrataciones de 2026, y cómo le fue a Volia en cada proceso donde ofertó.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
+    <div className="module-hero"><div><p className="eyebrow">Inteligencia de mercado</p><h2>Mercado público de insumos y dispositivos médicos</h2><p>Quién compra, quién gana y por cuánto en las contrataciones de 2026, y cómo le fue a Volia en cada proceso donde ofertó.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
 
     <div className="business-kpis">
-      <article><span>PROCESOS DEL RUBRO</span><strong>{visible.length}</strong><small>Con los filtros actuales</small></article>
-      <article><span>MONTO ADJUDICADO</span><strong>{money(awardedTotal)}</strong><small>Según SERCOP</small></article>
-      <article><span>OFERENTES PROMEDIO</span><strong>{avgTenderers.toFixed(1)}</strong><small>Competencia por proceso</small></article>
-      <article className={record.winRate !== null && record.winRate < 25 ? "warn" : ""}><span>VOLIA 2026</span><strong>{record.won} de {record.won + record.lost}</strong><small>Ganados entre los ya adjudicados · {record.pending} sin adjudicar</small></article>
+      <article><span>Procesos del rubro</span><strong>{visible.length}</strong><small>Con los filtros actuales</small></article>
+      <article><span>Monto adjudicado</span><strong>{money(awardedTotal)}</strong><small>Según SERCOP</small></article>
+      <article><span>Oferentes promedio</span><strong>{avgTenderers.toFixed(1)}</strong><small>Competencia por proceso</small></article>
+      <article className={record.winRate !== null && record.winRate < 25 ? "warn" : ""}><span>Volia 2026</span><strong>{record.won} de {record.won + record.lost}</strong><small>Ganados entre los ya adjudicados · {record.pending} sin adjudicar</small></article>
     </div>
 
-    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">COMPARADOR</p><h3>¿A qué distancia quedó nuestro precio del ganador?</h3></div></div>
+    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Comparador</p><h3>¿A qué distancia quedó nuestro precio del ganador?</h3></div></div>
       <div className="business-form">
         <label><span>Código del proceso</span><input list="market-our-processes" value={cmp.processId} onChange={(e) => setCmp({ ...cmp, processId: e.target.value })} /></label>
         <label><span>Nuestro costo total (USD)</span><input inputMode="decimal" value={cmp.cost} onChange={(e) => setCmp({ ...cmp, cost: e.target.value })} /></label>
@@ -84,14 +84,14 @@ export default function MarketCenter() {
       <p className="module-note">Los montos de SERCOP pueden excluir IVA o sumar varios lotes. Confirme con el acta antes de decidir un precio. Para que una cotización aparezca aquí, escriba el código del proceso en «Contrato / proceso» del Cotizador y guárdela.</p>
     </section>
 
-    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">HISTORIAL</p><h3>Procesos donde ofertó Volia</h3></div></div>
+    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Historial</p><h3>Procesos donde ofertó Volia</h3></div></div>
       <div className="inventory-list">{ours.map((p) => <article className="inventory-row" key={p.id}>
         <div className="inventory-name"><span className={`status-dot ${p.vw ? "green" : p.w ? "red" : "yellow"}`}></span><div><strong>{p.id}</strong><small>{p.b} · {METHOD[p.m]} · {p.o} oferentes</small><small>{p.t}</small></div></div>
-        <div className="inventory-metrics"><div><span>RESULTADO</span><strong>{p.vw ? "Ganado" : p.w ? "Perdido" : "Sin adjudicar"}</strong><small>{p.vw ? "" : p.w}</small></div><div><span>ADJUDICADO</span><strong>{money(p.a)}</strong></div>{(() => { const l = links.get(p.id); if (!l) return null; const gap = p.a ? Math.round(((l.netCents / 100 - p.a) / p.a) * 1000) / 10 : null; return <div><span>NUESTRA OFERTA</span><strong>{money(l.netCents / 100)}</strong><small>{l.number}{gap !== null ? ` · ${gap > 0 ? "+" : ""}${gap}% vs adjudicado` : ""}</small></div>; })()}</div>
+        <div className="inventory-metrics"><div><span>Resultado</span><strong>{p.vw ? "Ganado" : p.w ? "Perdido" : "Sin adjudicar"}</strong><small>{p.vw ? "" : p.w}</small></div><div><span>Adjudicado</span><strong>{money(p.a)}</strong></div>{(() => { const l = links.get(p.id); if (!l) return null; const gap = p.a ? Math.round(((l.netCents / 100 - p.a) / p.a) * 1000) / 10 : null; return <div><span>Nuestra oferta</span><strong>{money(l.netCents / 100)}</strong><small>{l.number}{gap !== null ? ` · ${gap > 0 ? "+" : ""}${gap}% vs adjudicado` : ""}</small></div>; })()}</div>
       </article>)}</div>
     </section>
 
-    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">FILTROS</p><h3>Explorar el mercado</h3></div>
+    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Filtros</p><h3>Explorar el mercado</h3></div>
       <input className="module-search" placeholder="Buscar comprador, producto, proveedor o código" value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} /></div>
       <div className="market-filters">
         {(["todas", "insumos", "trauma"] as const).map((c) => <button key={c} className={filter.category === c ? "primary-button" : "secondary-button"} onClick={() => setFilter({ ...filter, category: c })}>{c === "todas" ? "Todas" : c === "insumos" ? "Insumos y dispositivos" : "Traumatología"}</button>)}
@@ -99,10 +99,10 @@ export default function MarketCenter() {
     </section>
 
     <div className="market-columns">
-      <section className="business-card"><div className="section-heading"><div><p className="eyebrow">COMPETENCIA</p><h3>Quién gana (por monto)</h3></div></div>
+      <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Competencia</p><h3>Quién gana (por monto)</h3></div></div>
         <ol className="market-ranking">{winners.map((w) => <li key={w.name}><span>{w.name}</span><strong>{money(w.amount)}</strong><small>{w.wins} procesos</small></li>)}</ol>
       </section>
-      <section className="business-card"><div className="section-heading"><div><p className="eyebrow">CLIENTES</p><h3>Quién compra (por procesos)</h3></div></div>
+      <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Clientes</p><h3>Quién compra (por procesos)</h3></div></div>
         <ol className="market-ranking">{buyers.map((b) => <li key={b.buyer}><span>{b.buyer}</span><strong>{b.processes} procesos</strong><small>{money(b.awarded)} · {b.avgTenderers ?? "—"} oferentes</small></li>)}</ol>
       </section>
     </div>

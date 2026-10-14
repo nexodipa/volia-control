@@ -550,8 +550,8 @@ export default function Home() {
             <Icon name="documents" />
             Documentos
           </button>
-          <div className="nav-separator">CONTROL Y AYUDA</div>
-          <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y Reglas</button>
+          <div className="nav-separator">Control y ayuda</div>
+          <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y reglas</button>
           <button className={`nav-item ${module === "activity" ? "active" : ""}`} onClick={() => navigateTo("activity")}><Icon name="activity" />Historial</button>
           <button className={`nav-item ${module === "help" ? "active" : ""}`} onClick={() => navigateTo("help")}><Icon name="help" />Guía de uso</button>
         </nav>
@@ -559,9 +559,9 @@ export default function Home() {
           <div className="security-note">
             <Icon name="shield" />
             <div>
-              <strong>Operación local</strong>
+              <strong>Acceso protegido</strong>
               <span>
-                Los registros permanecen en esta laptop y pueden respaldarse.
+                Solo las personas autorizadas de Volia pueden entrar. Los datos se comparten entre sus equipos.
               </span>
             </div>
           </div>
@@ -578,8 +578,8 @@ export default function Home() {
 
       <section className="workspace">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">{MODULE_INFO[module].eyebrow}</p>
+          <div className="topbar-title">
+            <span className="topbar-crumb">Volia Control</span>
             <h1>{MODULE_INFO[module].title}</h1>
           </div>
           <div className="topbar-actions">
@@ -732,7 +732,7 @@ export default function Home() {
                   )}
                 </div>
                 <div className="checklist-card">
-                  <p className="eyebrow">CONTROLES ACTIVOS</p>
+                  <p className="eyebrow">Controles activos</p>
                   {[
                     ["Datos del paciente", "Nombre, cédula, HCL y fechas"],
                     ["Valores y códigos", "Precios, cantidades, IVA y total"],
@@ -905,7 +905,7 @@ export default function Home() {
                     <div className="panel">
                       <div className="panel-title">
                         <div>
-                          <p className="eyebrow">HALLAZGOS</p>
+                          <p className="eyebrow">Hallazgos</p>
                           <h3>Controles aplicados</h3>
                         </div>
                         <span className="count">{result.findings.length}</span>
@@ -932,7 +932,7 @@ export default function Home() {
                     <div className="panel authority-panel">
                       <div className="panel-title">
                         <div>
-                          <p className="eyebrow">REGLA TEMPORAL</p>
+                          <p className="eyebrow">Regla temporal</p>
                           <h3>Autoridad por fecha</h3>
                         </div>
                         <Icon name="shield" />
@@ -980,7 +980,7 @@ export default function Home() {
                   <div className="panel items-panel">
                     <div className="panel-title">
                       <div>
-                        <p className="eyebrow">EXTRACCIÓN</p>
+                        <p className="eyebrow">Extracción</p>
                         <h3>Implantes y consumibles</h3>
                       </div>
                       <button className="text-button" onClick={exportCsv}>
@@ -1034,7 +1034,7 @@ export default function Home() {
                   </div>
                   {!!result.extracted.notes.length && (
                     <div className="panel notes-panel">
-                      <p className="eyebrow">OBSERVACIONES DE LECTURA</p>
+                      <p className="eyebrow">Observaciones de lectura</p>
                       {result.extracted.notes.map((note, index) => (
                         <p key={index}>{note}</p>
                       ))}

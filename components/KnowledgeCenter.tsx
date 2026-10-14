@@ -139,7 +139,7 @@ export default function KnowledgeCenter() {
     <section className="business-module knowledge-module">
       <div className="module-hero">
         <div>
-          <p className="eyebrow">INTELIGENCIA Y MEMORIA OPERATIVA</p>
+          <p className="eyebrow">Inteligencia y memoria operativa</p>
           <h2>Base de Conocimiento y Retroalimentacion</h2>
           <p>
             Memoria empresarial centralizada para VOLIA S.A.S. Registra y consulta requisitos
@@ -160,7 +160,7 @@ export default function KnowledgeCenter() {
         <section className="business-card ai-settings-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">CONFIGURACION DE INTELIGENCIA ARTIFICIAL</p>
+              <p className="eyebrow">Configuración de inteligencia artificial</p>
               <h3>Conexion con Google Gemini API (Opcional)</h3>
             </div>
           </div>
@@ -210,7 +210,7 @@ export default function KnowledgeCenter() {
         <section className="business-card new-rule-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">RETROALIMENTACION OPERATIVA</p>
+              <p className="eyebrow">Retroalimentación operativa</p>
               <h3>Registrar Aprendizaje o Regla Institucional</h3>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function KnowledgeCenter() {
       <section className="business-card query-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">CONSULTAS EN LENGUAJE NATURAL</p>
+            <p className="eyebrow">Consultas en lenguaje natural</p>
             <h3>Preguntar a la Memoria Corporativa</h3>
           </div>
           <span className="source-indicator">
@@ -350,7 +350,7 @@ export default function KnowledgeCenter() {
       <section className="business-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">BASE DE CONOCIMIENTO ACUMULADA</p>
+            <p className="eyebrow">Base de conocimiento acumulada</p>
             <h3>{items.length} regla(s) y antecedente(s) en memoria</h3>
           </div>
         </div>

@@ -96,14 +96,14 @@ export default function CloudSyncModal() {
 
   const statusLabel =
     state.status === "syncing"
-      ? "Procesando…"
+      ? "guardando…"
       : state.status === "error"
-        ? "Revisión necesaria"
+        ? "revisar"
         : state.status === "offline"
-          ? "Sin conexión"
+          ? "sin conexión"
           : state.revision > 0
-            ? `Versión ${state.revision}`
-            : "Sin configurar";
+            ? `versión ${state.revision}`
+            : "sin activar";
 
   return (
     <>
@@ -116,8 +116,7 @@ export default function CloudSyncModal() {
           setOpen(true);
         }}
       >
-        <span aria-hidden="true">☁</span>
-        Nube · {statusLabel}
+        Respaldo cifrado: {statusLabel}
       </button>
 
       {open && (
@@ -135,7 +134,7 @@ export default function CloudSyncModal() {
           >
             <header>
               <div>
-                <p className="eyebrow">RESPALDO PERSONAL PROTEGIDO</p>
+                <p className="eyebrow">Respaldo personal protegido</p>
                 <h2>Memoria segura en la nube</h2>
               </div>
               <button aria-label="Cerrar" onClick={close}>

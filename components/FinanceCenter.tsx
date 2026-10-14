@@ -490,7 +490,7 @@ export default function FinanceCenter() {
     <section className="business-module finance-module">
       <div className="module-hero">
         <div>
-          <p className="eyebrow">DEPARTAMENTO FINANCIERO</p>
+          <p className="eyebrow">Departamento financiero</p>
           <h2>Centro financiero y tesorería</h2>
           <p>
             Convierte ventas, cobros, compras y gastos en decisiones: liquidez,
@@ -544,7 +544,7 @@ export default function FinanceCenter() {
         <section className="business-card finance-entry">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">REGISTRO FINANCIERO</p>
+              <p className="eyebrow">Registro financiero</p>
               <h3>{draft.id ? "Editar movimiento" : "Ingreso, cobro, compra o gasto"}</h3>
             </div>
             <div className="direction-switch">
@@ -752,27 +752,27 @@ export default function FinanceCenter() {
         <>
           <div className="finance-kpis">
             <article>
-              <span>CAJA REGISTRADA</span>
+              <span>Caja registrada</span>
               <strong>{money(cash)}</strong>
               <small>Saldo inicial + cobros - pagos</small>
             </article>
             <article>
-              <span>POR COBRAR</span>
+              <span>Por cobrar</span>
               <strong>{money(receivables)}</strong>
               <small>{overdueReceivables.length} vencido(s)</small>
             </article>
             <article>
-              <span>POR PAGAR</span>
+              <span>Por pagar</span>
               <strong>{money(payables)}</strong>
               <small>{overduePayables.length} vencido(s)</small>
             </article>
             <article className={projectedCash < 0 ? "danger" : ""}>
-              <span>CAJA A 30 DÍAS</span>
+              <span>Caja a 30 días</span>
               <strong>{money(projectedCash)}</strong>
               <small>Con vencimientos registrados</small>
             </article>
             <article>
-              <span>VENTAS DEL MES</span>
+              <span>Ventas del mes</span>
               <strong>{money(incomeAccrual)}</strong>
               <small>
                 {settings.monthlySalesTarget
@@ -781,7 +781,7 @@ export default function FinanceCenter() {
               </small>
             </article>
             <article className={operatingProfit < 0 ? "danger" : ""}>
-              <span>RESULTADO OPERATIVO</span>
+              <span>Resultado operativo</span>
               <strong>{money(operatingProfit)}</strong>
               <small>Margen {margin.toFixed(1)} %</small>
             </article>
@@ -790,7 +790,7 @@ export default function FinanceCenter() {
             <section className="business-card cash-forecast">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">TESORERÍA</p>
+                  <p className="eyebrow">Tesorería</p>
                   <h3>Flujo de caja proyectado</h3>
                 </div>
                 <span>Próximas 8 semanas</span>
@@ -834,7 +834,7 @@ export default function FinanceCenter() {
             <section className="business-card finance-alerts">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">CONTROL DIARIO</p>
+                  <p className="eyebrow">Control diario</p>
                   <h3>Alertas prioritarias</h3>
                 </div>
               </div>
@@ -894,7 +894,7 @@ export default function FinanceCenter() {
         <section className="business-card">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">LIBRO DE MOVIMIENTOS</p>
+              <p className="eyebrow">Libro de movimientos</p>
               <h3>Ingresos y egresos</h3>
             </div>
             <span className="movement-count">{enriched.length} registros</span>
@@ -966,7 +966,7 @@ export default function FinanceCenter() {
           <section className="business-card">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">CUENTAS POR COBRAR</p>
+                <p className="eyebrow">Cuentas por cobrar</p>
                 <h3>Agenda de cobranza</h3>
               </div>
               <strong>{money(receivables)}</strong>
@@ -1003,7 +1003,7 @@ export default function FinanceCenter() {
           <section className="business-card">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">CUENTAS POR PAGAR</p>
+                <p className="eyebrow">Cuentas por pagar</p>
                 <h3>Calendario de pagos</h3>
               </div>
               <strong>{money(payables)}</strong>
@@ -1043,7 +1043,7 @@ export default function FinanceCenter() {
           <section className="business-card">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">PLAN FINANCIERO</p>
+                <p className="eyebrow">Plan financiero</p>
                 <h3>Metas y límites mensuales</h3>
               </div>
             </div>
@@ -1104,7 +1104,7 @@ export default function FinanceCenter() {
             <section className="business-card">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">EJECUCIÓN</p>
+                  <p className="eyebrow">Ejecución</p>
                   <h3>Ventas frente a meta</h3>
                 </div>
                 <strong>
@@ -1127,7 +1127,7 @@ export default function FinanceCenter() {
             <section className="business-card">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">CONTROL</p>
+                  <p className="eyebrow">Control</p>
                   <h3>Gastos frente a presupuesto</h3>
                 </div>
                 <strong>
@@ -1154,7 +1154,7 @@ export default function FinanceCenter() {
           <section className="business-card">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">DISTRIBUCIÓN</p>
+                <p className="eyebrow">Distribución</p>
                 <h3>Gastos por categoría</h3>
               </div>
             </div>
@@ -1225,7 +1225,7 @@ export default function FinanceCenter() {
           <section className="business-card tax-checklist">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">CIERRE MENSUAL</p>
+                <p className="eyebrow">Cierre mensual</p>
                 <h3>Lista de control financiero-contable</h3>
               </div>
             </div>

@@ -170,7 +170,7 @@ export default function ActivityCenter() {
     <section className="business-module activity-center">
       <div className="module-hero">
         <div>
-          <p className="eyebrow">CONTROL INTERNO Y TRAZABILIDAD</p>
+          <p className="eyebrow">Control interno y trazabilidad</p>
           <h2>Historial de actividad en tiempo real</h2>
           <p>
             Registro cronológico y sincronizado de cada operación, cotización,
@@ -274,7 +274,7 @@ export default function ActivityCenter() {
 
         <div className="section-heading" style={{ marginTop: "16px" }}>
           <div>
-            <p className="eyebrow">REGISTROS SINCRONIZADOS</p>
+            <p className="eyebrow">Registros sincronizados</p>
             <h3>
               {visible.length} de {entries.length} actividad(es)
             </h3>

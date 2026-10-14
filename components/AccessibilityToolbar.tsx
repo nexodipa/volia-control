@@ -39,10 +39,16 @@ export default function AccessibilityToolbar({ onHelp }: { onHelp: () => void })
     setPreferences((current) => ({ ...current, [key]: !current[key] }));
 
   return (
-    <div className="accessibility-toolbar" aria-label="Opciones de accesibilidad">
-      <button className={preferences.largeText ? "active" : ""} onClick={() => toggle("largeText")} title="Aumentar el tamaño de los textos" aria-pressed={preferences.largeText}>Texto grande</button>
-      <button className={preferences.highContrast ? "active" : ""} onClick={() => toggle("highContrast")} title="Aumentar el contraste de colores" aria-pressed={preferences.highContrast}>Alto contraste</button>
-      <button onClick={onHelp} className="help-button">Guía de uso</button>
+    <div className="view-tools">
+      <details className="view-menu">
+        <summary>Vista</summary>
+        <div className="view-menu-panel" role="group" aria-label="Opciones de vista">
+          <label><input type="checkbox" checked={preferences.largeText} onChange={() => toggle("largeText")} /><span><strong>Texto grande</strong><small>Letras más fáciles de leer</small></span></label>
+          <label><input type="checkbox" checked={preferences.highContrast} onChange={() => toggle("highContrast")} /><span><strong>Alto contraste</strong><small>Colores más marcados</small></span></label>
+          <label><input type="checkbox" checked={preferences.reducedMotion} onChange={() => toggle("reducedMotion")} /><span><strong>Menos movimiento</strong><small>Sin animaciones</small></span></label>
+        </div>
+      </details>
+      <button type="button" onClick={onHelp} className="help-button">Ayuda</button>
     </div>
   );
 }

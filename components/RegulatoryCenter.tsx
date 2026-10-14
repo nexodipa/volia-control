@@ -74,19 +74,19 @@ export default function RegulatoryCenter() {
   };
 
   return <section className="business-module">
-    <div className="module-hero"><div><p className="eyebrow">CUMPLIMIENTO</p><h2>Registros sanitarios y vigencias</h2><p>Controla qué documentos respaldan cada ítem y cuándo vencen, para no presentar una oferta con papeles caducados.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
+    <div className="module-hero"><div><p className="eyebrow">Cumplimiento</p><h2>Registros sanitarios y vigencias</h2><p>Controla qué documentos respaldan cada ítem y cuándo vencen, para no presentar una oferta con papeles caducados.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
     <p className={`module-sync-status ${server.mode === "server" && !server.pending.length ? "ok" : "warn"}`} role="status">{server.message}{server.pending.length > 0 && <> · {server.pending.length} cambio(s) pendiente(s) <button className="secondary-button" onClick={retry}>Reintentar</button></>}</p>
     <div className="business-kpis">
-      <article className={count("vencido") ? "danger" : ""}><span>VENCIDOS</span><strong>{count("vencido")}</strong><small>No usar en ofertas</small></article>
-      <article className={count("critico") ? "danger" : ""}><span>MENOS DE 30 DÍAS</span><strong>{count("critico")}</strong><small>Renovar ya</small></article>
-      <article className={count("proximo") ? "warn" : ""}><span>MENOS DE 90 DÍAS</span><strong>{count("proximo")}</strong><small>Iniciar trámite</small></article>
-      <article className={count("sin-fecha") ? "warn" : ""}><span>SIN FECHA</span><strong>{count("sin-fecha")}</strong><small>Revisar el PDF</small></article>
+      <article className={count("vencido") ? "danger" : ""}><span>Vencidos</span><strong>{count("vencido")}</strong><small>No usar en ofertas</small></article>
+      <article className={count("critico") ? "danger" : ""}><span>Menos de 30 días</span><strong>{count("critico")}</strong><small>Renovar ya</small></article>
+      <article className={count("proximo") ? "warn" : ""}><span>Menos de 90 días</span><strong>{count("proximo")}</strong><small>Iniciar trámite</small></article>
+      <article className={count("sin-fecha") ? "warn" : ""}><span>Sin fecha</span><strong>{count("sin-fecha")}</strong><small>Revisar el PDF</small></article>
     </div>
-    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">DOCUMENTOS</p><h3>Del más urgente al menos urgente</h3></div><input className="module-search" placeholder="Buscar referencia, producto o ítem" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+    <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Documentos</p><h3>Del más urgente al menos urgente</h3></div><input className="module-search" placeholder="Buscar referencia, producto o ítem" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       <div className="inventory-list">{visible.map((row) => <article className="inventory-row" key={row.id}>
         <div className="inventory-name"><span className={`status-dot ${DOT[row.status]}`}></span><div><strong>{row.reference}</strong><small>{row.kind} · {row.subject} · Ítems {row.items}</small>{row.note && <small>{row.note}</small>}</div></div>
-        <div className="inventory-metrics"><div><span>ESTADO</span><strong>{LABEL[row.status]}</strong><small>{row.days === null ? "Sin fecha" : row.days < 0 ? `Venció hace ${-row.days} días` : `${row.days} días`}</small></div>
-          <div><span>VENCE</span><input type="date" value={row.expiresAt ?? ""} onChange={(e) => setDate(row.id, e.target.value)} aria-label={`Fecha de vencimiento de ${row.reference}`} /></div></div>
+        <div className="inventory-metrics"><div><span>Estado</span><strong>{LABEL[row.status]}</strong><small>{row.days === null ? "Sin fecha" : row.days < 0 ? `Venció hace ${-row.days} días` : `${row.days} días`}</small></div>
+          <div><span>Vence</span><input type="date" value={row.expiresAt ?? ""} onChange={(e) => setDate(row.id, e.target.value)} aria-label={`Fecha de vencimiento de ${row.reference}`} /></div></div>
       </article>)}{!visible.length && <div className="module-empty">No hay documentos que coincidan.</div>}</div>
     </section>
   </section>;
