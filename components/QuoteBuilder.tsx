@@ -4,6 +4,7 @@
 import MarketHint from "./MarketHint";
 import RequirementImporter, { type ImportedLine } from "./RequirementImporter";
 import { findRegulatoryDoc, type LineRegulatoryStatus } from "../lib/regulatory-check";
+import { findMarketPrice, pricePosition, type MarketItem } from "../lib/market-prices";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { useEffect, useMemo, useState } from "react";
 import { exportBusinessWord, type BusinessExport } from "../lib/business-exports";
@@ -204,6 +205,13 @@ export default function QuoteBuilder() {
     const timer = window.setTimeout(() => { const stored = readStoredArray<RegulatoryRecord>(STORAGE_KEYS.regulatoryDocs); if (stored.length) setRegulatoryDocs(stored); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+  const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch("/data/precios-mercado-items.json", { cache: "force-cache" }).then((res) => res.ok ? res.json() : null).then((d) => { if (alive && d?.items) setMarketItems(d.items); }).catch(() => { /* sin datos de mercado: la cotización funciona igual */ });
+    return () => { alive = false; };
+  }, []);
+  const marketByLine = useMemo(() => new Map(items.map((item) => [item.id, item.description.trim() && marketItems.length ? findMarketPrice(item.description, marketItems) : null])), [items, marketItems]);
   const regulatoryByLine = useMemo(() => {
     const todayIso = today();
     return new Map<string, LineRegulatoryStatus | null>(items.map((item) => [item.id, item.description.trim() ? findRegulatoryDoc(item.description, regulatoryDocs, todayIso) : null]));
@@ -515,6 +523,7 @@ export default function QuoteBuilder() {
                   </div>
                   <div className="line-result"><span>Venta: <strong>{money(lineSale)}</strong></span><span>Costo real: <strong>{item.unitCost ? money(lineCost) : "Pendiente"}</strong></span><span>Margen: <strong className={item.unitCost && lineMargin < meta.minimumMargin ? "negative" : ""}>{item.unitCost ? `${lineMargin.toFixed(1)} %` : "Pendiente"}</strong></span></div>
                   {item.description.trim() && (() => { const reg = regulatoryByLine.get(item.id); return <p className={`line-regulatory ${reg ? reg.status : "sin-documento"}`}>{reg ? <>Registro probable <strong>{reg.record.reference}</strong> · {reg.status === "vigente" ? `vigente (${reg.days} días)` : reg.status === "sin-fecha" ? "sin fecha de vencimiento cargada" : reg.status === "vencido" ? `vencido hace ${-(reg.days ?? 0)} días` : `vence en ${reg.days} días`}</> : "Sin registro sanitario identificado en Vigencias"}</p>; })()}
+                  {(() => { const mk = marketByLine.get(item.id); if (!mk) return null; const pos = pricePosition(item.unitPrice, item.unitCost, mk.item); const usd = (v: number) => `$${v < 1 ? v.toFixed(3) : v.toFixed(2)}`; const label = { "sin-precio": "", "bajo-mercado": "Su precio está por debajo de lo habitual: puede subirlo.", competitivo: "Su precio está en la zona que suele ganar.", "sobre-mediana": "Su precio está sobre la mitad del mercado.", "muy-alto": "Su precio está entre los más altos: es probable perder." }[pos.position]; return <p className={`line-market ${pos.position}`}>Mercado ({mk.item.n} procesos): la mitad pagó hasta <strong>{usd(mk.item.mediana)}</strong>, rango habitual {usd(mk.item.p25)} a {usd(mk.item.p75)}. {label}{pos.costAboveMedian ? " Su costo ya supera ese precio: conviene buscar otro proveedor." : ""}</p>; })()}
                 </article>;
               })}
             </div>
