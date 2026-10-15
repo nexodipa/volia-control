@@ -54,11 +54,6 @@ async function validSession(request, secret) {
   return +expiry > Math.floor(Date.now() / 1000) && signature === await hmac(secret, `admin:${expiry}`);
 }
 
-function sameOrigin(request) {
-  const origin = request.headers.get("Origin");
-  return origin === new URL(request.url).origin;
-}
-
 function kind(bytes, type) {
   if (type === "application/pdf" && bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70) return ["pdf", "application/pdf"];
   if (type === "image/png" && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71) return ["png", "image/png"];
@@ -92,7 +87,6 @@ function fileName(name) {
 }
 
 async function handleUpload(request, env) {
-  if (!sameOrigin(request)) return response("Origen inválido.", 403);
   const body = await limitedBody(request);
   if (!body) return response(page("Archivo grande", "<h1>Archivo demasiado grande</h1><p>El límite de esta prueba es 2 MB por archivo.</p>"), 413);
   let form;
@@ -115,7 +109,6 @@ async function handleUpload(request, env) {
 
 async function handleAdmin(request, env, url) {
   if (url.pathname === "/admin/login" && request.method === "POST") {
-    if (!sameOrigin(request)) return response("Origen inválido.", 403);
     const body = await limitedBody(request);
     if (!body || body.byteLength > 4096) return response("Formulario inválido.", 400);
     const form = await new Request(request.url, { method: "POST", headers: { "Content-Type": request.headers.get("Content-Type") ?? "" }, body }).formData();

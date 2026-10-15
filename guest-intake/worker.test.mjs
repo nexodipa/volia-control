@@ -52,7 +52,7 @@ test("un invitado envía un archivo y solo la bandeja autenticada puede descarga
   assert.equal(await file.text(), "hola volia");
 });
 
-test("rechaza invitaciones falsas, archivos ejecutables y origen ajeno", async () => {
+test("rechaza invitaciones falsas y archivos ejecutables aunque vengan de otro origen", async () => {
   const store = env();
   assert.equal((await worker.fetch(new Request(`${origin}/?t=falso`), store)).status, 403);
   const token = await makeInvite(secret, Math.floor(Date.now() / 1000) + 3600);
@@ -61,5 +61,15 @@ test("rechaza invitaciones falsas, archivos ejecutables y origen ajeno", async (
   form.set("file", new File(["MZ"], "programa.exe", { type: "application/octet-stream" }));
   assert.equal((await worker.fetch(post("/submit", form), store)).status, 400);
   const outside = new Request(`${origin}/submit`, { method: "POST", headers: { Origin: "https://ajeno.test" }, body: form });
-  assert.equal((await worker.fetch(outside, store)).status, 403);
+  assert.equal((await worker.fetch(outside, store)).status, 400);
+});
+
+test("acepta un navegador que no envía encabezado Origin", async () => {
+  const store = env();
+  const token = await makeInvite(secret, Math.floor(Date.now() / 1000) + 3600);
+  const form = new FormData();
+  form.set("invite", token);
+  form.set("file", new File(["ejemplo"], "ejemplo.txt", { type: "text/plain" }));
+  const result = await worker.fetch(new Request(`${origin}/submit`, { method: "POST", body: form }), store);
+  assert.equal(result.status, 201);
 });
