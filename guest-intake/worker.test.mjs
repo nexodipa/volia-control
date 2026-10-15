@@ -51,7 +51,7 @@ test("un invitado envía un archivo y solo la bandeja autenticada puede descarga
   assert.match(await inbox.text(), /Descargar archivo original/);
   const file = await worker.fetch(new Request(`${origin}/admin/file/${receipt}`, { headers: { Cookie: cookie } }), store);
   assert.equal(file.status, 200);
-  assert.equal(file.headers.get("Content-Disposition"), 'attachment; filename="ejemplo.txt"');
+  assert.equal(file.headers.get("Content-Disposition"), "attachment; filename=\"ejemplo.txt\"; filename*=UTF-8''ejemplo.txt");
   assert.equal(await file.text(), "hola volia");
 });
 
@@ -91,8 +91,27 @@ test("un Word DOCX con MIME genérico llega intacto y conserva su nombre", async
   const session = await worker.fetch(post("/admin/login", login), store);
   const cookie = session.headers.get("Set-Cookie")?.split(";")[0];
   const download = await worker.fetch(new Request(`${origin}/admin/file/${id}`, { headers: { Cookie: cookie } }), store);
-  assert.equal(download.headers.get("Content-Disposition"), 'attachment; filename="documento-original.docx"');
+  assert.equal(download.headers.get("Content-Disposition"), "attachment; filename=\"documento-original.docx\"; filename*=UTF-8''documento-original.docx");
   assert.deepEqual(new Uint8Array(await download.arrayBuffer()), bytes);
+});
+
+test("el nombre Unicode se descarga sin romper la respuesta", async () => {
+  const store = env();
+  const token = await makeInvite(secret, Math.floor(Date.now() / 1000) + 3600);
+  const form = new FormData();
+  form.set("invite", token);
+  form.set("file", new File(["dato"], "cotización-🧪.txt", { type: "text/plain" }));
+  const uploaded = await worker.fetch(post("/submit", form), store);
+  assert.equal(uploaded.status, 201);
+  const id = (await uploaded.text()).match(/Comprobante: <strong>([a-f0-9-]{36})<\/strong>/)?.[1];
+  const login = new FormData();
+  login.set("password", admin);
+  const session = await worker.fetch(post("/admin/login", login), store);
+  const cookie = session.headers.get("Set-Cookie")?.split(";")[0];
+  const download = await worker.fetch(new Request(`${origin}/admin/file/${id}`, { headers: { Cookie: cookie } }), store);
+  assert.equal(download.status, 200);
+  assert.match(download.headers.get("Content-Disposition"), /filename\*=UTF-8''cotizaci%C3%B3n-%F0%9F%A7%AA\.txt/);
+  assert.equal(await download.text(), "dato");
 });
 
 test("rechaza invitaciones falsas y archivos ejecutables aunque vengan de otro origen", async () => {

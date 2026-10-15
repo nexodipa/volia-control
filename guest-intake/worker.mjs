@@ -128,7 +128,9 @@ async function handleAdmin(request, env, url) {
     const meta = await env.UPLOADS.get(`submission:${id}`, "json");
     const file = await env.UPLOADS.get(`file:${id}`, "arrayBuffer");
     if (!meta || !file) return response("Archivo vencido o no encontrado.", 404);
-    return new Response(file, { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${fileName(meta.name)}"`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" } });
+    const name = fileName(meta.name);
+    const asciiName = name.replace(/[^\x20-\x7e]/g, "_");
+    return new Response(file, { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(name)}`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" } });
   }
   const keys = await env.UPLOADS.list({ prefix: "submission:", limit: 100 });
   const entries = (await Promise.all(keys.keys.map((key) => env.UPLOADS.get(key.name, "json")))).filter(Boolean).sort((a, b) => b.at.localeCompare(a.at));
