@@ -1,4 +1,4 @@
-const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_REQUEST_BYTES = MAX_FILE_BYTES + 32 * 1024;
 const FILE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SESSION_SECONDS = 6 * 60 * 60;
@@ -54,11 +54,15 @@ async function validSession(request, secret) {
   return +expiry > Math.floor(Date.now() / 1000) && signature === await hmac(secret, `admin:${expiry}`);
 }
 
-function kind(bytes, type) {
-  if (type === "application/pdf" && bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70) return ["pdf", "application/pdf"];
-  if (type === "image/png" && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71) return ["png", "image/png"];
-  if (type === "image/jpeg" && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return ["jpg", "image/jpeg"];
-  if (["text/plain", "text/csv"].includes(type) && !bytes.includes(0)) return [type === "text/csv" ? "csv" : "txt", type];
+function kind(bytes, name) {
+  const extension = name.toLowerCase().split(".").pop();
+  if (extension === "pdf" && bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70) return "application/pdf";
+  if (extension === "png" && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71) return "image/png";
+  if (["jpg", "jpeg"].includes(extension) && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image/jpeg";
+  if (["docx", "xlsx"].includes(extension) && bytes[0] === 80 && bytes[1] === 75 && bytes[2] === 3 && bytes[3] === 4) {
+    return extension === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  }
+  if (["txt", "csv"].includes(extension) && !bytes.includes(0)) return extension === "csv" ? "text/csv" : "text/plain";
   return null;
 }
 
@@ -88,23 +92,23 @@ function fileName(name) {
 
 async function handleUpload(request, env) {
   const body = await limitedBody(request);
-  if (!body) return response(page("Archivo grande", "<h1>Archivo demasiado grande</h1><p>El límite de esta prueba es 2 MB por archivo.</p>"), 413);
+  if (!body) return response(page("Archivo grande", "<h1>Archivo demasiado grande</h1><p>El límite de esta prueba es 5 MB por archivo. No se guardó nada.</p>"), 413);
   let form;
   try { form = await new Request(request.url, { method: "POST", headers: { "Content-Type": request.headers.get("Content-Type") ?? "" }, body }).formData(); }
   catch { return response("Formulario inválido.", 400); }
   const invite = String(form.get("invite") ?? "");
   if (!await validInvite(invite, env.INVITE_SECRET)) return response("Enlace vencido o inválido.", 403);
   const file = form.get("file");
-  if (!(file instanceof File) || !file.size || file.size > MAX_FILE_BYTES) return response(page("Archivo inválido", "<h1>Archivo inválido</h1><p>Seleccione un PDF, JPG, PNG, TXT o CSV de hasta 2 MB.</p>"), 400);
+  if (!(file instanceof File) || !file.size || file.size > MAX_FILE_BYTES) return response(page("Archivo inválido", "<h1>Archivo inválido</h1><p>Seleccione un PDF, Word DOCX, Excel XLSX, JPG, PNG, TXT o CSV de hasta 5 MB. No se guardó nada.</p>"), 400);
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const checked = kind(bytes, file.type);
-  if (!checked) return response(page("Formato inválido", "<h1>Formato no admitido</h1><p>Use PDF, JPG, PNG, TXT o CSV. No se aceptan archivos ejecutables.</p>"), 400);
+  const checked = kind(bytes, file.name);
+  if (!checked) return response(page("Formato inválido", "<h1>Formato no admitido</h1><p>Use PDF, Word DOCX, Excel XLSX, JPG, PNG, TXT o CSV. No se aceptan archivos ejecutables. No se guardó nada.</p>"), 400);
   const id = crypto.randomUUID();
   const label = String(form.get("label") ?? "").trim().slice(0, 80);
-  const meta = { id, name: fileName(file.name), label, size: file.size, type: checked[1], at: new Date().toISOString() };
+  const meta = { id, name: fileName(file.name), label, size: file.size, type: checked, at: new Date().toISOString() };
   await env.UPLOADS.put(`file:${id}`, bytes.buffer, { expirationTtl: FILE_TTL_SECONDS });
   await env.UPLOADS.put(`submission:${id}`, JSON.stringify(meta), { expirationTtl: FILE_TTL_SECONDS });
-  return response(page("Recibido", `<h1>Archivo recibido</h1><p>Volia ya tiene el archivo en su bandeja de pruebas.</p><p>Comprobante: <strong>${id}</strong></p><p>Se conservará durante 7 días para esta prueba.</p>`), 201);
+  return response(page("Recibido", `<h1>Archivo recibido</h1><p>Volia ya tiene el documento original en su bandeja de pruebas.</p><p><strong>Archivo:</strong> ${htmlEscape(meta.name)} · ${Math.ceil(meta.size / 1024)} KB</p><p>Comprobante: <strong>${id}</strong></p><p>Comparta este comprobante con Volia para que confirme la recepción. El archivo se conservará durante 7 días.</p>`), 201);
 }
 
 async function handleAdmin(request, env, url) {
@@ -128,8 +132,8 @@ async function handleAdmin(request, env, url) {
   }
   const keys = await env.UPLOADS.list({ prefix: "submission:", limit: 100 });
   const entries = (await Promise.all(keys.keys.map((key) => env.UPLOADS.get(key.name, "json")))).filter(Boolean).sort((a, b) => b.at.localeCompare(a.at));
-  const list = entries.length ? `<ul>${entries.map((item) => `<li><a href="/admin/file/${item.id}">${htmlEscape(item.name)}</a> <span class="pill">${Math.ceil(item.size / 1024)} KB</span><br><small>${htmlEscape(item.label || "Sin etiqueta")} · ${htmlEscape(item.at)} · ${htmlEscape(item.id)}</small></li>`).join("")}</ul>` : "<p>Aún no hay archivos recibidos.</p>";
-  return response(page("Bandeja privada", `<h1>Archivos recibidos</h1><p>Recepción de pruebas de Volia. Los archivos se eliminan automáticamente a los 7 días.</p>${list}`));
+  const list = entries.length ? `<ul>${entries.map((item) => `<li><strong>${htmlEscape(item.name)}</strong> <span class="pill">${Math.ceil(item.size / 1024)} KB</span><br><small>${htmlEscape(item.label || "Sin etiqueta")} · ${htmlEscape(item.at)} · ${htmlEscape(item.id)}</small><br><a href="/admin/file/${item.id}" download="${htmlEscape(item.name)}">Descargar archivo original</a></li>`).join("")}</ul>` : "<p>Aún no hay archivos recibidos.</p>";
+  return response(page("Bandeja privada", `<h1>Archivos recibidos</h1><p>Pulse «Descargar archivo original» debajo del nombre. Si no se abre una vista previa, revise la carpeta Descargas del dispositivo. Los archivos se eliminan a los 7 días.</p>${list}`));
 }
 
 export default {
@@ -141,7 +145,7 @@ export default {
       if (url.pathname !== "/" || request.method !== "GET") return response("No encontrado.", 404);
       const token = url.searchParams.get("t");
       if (!await validInvite(token, env.INVITE_SECRET)) return response(page("Enlace no disponible", "<h1>Enlace vencido o inválido</h1><p>Pida a Volia un enlace nuevo para la prueba.</p>"), 403);
-      return response(page("Enviar archivo", `<h1>Enviar un archivo a Volia</h1><p>Esta es una prueba de recepción. Suba solo un archivo de ejemplo, sin datos de pacientes ni información confidencial.</p><form action="/submit" method="post" enctype="multipart/form-data"><input type="hidden" name="invite" value="${htmlEscape(token)}"><label for="label">Etiqueta opcional</label><input id="label" name="label" maxlength="80" placeholder="Ej. prueba desde celular"><label for="file">Archivo</label><input id="file" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.txt,.csv" required><small>PDF, JPG, PNG, TXT o CSV · Máximo 2 MB · Disponible durante 7 días</small><button>Enviar archivo</button></form>`));
+      return response(page("Enviar archivo", `<h1>Enviar un archivo a Volia</h1><p>Esta es una prueba de recepción. Suba solo un archivo de ejemplo, sin datos de pacientes ni información confidencial.</p><form action="/submit" method="post" enctype="multipart/form-data"><input type="hidden" name="invite" value="${htmlEscape(token)}"><label for="label">Etiqueta opcional</label><input id="label" name="label" maxlength="80" placeholder="Ej. prueba desde celular"><label for="file">Archivo</label><input id="file" name="file" type="file" accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.txt,.csv" required><small>PDF, Word DOCX, Excel XLSX, JPG, PNG, TXT o CSV · Máximo 5 MB · Disponible durante 7 días</small><button>Enviar archivo</button></form>`));
     } catch {
       return response(page("Error temporal", "<h1>No se pudo completar</h1><p>Inténtelo de nuevo más tarde.</p>"), 500);
     }

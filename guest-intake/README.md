@@ -1,6 +1,6 @@
 # Recepción de pruebas para Volia
 
-Worker separado del sistema interno. Un enlace firmado y temporal permite recibir un archivo de ejemplo de hasta 2 MB; la bandeja privada requiere una clave. Los archivos se guardan en Workers KV durante siete días. No se usa para documentos clínicos ni información confidencial.
+Worker separado del sistema interno. Un enlace firmado y temporal permite recibir un archivo de ejemplo de hasta 5 MB (PDF, DOCX, XLSX, JPG, PNG, TXT o CSV); la bandeja privada requiere una clave. Los archivos se guardan en Workers KV durante siete días. No se usa para documentos clínicos ni información confidencial.
 
 Para una invitación nueva, configure `INVITE_SECRET` y ejecute:
 
