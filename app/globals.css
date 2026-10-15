@@ -5328,3 +5328,25 @@ textarea:focus-visible {
 .line-market.sobre-mediana { color: var(--amber); }
 .line-market.competitivo { color: var(--green); }
 .line-market.bajo-mercado { color: #2f6f8f; }
+.line-market.hecam { color: #4b625d; }
+.market-tabs { margin-bottom: 16px; }
+.hecam-filters { grid-template-columns: 2fr 1.4fr 1.2fr auto; align-items: end; }
+.hecam-filters .check-row { display: flex; flex-direction: row; align-items: center; gap: 8px; min-height: 44px; }
+.hecam-filters .check-row input { width: 18px; height: 18px; accent-color: var(--green); }
+.hecam-list { display: grid; margin: 12px 0; }
+.hecam-row { display: grid; grid-template-columns: minmax(0, 2.4fr) repeat(3, minmax(0, 1fr)); gap: 16px; padding: 12px 4px; border-top: 1px solid #edf2f0; align-items: start; }
+.hecam-row:first-child { border-top: 0; }
+.hecam-row strong { display: block; font-size: 14px; }
+.hecam-row small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+.hecam-row span { display: block; color: #557069; font-size: 12px; font-weight: 600; }
+.hecam-row > div:not(:first-child) strong { font-variant-numeric: tabular-nums; }
+.hecam-ranking { display: grid; }
+.hecam-ranking > div { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; padding: 10px 0; border-top: 1px solid #edf2f0; align-items: baseline; }
+.hecam-ranking > div:first-child { border-top: 0; }
+.hecam-ranking span { color: var(--muted); font-size: 13px; }
+.hecam-ranking b { font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) {
+  .hecam-filters { grid-template-columns: 1fr; }
+  .hecam-row { grid-template-columns: 1fr 1fr; }
+  .hecam-row > div:first-child { grid-column: 1 / -1; }
+}

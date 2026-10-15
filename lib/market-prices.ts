@@ -19,23 +19,30 @@ export function measures(text: string): Set<string> {
 }
 const subset = (a: Set<string>, b: Set<string>) => [...a].every((x) => b.has(x));
 
-export function findMarketPrice(description: string, items: MarketItem[]): MarketPriceMatch | null {
-  const list = words(description);
-  if (!list.length) return null;
-  const line = new Set(list), head = list[0], nums = measures(description);
-  let best: MarketPriceMatch | null = null;
-  for (const item of items) {
-    const w = new Set(words(item.item));
+/** Mejor coincidencia por nombre entre una descripción y una lista (misma regla para SOCE y HECAM). */
+export function bestNameMatch<T>(description: string, list: T[], nameOf: (x: T) => string): { value: T; score: number } | null {
+  const lw = words(description);
+  if (!lw.length) return null;
+  const line = new Set(lw), head = lw[0], nums = measures(description);
+  let best: { value: T; score: number } | null = null;
+  for (const value of list) {
+    const name = nameOf(value);
+    const w = new Set(words(name));
     if (!w.has(head)) continue;
-    const m = measures(item.item);
+    const m = measures(name);
     if (nums.size && m.size && !subset(nums, m) && !subset(m, nums)) continue; // "Jeringa 3 ml" no es "Jeringa 10 ml"
     let shared = 0;
     for (const s of line) if (w.has(s)) shared++;
     if (shared < Math.min(2, line.size)) continue;
     const score = shared / Math.max(line.size, w.size);
-    if (!best || score > best.score) best = { item, score };
+    if (!best || score > best.score) best = { value, score };
   }
   return best;
+}
+
+export function findMarketPrice(description: string, items: MarketItem[]): MarketPriceMatch | null {
+  const m = bestNameMatch(description, items, (i) => i.item);
+  return m ? { item: m.value, score: m.score } : null;
 }
 
 export type PricePosition = "sin-precio" | "bajo-mercado" | "competitivo" | "sobre-mediana" | "muy-alto";
