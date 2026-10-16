@@ -16,14 +16,14 @@ export type BusinessExport = {
   disclaimer?: string;
 };
 
-const safeName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "volia-control";
+export const safeName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "volia-control";
 const text = (value: ExportCell) => value === null || value === undefined || value === "" ? "—" : String(value);
 
 async function getLogoDataUrl() {
   return VOLIA_LOGO_DATA_URL;
 }
 
-async function getLogoBytes() {
+export async function getLogoBytes() {
   const binary = atob(VOLIA_LOGO_DATA_URL.split(",")[1]);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }

@@ -333,7 +333,7 @@ export default function QuoteBuilder() {
       ["Oferta comercial", meta.number], ["Cliente", meta.customer], ["Paciente", meta.patient], ["HC", meta.hcl], ["Dirección / hospital", meta.patientAddress || meta.hospital], ["Fecha de cirugía", meta.surgeryDate], ["Médico", meta.doctor], [],
       ["Código IESS", "Producto", "Marca", "Procedencia", "Cantidad", "Costo unitario", "Precio unitario", "Venta", "Costo total", "Utilidad"],
       ...items.map((item) => [item.code, item.description, item.brand, item.origin, item.quantity, item.unitCost, item.unitPrice, item.quantity * item.unitPrice, item.quantity * item.unitCost * (1 + meta.overhead / 100), item.quantity * (item.unitPrice - item.unitCost * (1 + meta.overhead / 100))]),
-      [], ["Subtotal bruto", totals.grossSubtotal], ["Descuento", totals.discount], ["Venta neta sin IVA", totals.netSubtotal], ["Costo real", totals.totalCost], ["Utilidad", totals.profit], ["Margen %", totals.margin], ["Aplica IVA 15 %", meta.applyVat ? "Sí" : "No"], ["IVA", totals.iva], ["Total", totals.total],
+      [], ["Subtotal bruto", totals.grossSubtotal], ["Descuento", totals.discount], ["Venta neta sin IVA", totals.netSubtotal], ["Costo real", totals.totalCost], ["Utilidad", totals.missingCosts ? "Pendiente" : totals.profit], ["Margen %", totals.missingCosts ? "Pendiente" : totals.margin], ["Aplica IVA 15 %", meta.applyVat ? "Sí" : "No"], ["IVA", totals.iva], ["Total", totals.total],
     ];
     downloadCsv(rows, `${meta.number || "cotizacion-volia"}.csv`);
     recordActivity("Cotizador", "Oferta exportada en CSV", `${meta.number || "Sin número"} · ${meta.customer || "Cliente por definir"} · ${items.length} productos`, "export");
@@ -573,7 +573,7 @@ export default function QuoteBuilder() {
             <div><dt>Venta neta sin IVA</dt><dd>{money(totals.netSubtotal)}</dd></div>
             <div><dt>Costo base</dt><dd>{money(totals.baseCost)}</dd></div>
             <div><dt>Costo real + adicionales</dt><dd>{money(totals.totalCost)}</dd></div>
-            <div className="profit-emphasis"><dt>Utilidad bruta</dt><dd className={totals.profit < 0 ? "negative" : ""}>{money(totals.profit)}</dd></div>
+            <div className="profit-emphasis"><dt>Utilidad bruta</dt><dd className={!totals.missingCosts && totals.profit < 0 ? "negative" : ""}>{totals.missingCosts ? "Pendiente" : money(totals.profit)}</dd></div>
             <div><dt>Margen sobre venta</dt><dd>{totals.missingCosts ? "Pendiente" : `${totals.margin.toFixed(2)} %`}</dd></div>
             <div><dt>Markup sobre costo</dt><dd>{totals.missingCosts ? "Pendiente" : `${totals.markup.toFixed(2)} %`}</dd></div>
             <div><dt>IVA 15 % ({meta.applyVat ? "Sí" : "No"})</dt><dd>{money(totals.iva)}</dd></div>

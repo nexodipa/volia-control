@@ -5355,3 +5355,25 @@ textarea:focus-visible {
 .catalog-market { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
 .catalog-market.alert { color: var(--red); font-weight: 600; }
 .hecam-row strong.negative { color: var(--red); }
+
+/* Paquete de oferta (Documentos) */
+.offer-package { margin-bottom: 24px; display: grid; gap: 16px; }
+.offer-lead { color: var(--muted, #5b6f6b); max-width: 70ch; margin-top: 4px; }
+.offer-company { border: 1px solid var(--line, #d6e2df); border-radius: 12px; padding: 10px 14px; }
+.offer-company summary { cursor: pointer; font-weight: 600; }
+.offer-company .business-form { margin-top: 12px; }
+.offer-table-wrap { overflow-x: auto; }
+.offer-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.offer-table th { text-align: left; font-weight: 600; color: var(--muted, #5b6f6b); padding: 8px; border-bottom: 1px solid var(--line, #d6e2df); }
+.offer-table td { padding: 8px; border-bottom: 1px solid var(--line, #d6e2df); vertical-align: middle; }
+.offer-table td input { margin: 0; }
+.offer-table td small { color: var(--muted, #5b6f6b); }
+.offer-table input { width: 100%; min-width: 150px; }
+.offer-state { display: inline-block; font-size: .78rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #e7f3ef; color: #0d5c4e; }
+.offer-state.state-por-vencer, .offer-state.state-sin-fecha { background: #fff3dc; color: #8a5210; }
+.offer-state.state-vencido, .offer-state.state-sin-registro { background: #fde8e6; color: #9b2c22; }
+.offer-note, .offer-empty { color: var(--muted, #5b6f6b); font-size: .88rem; margin-top: 8px; }
+.offer-docs { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.offer-docs legend { font-weight: 600; margin-bottom: 6px; }
+.offer-doc-option { display: inline-flex; gap: 6px; align-items: center; }
+.offer-missing { color: #8a5210; background: #fff3dc; border-radius: 10px; padding: 8px 12px; }

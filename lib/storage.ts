@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   memoryUpdated: "volia-memory-updated-v1",
   regulatoryDocs: "volia-regulatory-docs-v1",
   requirementAliases: "volia-requirement-aliases-v1",
+  offerDraft: "volia-offer-draft-v1",
 } as const;
 
 export const BACKUP_KEYS = new Set<string>(Object.values(STORAGE_KEYS));
