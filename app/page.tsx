@@ -11,6 +11,7 @@ import RegulatoryCenter from "../components/RegulatoryCenter";
 import MovementAnalytics from "../components/MovementAnalytics";
 import FinanceCenter from "../components/FinanceCenter";
 import DocumentGenerator from "../components/DocumentGenerator";
+import OfferPackage from "../components/OfferPackage";
 import InstallManager from "../components/InstallManager";
 import CloudSyncModal from "../components/CloudSyncModal";
 import SharedSyncStatus from "../components/SharedSyncStatus";
@@ -1118,7 +1119,7 @@ export default function Home() {
           ) : module === "market" ? (
             <MarketCenter />
           ) : module === "documents" ? (
-            <DocumentGenerator />
+            <><OfferPackage /><DocumentGenerator /></>
           ) : module === "knowledge" ? (
             <KnowledgeCenter />
           ) : module === "activity" ? (
