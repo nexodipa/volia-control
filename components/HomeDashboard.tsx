@@ -41,6 +41,12 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const [catalogCount, setCatalogCount] = useState(0);
   const [hasBackup, setHasBackup] = useState(true);
   const [costAlerts, setCostAlerts] = useState<string[]>([]);
+  const [marketDate, setMarketDate] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/data/mercado-sercop-2026.json", { cache: "force-cache" }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d?.generatedAt) setMarketDate(String(d.generatedAt)); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   useEffect(() => {
     let alive = true;
     loadPriceData().then((data) => {
@@ -86,6 +92,9 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const soonDocs = docs.filter((d) => d.expiresAt && daysUntil(d.expiresAt, today) >= 0 && daysUntil(d.expiresAt, today) <= 90)
     .sort((a, b) => (a.expiresAt ?? "").localeCompare(b.expiresAt ?? ""));
 
+  const undatedDocs = docs.filter((d) => !d.expiresAt && (d.kind === "Registro sanitario" || d.kind === "Notificación sanitaria"));
+  const marketStale = !!marketDate && /^\d{4}-\d{2}-\d{2}$/.test(marketDate) && daysUntil(marketDate, today) < -35;
+
   const tasks: Task[] = [
     ...(overdueCases.length ? [{ tone: "urgent" as const, title: `${plural(overdueCases.length, "cobro vencido", "cobros vencidos")}`, detail: "Llame o escriba a la entidad y registre el compromiso de pago.", target: "cases", action: "Ver cobros" }] : []),
     ...(expiredDocs.length ? [{ tone: "urgent" as const, title: `${plural(expiredDocs.length, "documento regulatorio vencido", "documentos regulatorios vencidos")}`, detail: "No los presente en una oferta hasta renovarlos.", target: "regulatory", action: "Ver vigencias" }] : []),
@@ -94,6 +103,8 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
     ...(lowStock.length ? [{ tone: "soon" as const, title: `${plural(lowStock.length, "producto con stock bajo", "productos con stock bajo")}`, detail: "Confirme existencias y prepare la reposición.", target: "inventory", action: "Ver inventario" }] : []),
     ...(expiringLots.length ? [{ tone: "soon" as const, title: `${plural(expiringLots.length, "lote por caducar", "lotes por caducar")}`, detail: "Úselos primero o gestione la devolución.", target: "inventory", action: "Ver inventario" }] : []),
     ...(costAlerts.length ? [{ tone: "soon" as const, title: `${plural(costAlerts.length, "producto cuesta", "productos cuestan")} más que el precio de mercado`, detail: `Con ese costo no se puede ganar sin perder dinero. Empiece por: ${costAlerts.slice(0, 2).join("; ")}.`, target: "catalog", action: "Ver catálogo" }] : []),
+    ...(undatedDocs.length ? [{ tone: "info" as const, title: `${plural(undatedDocs.length, "registro sanitario sin fecha", "registros sanitarios sin fecha")} de vencimiento`, detail: "Consulte la vigencia en ARCSA y regístrela: sin fecha, el sistema no puede avisar antes de que venzan.", target: "regulatory", action: "Ver vigencias" }] : []),
+    ...(marketStale ? [{ tone: "info" as const, title: "Actualizar el mercado SERCOP", detail: `Los datos son del ${marketDate}. Descargue el archivo del mes en data.open-contracting.org y haga doble clic en «actualizar-mercado» en la carpeta de Volia Control.`, target: "market", action: "Ver mercado" }] : []),
     ...(!hasBackup ? [{ tone: "info" as const, title: "Aún no hay una copia de respaldo", detail: "Pulse «Respaldo cifrado» arriba a la derecha y elija una frase. Solo quien la conozca podrá abrir la copia.", target: "help", action: "Más detalles" }] : []),
   ];
 
