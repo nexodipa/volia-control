@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { downloadCsv } from "../lib/csv";
 import HecamCenter from "./HecamCenter";
+import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
 import { buyerRanking, compareWithAward, filterProcesses, ourRecord, winnerRanking, type MarketFilter, type MarketProcess } from "../lib/market";
@@ -18,7 +19,7 @@ export default function MarketCenter() {
   const [filter, setFilter] = useState<MarketFilter>({ category: "todas", query: "", onlyOurs: false });
   const [cmp, setCmp] = useState({ processId: "SIE-MDMQ-2026-2503-41357", cost: "10219.34", price: "19779.24" });
 
-  const [view, setView] = useState<"sercop" | "hecam">("sercop");
+  const [view, setView] = useState<"sercop" | "hecam" | "demanda">("sercop");
   const [quotes, setQuotes] = useState<StoredQuote[]>([]);
   useEffect(() => {
     const load = () => setQuotes(getSavedQuotes());
@@ -59,7 +60,8 @@ export default function MarketCenter() {
   if (error) return <section className="business-module"><div className="module-empty">{error}</div></section>;
   if (!data) return <section className="business-module"><div className="module-empty">Cargando procesos de SERCOP…</div></section>;
 
-  const tabs = <div className="finance-nav market-tabs" role="tablist"><button role="tab" aria-selected={view === "sercop"} className={view === "sercop" ? "active" : ""} onClick={() => setView("sercop")}>Procesos SERCOP</button><button role="tab" aria-selected={view === "hecam"} className={view === "hecam" ? "active" : ""} onClick={() => setView("hecam")}>HECAM 2026</button></div>;
+  const tabs = <div className="finance-nav market-tabs" role="tablist"><button role="tab" aria-selected={view === "sercop"} className={view === "sercop" ? "active" : ""} onClick={() => setView("sercop")}>Procesos SERCOP</button><button role="tab" aria-selected={view === "hecam"} className={view === "hecam" ? "active" : ""} onClick={() => setView("hecam")}>HECAM 2026</button><button role="tab" aria-selected={view === "demanda"} className={view === "demanda" ? "active" : ""} onClick={() => setView("demanda")}>Próximas compras</button></div>;
+  if (view === "demanda") return <section className="business-module"><div className="module-hero"><div><p className="eyebrow">Inteligencia de mercado</p><h2>Próximas compras de los clientes</h2><p>Cuándo se quedará sin cada producto cada unidad de salud, para preparar la proforma antes que la competencia.</p></div></div>{tabs}<UpcomingPurchases /></section>;
   if (view === "hecam") return <section className="business-module"><div className="module-hero"><div><p className="eyebrow">Inteligencia de mercado</p><h2>Programación de compras del HECAM 2026</h2><p>Qué va a comprar el Hospital Carlos Andrade Marín, en qué cantidad, a qué precio referencial y quién ganó lo ya contratado.</p></div></div>{tabs}<HecamCenter /></section>;
   return <section className="business-module">
     <div className="module-hero"><div><p className="eyebrow">Inteligencia de mercado</p><h2>Mercado público de insumos y dispositivos médicos</h2><p>Quién compra, quién gana y por cuánto en las contrataciones de 2026, y cómo le fue a Volia en cada proceso donde ofertó.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
