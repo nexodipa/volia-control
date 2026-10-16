@@ -8,9 +8,9 @@ export type MarketPriceMatch = { item: MarketItem; score: number };
 const STOP = new Set(["para", "con", "sin", "unidad", "unidades", "esteril", "estéril", "tipo", "minimo", "mínimo", "hasta", "adulto", "tamaño"]);
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-function words(text: string): string[] {
+function wordsOf(text: string, minLen = 4): string[] {
   return fold(text).replace(/micro\s+gotero/g, "microgotero").replace(/[^a-z0-9ñ]+/g, " ").split(" ")
-    .filter((w) => w.length >= 4 && !STOP.has(w) && !/^\d/.test(w)).map((w) => w.slice(0, 5));
+    .filter((w) => w.length >= minLen && !STOP.has(w) && !/^\d/.test(w) && !["con", "del", "las", "los", "por", "una"].includes(w)).map((w) => w.slice(0, 5));
 }
 /** Medidas significativas: números antes de la primera comilla (en el mercado, lo que sigue suele ser largo de aguja en pulgadas). */
 export function measures(text: string): Set<string> {
@@ -20,21 +20,27 @@ export function measures(text: string): Set<string> {
 const subset = (a: Set<string>, b: Set<string>) => [...a].every((x) => b.has(x));
 
 /** Mejor coincidencia por nombre entre una descripción y una lista (misma regla para SOCE y HECAM). */
-export function bestNameMatch<T>(description: string, list: T[], nameOf: (x: T) => string): { value: T; score: number } | null {
+export type MatchOptions = { /** Exige que ambos nombres empiecen con el mismo sustantivo y cuenta siglas de 3 letras (LCP, DHS). */ strict?: boolean; minScore?: number };
+export function bestNameMatch<T>(description: string, list: T[], nameOf: (x: T) => string, opts: MatchOptions = {}): { value: T; score: number } | null {
+  const minLen = opts.strict ? 3 : 4;
+  const words = (t: string) => wordsOf(t, minLen);
   const lw = words(description);
   if (!lw.length) return null;
   const line = new Set(lw), head = lw[0], nums = measures(description);
   let best: { value: T; score: number } | null = null;
   for (const value of list) {
     const name = nameOf(value);
-    const w = new Set(words(name));
+    const wl = words(name);
+    const w = new Set(wl);
     if (!w.has(head)) continue;
+    if (opts.strict && wl[0] !== head) continue; // "Placa LCP" no es "Sistema de placa LCP para fémur"
     const m = measures(name);
     if (nums.size && m.size && !subset(nums, m) && !subset(m, nums)) continue; // "Jeringa 3 ml" no es "Jeringa 10 ml"
     let shared = 0;
     for (const s of line) if (w.has(s)) shared++;
     if (shared < Math.min(2, line.size)) continue;
     const score = shared / Math.max(line.size, w.size);
+    if (score < (opts.minScore ?? 0)) continue;
     if (!best || score > best.score) best = { value, score };
   }
   return best;

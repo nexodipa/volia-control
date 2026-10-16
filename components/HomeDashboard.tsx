@@ -7,6 +7,7 @@ import { businessIsoDate } from "../lib/date-utils";
 import { type StockItem } from "../lib/inventory-data";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { getCloudState } from "../lib/cloud-sync";
+import { costAboveMarket, loadPriceData, marketReference } from "../lib/price-intel";
 import { getMemorySummary, type MemorySummary } from "../lib/volia-memory";
 import { readStoredArray, STORAGE_KEYS } from "../lib/storage";
 
@@ -39,6 +40,16 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const [docs, setDocs] = useState<RegulatoryRecord[]>([]);
   const [catalogCount, setCatalogCount] = useState(0);
   const [hasBackup, setHasBackup] = useState(true);
+  const [costAlerts, setCostAlerts] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    loadPriceData().then((data) => {
+      if (!alive) return;
+      const products = readStoredArray<{ description: string; unitCost: number; active?: boolean }>(STORAGE_KEYS.productCatalog);
+      setCostAlerts(products.filter((p) => p.active !== false && costAboveMarket(p.unitCost, marketReference(p.description, data))).map((p) => p.description));
+    });
+    return () => { alive = false; };
+  }, [catalogCount]);
   const [now] = useState(() => new Date());
   const today = businessIsoDate();
 
@@ -82,6 +93,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
     ...(soonDocs.length ? [{ tone: "soon" as const, title: `${soonDocs[0].reference} vence en ${daysUntil(soonDocs[0].expiresAt!, today)} días`, detail: soonDocs.length > 1 ? `Y ${plural(soonDocs.length - 1, "documento más", "documentos más")} en los próximos 90 días.` : soonDocs[0].subject, target: "regulatory", action: "Ver vigencias" }] : []),
     ...(lowStock.length ? [{ tone: "soon" as const, title: `${plural(lowStock.length, "producto con stock bajo", "productos con stock bajo")}`, detail: "Confirme existencias y prepare la reposición.", target: "inventory", action: "Ver inventario" }] : []),
     ...(expiringLots.length ? [{ tone: "soon" as const, title: `${plural(expiringLots.length, "lote por caducar", "lotes por caducar")}`, detail: "Úselos primero o gestione la devolución.", target: "inventory", action: "Ver inventario" }] : []),
+    ...(costAlerts.length ? [{ tone: "soon" as const, title: `${plural(costAlerts.length, "producto cuesta", "productos cuestan")} más que el precio de mercado`, detail: `Con ese costo no se puede ganar sin perder dinero. Empiece por: ${costAlerts.slice(0, 2).join("; ")}.`, target: "catalog", action: "Ver catálogo" }] : []),
     ...(!hasBackup ? [{ tone: "info" as const, title: "Aún no hay una copia de respaldo", detail: "Pulse «Respaldo cifrado» arriba a la derecha y elija una frase. Solo quien la conozca podrá abrir la copia.", target: "help", action: "Más detalles" }] : []),
   ];
 

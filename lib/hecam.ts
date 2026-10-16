@@ -7,7 +7,7 @@ export type HecamItem = {
   pur?: number; prt?: number; t?: string; pua?: number; g?: string;
 };
 
-export const findHecamItem = (description: string, items: HecamItem[]) => bestNameMatch(description, items, (i) => i.n)?.value ?? null;
+export const findHecamItem = (description: string, items: HecamItem[]) => bestNameMatch(description, items, (i) => i.n, { strict: true, minScore: 0.5 })?.value ?? null;
 
 export type OpportunityFilter = { query?: string; especialidad?: string; tipo?: string; soloPendientes?: boolean };
 

@@ -6,6 +6,7 @@ import RequirementImporter, { type ImportedLine } from "./RequirementImporter";
 import { findRegulatoryDoc, type LineRegulatoryStatus } from "../lib/regulatory-check";
 import { findMarketPrice, pricePosition, type MarketItem } from "../lib/market-prices";
 import { findHecamItem, type HecamItem } from "../lib/hecam";
+import { loadPriceData, supplierOffers, type SupplierItem } from "../lib/price-intel";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { useEffect, useMemo, useState } from "react";
 import { exportBusinessWord, type BusinessExport } from "../lib/business-exports";
@@ -218,6 +219,9 @@ export default function QuoteBuilder() {
     fetch("/data/hecam-2026.json", { cache: "force-cache" }).then((res) => res.ok ? res.json() : null).then((d) => { if (alive && d?.items) setHecamItems(d.items); }).catch(() => { /* opcional */ });
     return () => { alive = false; };
   }, []);
+  const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
+  useEffect(() => { let alive = true; loadPriceData().then((d) => { if (alive) setSuppliers(d.suppliers); }); return () => { alive = false; }; }, []);
+  const offersByLine = useMemo(() => new Map(items.map((item) => [item.id, item.description.trim() && suppliers.length ? supplierOffers(item.description, suppliers).slice(0, 2) : []])), [items, suppliers]);
   const hecamByLine = useMemo(() => new Map(items.map((item) => [item.id, item.description.trim() && hecamItems.length ? findHecamItem(item.description, hecamItems) : null])), [items, hecamItems]);
   const marketByLine = useMemo(() => new Map(items.map((item) => [item.id, item.description.trim() && marketItems.length ? findMarketPrice(item.description, marketItems) : null])), [items, marketItems]);
   const regulatoryByLine = useMemo(() => {
@@ -533,6 +537,7 @@ export default function QuoteBuilder() {
                   {item.description.trim() && (() => { const reg = regulatoryByLine.get(item.id); return <p className={`line-regulatory ${reg ? reg.status : "sin-documento"}`}>{reg ? <>Registro probable <strong>{reg.record.reference}</strong> · {reg.status === "vigente" ? `vigente (${reg.days} días)` : reg.status === "sin-fecha" ? "sin fecha de vencimiento cargada" : reg.status === "vencido" ? `vencido hace ${-(reg.days ?? 0)} días` : `vence en ${reg.days} días`}</> : "Sin registro sanitario identificado en Vigencias"}</p>; })()}
                   {(() => { const mk = marketByLine.get(item.id); if (!mk) return null; const pos = pricePosition(item.unitPrice, item.unitCost, mk.item); const usd = (v: number) => `$${v < 1 ? v.toFixed(3) : v.toFixed(2)}`; const label = { "sin-precio": "", "bajo-mercado": "Su precio está por debajo de lo habitual: puede subirlo.", competitivo: "Su precio está en la zona que suele ganar.", "sobre-mediana": "Su precio está sobre la mitad del mercado.", "muy-alto": "Su precio está entre los más altos: es probable perder." }[pos.position]; return <p className={`line-market ${pos.position}`}>Mercado ({mk.item.n} procesos): la mitad pagó hasta <strong>{usd(mk.item.mediana)}</strong>, rango habitual {usd(mk.item.p25)} a {usd(mk.item.p75)}. {label}{pos.costAboveMedian ? " Su costo ya supera ese precio: conviene buscar otro proveedor." : ""}</p>; })()}
                   {(() => { const h = hecamByLine.get(item.id); if (!h || (!h.pur && !h.pua)) return null; const usd = (v: number) => `$${v < 1 ? v.toFixed(4) : v.toFixed(2)}`; return <p className="line-market hecam">HECAM 2026: {h.pur ? <>precio referencial <strong>{usd(h.pur)}</strong></> : null}{h.pua ? <>{h.pur ? "; " : ""}adjudicado a {h.g} en <strong>{usd(h.pua)}</strong></> : h.t ? ` (${h.t.toLowerCase()}, aún sin proveedor)` : ""}.</p>; })()}
+                  {(() => { const offers = offersByLine.get(item.id) ?? []; if (!offers.length) return null; const usd = (v: number) => `$${v < 1 ? v.toFixed(4) : v.toFixed(2)}`; const cheaper = offers.find((o) => item.unitCost > 0 && o.price < item.unitCost); return <p className={`line-market supplier ${cheaper ? "cheaper" : ""}`}>Proveedores: {offers.map((o, k) => <span key={k}>{k ? "; " : ""}{o.item.p} {o.kind === "costo" ? "costo" : "lista"} <strong>{usd(o.price)}</strong> ({o.item.n.slice(0, 48)})</span>)}.{cheaper ? ` ${cheaper.item.p} es más barato que su costo actual.` : ""}</p>; })()}
                 </article>;
               })}
             </div>
