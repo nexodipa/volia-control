@@ -515,7 +515,7 @@ export default function QuoteBuilder() {
               </div>}
               {systemMessage && <p className="system-message" role="status">{systemMessage}</p>}
             </section>
-            <RequirementImporter catalog={catalog} customer={meta.customer} onAdd={addRequirementLines} />
+            <RequirementImporter catalog={catalog} customer={meta.customer} onAdd={addRequirementLines} onPliego={(p) => setMeta((current) => ({ ...current, contract: current.contract || p.code, customer: current.customer || p.entity, notes: current.notes || (p.object ? `Proceso ${p.code}: ${p.object}` : current.notes) }))} />
             <div className="quote-items">
               {items.map((item, index) => {
                 const lineSale = item.quantity * item.unitPrice;

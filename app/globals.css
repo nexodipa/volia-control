@@ -5377,3 +5377,9 @@ textarea:focus-visible {
 .offer-docs legend { font-weight: 600; margin-bottom: 6px; }
 .offer-doc-option { display: inline-flex; gap: 6px; align-items: center; }
 .offer-missing { color: #8a5210; background: #fff3dc; border-radius: 10px; padding: 8px 12px; }
+
+/* Importar XML del SRI (Finanzas) */
+.sri-import { cursor: pointer; display: inline-flex; align-items: center; }
+.sri-stock-toggle { display: inline-flex; gap: 6px; align-items: center; font-size: .86rem; color: var(--muted, #5b6f6b); }
+.pliego-upload { cursor: pointer; display: inline-flex; align-items: center; }
+.pliego-upload.is-busy { opacity: .7; cursor: progress; }

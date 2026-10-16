@@ -16,6 +16,10 @@ import {
 } from "../lib/inventory-data";
 import { readStoredArray, readStoredObject, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
+import { INVENTORY_KEY, type StockItem } from "../lib/inventory-data";
+import { applyPurchasesToStock, normalizeDocNumber, parseSriXml, planImport, type SriDocument } from "../lib/sri-xml";
+
+const OWN_RUC = "1793206800001";
 
 type Direction = "income" | "expense";
 type FinanceStatus = "paid" | "pending";
@@ -373,6 +377,47 @@ export default function FinanceCenter() {
       `${imported.length} cuenta(s) por cobrar importada(s) desde Cirugías.`,
     );
   };
+  const [sriAddStock, setSriAddStock] = useState(true);
+  const importSri = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const docs: SriDocument[] = [];
+    const unreadable: string[] = [];
+    for (const file of Array.from(files)) {
+      const doc = parseSriXml(await file.text());
+      if (doc) docs.push(doc); else unreadable.push(file.name);
+    }
+    const known = new Set(records.map((r) => r.id));
+    const plan = planImport(docs, OWN_RUC, known);
+    let applied = 0;
+    const pendingWithholdings: string[] = [];
+    let next = [...plan.records, ...records];
+    for (const w of plan.withholdings) {
+      const target = next.find((r) => r.direction === "income" && normalizeDocNumber(r.document.replace(/^\D+\s*/, "")) === w.document);
+      if (target) {
+        next = next.map((r) => (r.id === target.id ? { ...r, withholding: Math.round(((Number(r.withholding) || 0) + w.amount) * 100) / 100, description: `${r.description} ${w.detail}: USD ${w.amount.toFixed(2)}.`.trim() } : r));
+        applied++;
+      } else pendingWithholdings.push(`${w.document} (USD ${w.amount.toFixed(2)})`);
+    }
+    setRecords(next);
+    let stockNote = "";
+    if (sriAddStock && plan.purchases.length) {
+      const items = readStoredArray<StockItem>(INVENTORY_KEY);
+      const result = applyPurchasesToStock(items, readStoredArray<StockMovement>(MOVEMENTS_KEY), plan.purchases, uid);
+      writeStoredJson(INVENTORY_KEY, result.items);
+      writeStoredJson(MOVEMENTS_KEY, result.movements);
+      setStockMovements(result.movements);
+      stockNote = ` Inventario: ${result.added} entrada(s), ${result.created} producto(s) nuevo(s).`;
+    }
+    const parts = [
+      `${plan.records.length} comprobante(s) registrado(s)`,
+      applied ? `${applied} retención(es) aplicada(s)` : "",
+      plan.skipped.length ? `${plan.skipped.length} omitido(s): ${plan.skipped.slice(0, 3).join(", ")}${plan.skipped.length > 3 ? "…" : ""}` : "",
+      pendingWithholdings.length ? `retenciones sin su factura en Finanzas: ${pendingWithholdings.join(", ")} (importe primero la factura)` : "",
+      unreadable.length ? `no se pudo leer: ${unreadable.join(", ")}` : "",
+    ].filter(Boolean);
+    setMessage(`${parts.join(" · ")}.${stockNote}`);
+    recordActivity("Finanzas", "XML del SRI importados", `${plan.records.length} comprobante(s), ${applied} retención(es)`);
+  };
   const toggleStatus = (id: string) => {
     const target = records.find((record) => record.id === id);
     if (!target) return;
@@ -513,6 +558,11 @@ export default function FinanceCenter() {
           <button className="secondary-button" onClick={exportCsv}>
             Excel/CSV
           </button>
+          <label className="secondary-button sri-import" title="Facturas, notas de crédito y retenciones descargadas del SRI">
+            Importar XML del SRI
+            <input type="file" accept=".xml,text/xml,application/xml" multiple hidden onChange={(e) => { void importSri(e.target.files); e.target.value = ""; }} />
+          </label>
+          <label className="sri-stock-toggle"><input type="checkbox" checked={sriAddStock} onChange={(e) => setSriAddStock(e.target.checked)} /> Sumar compras al inventario</label>
           <button
             className="primary-button"
             onClick={() => setShowForm((value) => !value)}

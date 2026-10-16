@@ -14,7 +14,7 @@ const METHOD: Record<MarketProcess["m"], string> = { SIE: "Subasta inversa", LIC
 const toCents = (s: string) => Math.round((Number(s.replace(",", ".")) || 0) * 100);
 
 export default function MarketCenter() {
-  const [data, setData] = useState<{ source: string; processes: MarketProcess[] } | null>(null);
+  const [data, setData] = useState<{ source: string; generatedAt?: string; processes: MarketProcess[] } | null>(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<MarketFilter>({ category: "todas", query: "", onlyOurs: false });
   const [cmp, setCmp] = useState({ processId: "SIE-MDMQ-2026-2503-41357", cost: "10219.34", price: "19779.24" });
@@ -114,6 +114,6 @@ export default function MarketCenter() {
         <ol className="market-ranking">{buyers.map((b) => <li key={b.buyer}><span>{b.buyer}</span><strong>{b.processes} procesos</strong><small>{money(b.awarded)} · {b.avgTenderers ?? "—"} oferentes</small></li>)}</ol>
       </section>
     </div>
-    <p className="module-note">Fuente: {data.source}. Solo el 25 % de los procesos de 2026 publica ítems; por eso el análisis es por proceso y no por producto.</p>
+    <p className="module-note">Fuente: {data.source}{data.generatedAt ? `, actualizado el ${data.generatedAt}` : ""}. Para actualizar, descargue el archivo del mes y haga doble clic en «actualizar-mercado» en la carpeta de Volia Control. Solo el 25 % de los procesos de 2026 publica ítems; por eso el análisis es por proceso y no por producto.</p>
   </section>;
 }
