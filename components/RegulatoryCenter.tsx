@@ -9,6 +9,7 @@ import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
 import { pullRegulatory, pushRegulatory } from "../lib/regulatory-sync";
 import { mergeRegulatory } from "../lib/regulatory-api";
+import { applyArcsa, arcsaSuggestions, findArcsa, loadArcsa, type ArcsaCatastro } from "../lib/arcsa";
 
 const LABEL: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "Vencido", critico: "Menos de 30 días", proximo: "Menos de 90 días", vigente: "Vigente", "sin-fecha": "Sin fecha" };
 const DOT: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "red", critico: "red", proximo: "yellow", vigente: "green", "sin-fecha": "yellow" };
@@ -19,6 +20,9 @@ export default function RegulatoryCenter() {
   const [query, setQuery] = useState("");
   const [server, setServer] = useState<{ mode: "local" | "server"; message: string; pending: string[] }>({ mode: "local", message: "Conectando con el servidor…", pending: [] });
   const today = businessIsoDate();
+  const [arcsa, setArcsa] = useState<ArcsaCatastro | null>(null);
+  useEffect(() => { let alive = true; loadArcsa().then((c) => { if (alive) setArcsa(c); }); return () => { alive = false; }; }, []);
+  const suggestions = useMemo(() => (arcsa ? arcsaSuggestions(records, arcsa) : []), [arcsa, records]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +71,14 @@ export default function RegulatoryCenter() {
     recordActivity("Documentos regulatorios", "Vigencia actualizada", `${rec.reference} · ${expiresAt || "sin fecha"}`, "update");
     void sendToServer([updated]);
   };
+  const applyArcsaDates = () => {
+    if (!arcsa || !suggestions.length) return;
+    const next = applyArcsa(records, suggestions, arcsa.corte);
+    const changed = next.filter((r) => suggestions.some((s) => s.id === r.id));
+    setRecords(next);
+    recordActivity("Documentos regulatorios", "Vigencias completadas desde ARCSA", `${changed.length} registro(s) · catastro al ${arcsa.corte}`, "update");
+    void sendToServer(changed);
+  };
   const retry = () => void sendToServer(records.filter((r) => server.pending.includes(r.id)));
   const exportCsv = () => {
     downloadCsv([["Tipo", "Referencia", "Descripción", "Ítems", "Vence", "Días", "Estado", "Nota"], ...rows.map((r) => [r.kind, r.reference, r.subject, r.items, r.expiresAt ?? "", r.days ?? "", LABEL[r.status], r.note])], `vencimientos-regulatorios-${today}.csv`);
@@ -76,6 +88,7 @@ export default function RegulatoryCenter() {
   return <section className="business-module">
     <div className="module-hero"><div><p className="eyebrow">Cumplimiento</p><h2>Registros sanitarios y vigencias</h2><p>Controla qué documentos respaldan cada ítem y cuándo vencen, para no presentar una oferta con papeles caducados.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
     <p className={`module-sync-status ${server.mode === "server" && !server.pending.length ? "ok" : "warn"}`} role="status">{server.message}{server.pending.length > 0 && <> · {server.pending.length} cambio(s) pendiente(s) <button className="secondary-button" onClick={retry}>Reintentar</button></>}</p>
+    {suggestions.length > 0 && arcsa && <div className="market-hint risk-medio" role="note"><strong>Catastro de ARCSA: {suggestions.length} registro(s) con fecha disponible</strong><span>El catastro oficial (corte al {arcsa.corte}) trae la vigencia de {suggestions.filter((s) => !s.current).length} registro(s) que hoy no tienen fecha{suggestions.some((s) => s.current) ? ` y una fecha más reciente para ${suggestions.filter((s) => s.current).length}` : ""}. Si un registro aparece vencido, pudo renovarse después del corte: confírmelo con el titular.</span><span><button className="primary-button" onClick={applyArcsaDates}>Aplicar fechas de ARCSA</button></span></div>}
     <div className="business-kpis">
       <article className={count("vencido") ? "danger" : ""}><span>Vencidos</span><strong>{count("vencido")}</strong><small>No usar en ofertas</small></article>
       <article className={count("critico") ? "danger" : ""}><span>Menos de 30 días</span><strong>{count("critico")}</strong><small>Renovar ya</small></article>
@@ -84,7 +97,7 @@ export default function RegulatoryCenter() {
     </div>
     <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Documentos</p><h3>Del más urgente al menos urgente</h3></div><input className="module-search" placeholder="Buscar referencia, producto o ítem" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       <div className="inventory-list">{visible.map((row) => <article className="inventory-row" key={row.id}>
-        <div className="inventory-name"><span className={`status-dot ${DOT[row.status]}`}></span><div><strong>{row.reference}</strong><small>{row.kind} · {row.subject} · Ítems {row.items}</small>{row.note && <small>{row.note}</small>}</div></div>
+        <div className="inventory-name"><span className={`status-dot ${DOT[row.status]}`}></span><div><strong>{row.reference}</strong><small>{row.kind} · {row.subject} · Ítems {row.items}</small>{row.note && <small>{row.note}</small>}{(() => { if (!arcsa || (row.kind !== "Registro sanitario" && row.kind !== "Notificación sanitaria")) return null; const hit = findArcsa(row.reference, arcsa); return hit ? <small className="arcsa-line">ARCSA: vigente hasta {hit.entry[1]} · {hit.entry[2]}</small> : <small className="arcsa-line missing">No figura en el catastro de ARCSA al {arcsa.corte}: verifique el número.</small>; })()}</div></div>
         <div className="inventory-metrics"><div><span>Estado</span><strong>{LABEL[row.status]}</strong><small>{row.days === null ? "Sin fecha" : row.days < 0 ? `Venció hace ${-row.days} días` : `${row.days} días`}</small></div>
           <div><span>Vence</span><input type="date" value={row.expiresAt ?? ""} onChange={(e) => setDate(row.id, e.target.value)} aria-label={`Fecha de vencimiento de ${row.reference}`} /></div></div>
       </article>)}{!visible.length && <div className="module-empty">No hay documentos que coincidan.</div>}</div>
