@@ -5383,3 +5383,5 @@ textarea:focus-visible {
 .sri-stock-toggle { display: inline-flex; gap: 6px; align-items: center; font-size: .86rem; color: var(--muted, #5b6f6b); }
 .pliego-upload { cursor: pointer; display: inline-flex; align-items: center; }
 .pliego-upload.is-busy { opacity: .7; cursor: progress; }
+.arcsa-line { color: #0d5c4e; }
+.arcsa-line.missing { color: #8a5210; }
