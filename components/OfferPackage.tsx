@@ -58,6 +58,24 @@ export default function OfferPackage() {
     return buildLines(items, records, businessIsoDate(), guess, overrides);
   }, [source, records, priceList, draft.suppliers]);
 
+  // Al abrir Documentos (o al cambiar la cotización de origen) se completan solos los datos del proceso que estén vacíos.
+  const metaContract = source?.meta?.contract ?? "";
+  const metaCustomer = source?.meta?.customer ?? "";
+  const metaValidity = source?.meta?.validity ? String(source.meta.validity) : "";
+  useEffect(() => {
+    if (!ready) return;
+    const timer = window.setTimeout(() => {
+      setDraft((d) => {
+        const code = d.process.code || metaContract;
+        const entity = d.process.entity || metaCustomer;
+        const validityDays = d.process.validityDays || metaValidity;
+        if (code === d.process.code && entity === d.process.entity && validityDays === d.process.validityDays) return d;
+        return { ...d, process: { ...d.process, code, entity, validityDays } };
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [ready, metaContract, metaCustomer, metaValidity]);
+
   const rows = useMemo(() => checklist(lines), [lines]);
   const groups = useMemo(() => groupBySupplier(lines), [lines]);
   const missing = missingFields(draft.process, draft.company, lines);
