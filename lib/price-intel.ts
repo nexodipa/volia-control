@@ -43,3 +43,25 @@ export function loadPriceData(): Promise<PriceData> {
     .then(([market, hecam, suppliers]) => ({ market, hecam, suppliers }));
   return cache;
 }
+
+export type PriceSuggestion = { price: number; basis: string; margin: number | null; feasible: boolean };
+
+/**
+ * Precio unitario sugerido para competir en una subasta: un poco por debajo de lo que el mercado paga
+ * (mediana SOCE; si no hay, adjudicado HECAM; si no, 10 % bajo el referencial del HECAM), sin bajar del
+ * precio que deja el margen mínimo sobre el costo. Si el costo no lo permite, devuelve ese piso y avisa.
+ */
+export function suggestPrice(unitCost: number, minMarginPct: number, ref: { median?: number; hecamAwarded?: number; hecamReference?: number }): PriceSuggestion | null {
+  const target = ref.median ? { v: ref.median * 0.97, basis: "3 % bajo la mitad del mercado" }
+    : ref.hecamAwarded ? { v: ref.hecamAwarded * 0.97, basis: "3 % bajo lo adjudicado por el HECAM" }
+    : ref.hecamReference ? { v: ref.hecamReference * 0.9, basis: "10 % bajo el referencial del HECAM" }
+    : null;
+  if (!target || !(target.v > 0)) return null;
+  const round = (v: number) => (v < 1 ? Math.round(v * 10000) / 10000 : Math.round(v * 100) / 100);
+  const m = Math.min(Math.max(minMarginPct, 0), 95) / 100;
+  const floor = unitCost > 0 ? unitCost / (1 - m) : 0;
+  const marginAt = (p: number) => (unitCost > 0 ? Math.round(((p - unitCost) / p) * 1000) / 10 : null);
+  if (floor > target.v) return { price: round(floor), basis: `piso para el margen mínimo de ${minMarginPct} %`, margin: marginAt(floor), feasible: false };
+  const price = round(target.v);
+  return { price, basis: target.basis, margin: marginAt(price), feasible: true };
+}
