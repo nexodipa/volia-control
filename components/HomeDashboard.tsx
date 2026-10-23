@@ -10,6 +10,7 @@ import { getCloudState } from "../lib/cloud-sync";
 import { costAboveMarket, loadPriceData, marketReference } from "../lib/price-intel";
 import { getMemorySummary, type MemorySummary } from "../lib/volia-memory";
 import { readStoredArray, STORAGE_KEYS } from "../lib/storage";
+import AlertsCard from "./AlertsCard";
 
 type CaseSummary = { status: string; amount: number; paidAmount: number; dueDate: string; patient: string };
 type FinanceSummary = { status: string; direction: "income" | "expense"; dueDate: string; subtotal: number; iva: number; withholding: number; counterparty: string };
@@ -174,6 +175,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
             <div><span>Productos en inventario</span><strong>{inventory.length}</strong><small>{lowStock.length ? `${lowStock.length} con stock bajo` : inventory.length ? "Stock en orden" : "Aún sin registrar"}</small></div>
             <div><span>Cotizaciones guardadas</span><strong>{memory.quotes}</strong><small>Compartidas entre sus equipos</small></div>
           </section>
+          <AlertsCard />
         </aside>
       </div>
 
