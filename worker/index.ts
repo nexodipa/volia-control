@@ -45,7 +45,7 @@ const worker = {
     runtime.__VOLIA_DB__ = env.DB;
     runtime.__VOLIA_ALLOWED_OWNER_IDS__ = env.VOLIA_ALLOWED_OWNER_IDS;
     runtime.__VOLIA_GEMINI_KEY__ = env.GEMINI_API_KEY;
-    runtime.__VOLIA_ALERTS__ = { url: env.ALERT_WEBHOOK_URL, secret: env.ALERT_SECRET };
+    runtime.__VOLIA_ALERTS__ = { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() };
     runtime.__VOLIA_AUTH__ = { mode: env.VOLIA_AUTH_MODE, teamDomain: env.CF_ACCESS_TEAM_DOMAIN, aud: env.CF_ACCESS_AUD };
     const url = new URL(request.url);
 
@@ -66,7 +66,7 @@ const worker = {
   // Cron diario (lunes a viernes, 08:00 de Ecuador): resumen de alertas por correo.
   async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
-      sendDigest(env.DB as never, { url: env.ALERT_WEBHOOK_URL, secret: env.ALERT_SECRET })
+      sendDigest(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
         .then((r) => console.log(`[alertas] ${r.message}`))
         .catch((e) => console.error("[alertas] error", e)),
     );
