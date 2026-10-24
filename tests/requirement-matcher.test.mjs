@@ -41,3 +41,9 @@ test("a different gauge is never offered as a substitute", () => {
 test("unrelated text returns no candidates", () => {
   assert.equal(matchRequirement("Guante quirúrgico talla 7.5", catalog, []).via, "none");
 });
+
+test("singular and plural count as the same word, but measures still block", () => {
+  assert.ok(similarity("Guantes de examen talla M", "Guante de examen talla M") >= 0.99);
+  assert.ok(similarity("Jeringas 10 ml", "Jeringa 10 ml") >= 0.99);
+  assert.equal(similarity("Jeringas 10 ml", "Jeringa 3 ml"), 0);
+});

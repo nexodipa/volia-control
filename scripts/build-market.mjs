@@ -55,5 +55,7 @@ writeFileSync(out, JSON.stringify({
   generatedAt: new Date().toISOString().slice(0, 10),
   processes,
 }));
+// Archivo mínimo con la fecha: Inicio lo lee sin bajar los 400 KB del mercado completo.
+writeFileSync(out.replace(/mercado-sercop-\d+\.json$/, "mercado-meta.json"), JSON.stringify({ generatedAt: new Date().toISOString().slice(0, 10), processes: processes.length }));
 const ours = processes.filter((p) => p.vb).length;
 console.log(`Listo: ${read} registros leídos, ${processes.length} procesos de mercado (${ours} con oferta de ${ourName}). Guardado en ${out}`);
