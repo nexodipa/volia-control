@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct } from "../lib/product-catalog";
 import { matchLines, parseRequirementText, rememberAlias, type LineMatch, type StoredAlias } from "../lib/requirement-import";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
+import { loadPriceData, marketReference, supplierOffers, type PriceData } from "../lib/price-intel";
 import { parsePliego, readPdfItems, type Pliego } from "../lib/pliego";
 
 export type ImportedLine = { text: string; quantity: number; product: CatalogProduct | null };
@@ -17,6 +18,15 @@ export default function RequirementImporter({ catalog, customer, onAdd, onPliego
   const [rows, setRows] = useState<(LineMatch & { choice: string; remember: boolean; ref?: number })[]>([]);
   const [reading, setReading] = useState(false);
   const [message, setMessage] = useState("");
+  const [prices, setPrices] = useState<PriceData | null>(null);
+  useEffect(() => { if (open && !prices) void loadPriceData().then(setPrices); }, [open, prices]);
+  const hint = (text: string) => {
+    if (!prices) return "";
+    const ref = marketReference(text, prices);
+    const offer = supplierOffers(text, prices.suppliers)[0];
+    const usd = (v: number) => `USD ${v.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+    return [ref ? `Mercado: ${usd(ref.price)} (${ref.detail})` : "", offer ? `Proveedor ${offer.item.p}: ${usd(offer.price)} (${offer.kind})` : ""].filter(Boolean).join(" · ");
+  };
   const active = useMemo(() => catalog.filter((p) => p.active), [catalog]);
   const byCode = useMemo(() => new Map(active.map((p) => [p.code, p])), [active]);
 
@@ -82,6 +92,7 @@ export default function RequirementImporter({ catalog, customer, onAdd, onPliego
       {rows.length > 0 && <>
         <div className="requirement-rows">{rows.map((r, i) => <div className={`requirement-row via-${r.via}`} key={`${i}-${r.raw}`}>
           <div className="requirement-text"><strong>{r.text}</strong><small>{r.via === "alias" ? "Equivalencia confirmada" : r.via === "similar" ? "Sugerencia: revise antes de agregar" : "Sin coincidencia en el catálogo"}{r.ref ? ` · Precio referencial del pliego: USD ${r.ref.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 5 })}` : ""}</small>
+            {hint(r.text) && <small className="requirement-hint">{hint(r.text)}</small>}
             {r.via === "similar" && r.choice === FREE && r.candidates[0] && byCode.get(r.candidates[0].code) && <button type="button" className="secondary-button requirement-suggest" onClick={() => update(i, { choice: r.candidates[0].code })}>Usar sugerencia: {byCode.get(r.candidates[0].code)!.description} ({Math.round(r.candidates[0].score * 100)} %)</button>}</div>
           <label><span>Cantidad</span><input type="number" min="1" value={r.quantity} onChange={(e) => update(i, { quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) })} /></label>
           <label className="requirement-choice"><span>Producto</span><select value={r.choice} onChange={(e) => update(i, { choice: e.target.value })}>
