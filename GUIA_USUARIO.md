@@ -104,6 +104,16 @@ Una lectura OCR puede equivocarse por sombras, inclinación, baja resolución o 
 6. El documento quedará en el archivo local para volver a abrirlo.
 7. Revise y firme antes de emitirlo.
 
+## 10 bis. Traducir un documento del inglés
+
+1. Abra **Traductor**.
+2. Elija un PDF o una foto (máximo 20 MB y 40 páginas).
+3. Elija **En esta computadora (Chrome)** si el documento tiene datos sensibles. Elija **Gemini** solo si no tiene datos de pacientes y marque la confirmación.
+4. Pulse **Traducir al español** y espere.
+5. Lea el resultado completo, corrija el texto y descargue en **Word** o **PDF**.
+
+Es una traducción automática: siempre debe revisarla una persona. Si el archivo es una foto, la lectura puede fallar por sombras o inclinación.
+
 ## 11. Respaldo diario
 
 1. Pulse **Instalar y respaldar**.

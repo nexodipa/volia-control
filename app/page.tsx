@@ -11,6 +11,7 @@ import RegulatoryCenter from "../components/RegulatoryCenter";
 import MovementAnalytics from "../components/MovementAnalytics";
 import FinanceCenter from "../components/FinanceCenter";
 import DocumentGenerator from "../components/DocumentGenerator";
+import TranslatorCenter from "../components/TranslatorCenter";
 import OfferPackage from "../components/OfferPackage";
 import InstallManager from "../components/InstallManager";
 import CloudSyncModal from "../components/CloudSyncModal";
@@ -43,6 +44,7 @@ type Module =
   | "analytics"
   | "market"
   | "documents"
+  | "translator"
   | "activity"
   | "knowledge"
   | "help";
@@ -59,6 +61,7 @@ const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
   analytics: { eyebrow: "ANÁLISIS OPERATIVO", title: "Movimientos y estadísticas" },
   market: { eyebrow: "INTELIGENCIA DE MERCADO", title: "Mercado público SERCOP" },
   documents: { eyebrow: "GESTIÓN ADMINISTRATIVA", title: "Generador de documentos" },
+  translator: { eyebrow: "IDIOMAS", title: "Traductor de documentos" },
   activity: { eyebrow: "CONTROL INTERNO", title: "Historial de actividad" },
   knowledge: { eyebrow: "INTELIGENCIA Y MEMORIA", title: "Memoria y Base de Conocimiento" },
   help: { eyebrow: "ASISTENCIA", title: "Guía de uso de Volia Control" },
@@ -551,6 +554,13 @@ export default function Home() {
             <Icon name="documents" />
             Documentos
           </button>
+          <button
+            className={`nav-item ${module === "translator" ? "active" : ""}`}
+            onClick={() => navigateTo("translator")}
+          >
+            <Icon name="documents" />
+            Traductor
+          </button>
           <div className="nav-separator">Control y ayuda</div>
           <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y reglas</button>
           <button className={`nav-item ${module === "activity" ? "active" : ""}`} onClick={() => navigateTo("activity")}><Icon name="activity" />Historial</button>
@@ -661,6 +671,7 @@ export default function Home() {
               <Icon name="documents" />
               Documentos
             </button>
+            <button className={`module-tab ${module === "translator" ? "active" : ""}`} onClick={() => setModule("translator")} role="tab" aria-selected={module === "translator"}><Icon name="documents" />Traductor</button>
             <button className={`module-tab ${module === "knowledge" ? "active" : ""}`} onClick={() => setModule("knowledge")} role="tab" aria-selected={module === "knowledge"}><Icon name="knowledge" />Memoria</button>
             <button className={`module-tab ${module === "activity" ? "active" : ""}`} onClick={() => setModule("activity")} role="tab" aria-selected={module === "activity"}><Icon name="activity" />Historial</button>
             <button className={`module-tab ${module === "help" ? "active" : ""}`} onClick={() => setModule("help")} role="tab" aria-selected={module === "help"}><Icon name="help" />Ayuda</button>
@@ -1120,6 +1131,8 @@ export default function Home() {
             <MarketCenter />
           ) : module === "documents" ? (
             <><OfferPackage /><DocumentGenerator /></>
+          ) : module === "translator" ? (
+            <TranslatorCenter />
           ) : module === "knowledge" ? (
             <KnowledgeCenter />
           ) : module === "activity" ? (
