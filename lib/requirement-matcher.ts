@@ -33,10 +33,17 @@ export function normalizeRequirementText(text: string): string {
     .trim();
 }
 
+/** Singular simple: "jeringas" y "jeringa", "guantes" y "guante", "sondas" y "sonda" cuentan como la misma palabra. */
+function stem(t: string): string {
+  if (t.length <= 4 || /\d/.test(t)) return t;
+  return t.endsWith("s") ? t.slice(0, -1) : t;
+}
+
 export function tokenize(text: string): string[] {
   return normalizeRequirementText(text)
     .split(" ")
-    .filter((t) => t && !STOPWORDS.has(t));
+    .filter((t) => t && !STOPWORDS.has(t))
+    .map(stem);
 }
 
 const isNumeric = (t: string) => /^\d+([./]\d+)?$/.test(t);
