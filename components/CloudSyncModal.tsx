@@ -45,8 +45,10 @@ export default function CloudSyncModal() {
 
   useEffect(() => {
     const refresh = () => setState(getCloudState());
+    const show = () => { setState(getCloudState()); setNotice(null); setPreview(null); setOpen(true); };
     window.addEventListener("volia-cloud-sync-updated", refresh);
-    return () => window.removeEventListener("volia-cloud-sync-updated", refresh);
+    window.addEventListener("volia-open-cloud-sync", show);
+    return () => { window.removeEventListener("volia-cloud-sync-updated", refresh); window.removeEventListener("volia-open-cloud-sync", show); };
   }, []);
 
   const runPush = async () => {

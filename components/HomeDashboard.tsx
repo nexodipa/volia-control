@@ -14,7 +14,8 @@ import AlertsCard from "./AlertsCard";
 
 type CaseSummary = { status: string; amount: number; paidAmount: number; dueDate: string; patient: string };
 type FinanceSummary = { status: string; direction: "income" | "expense"; dueDate: string; subtotal: number; iva: number; withholding: number; counterparty: string };
-type Task = { tone: "urgent" | "soon" | "info"; title: string; detail: string; target: string; action: string };
+type Task = { tone: "urgent" | "soon" | "info"; title: string; detail: string; target: string; action: string; event?: string };
+type Check = { label: string; ok: boolean; target: string; hint: string };
 
 const EMPTY: MemorySummary = { quotes: 0, cases: 0, inventory: 0, movements: 0, finance: 0, documents: 0, lastBackup: null };
 const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" }).format(value || 0);
@@ -42,6 +43,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const [catalogCount, setCatalogCount] = useState(0);
   const [hasBackup, setHasBackup] = useState(true);
   const [costAlerts, setCostAlerts] = useState<string[]>([]);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [marketDate, setMarketDate] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
@@ -71,6 +73,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
       setDocs(stored.length ? stored : REGULATORY_SEED);
       setCatalogCount(readStoredArray(STORAGE_KEYS.productCatalog).length);
       setHasBackup(getCloudState().revision > 0 || !!getMemorySummary().lastBackup);
+      setLastSync(getCloudState().lastSync);
     };
     load();
     window.addEventListener("volia-memory-updated", load);
@@ -96,6 +99,8 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const undatedDocs = docs.filter((d) => !d.expiresAt && (d.kind === "Registro sanitario" || d.kind === "Notificación sanitaria"));
   const marketStale = !!marketDate && /^\d{4}-\d{2}-\d{2}$/.test(marketDate) && daysUntil(marketDate, today) < -35;
 
+  const backupAge = lastSync ? Math.max(0, -daysUntil(lastSync.slice(0, 10), today)) : null;
+
   const tasks: Task[] = [
     ...(overdueCases.length ? [{ tone: "urgent" as const, title: `${plural(overdueCases.length, "cobro vencido", "cobros vencidos")}`, detail: "Llame o escriba a la entidad y registre el compromiso de pago.", target: "cases", action: "Ver cobros" }] : []),
     ...(expiredDocs.length ? [{ tone: "urgent" as const, title: `${plural(expiredDocs.length, "documento regulatorio vencido", "documentos regulatorios vencidos")}`, detail: "No los presente en una oferta hasta renovarlos.", target: "regulatory", action: "Ver vigencias" }] : []),
@@ -106,8 +111,21 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
     ...(costAlerts.length ? [{ tone: "soon" as const, title: `${plural(costAlerts.length, "producto cuesta", "productos cuestan")} más que el precio de mercado`, detail: `Con ese costo no se puede ganar sin perder dinero. Empiece por: ${costAlerts.slice(0, 2).join("; ")}.`, target: "catalog", action: "Ver catálogo" }] : []),
     ...(undatedDocs.length ? [{ tone: "info" as const, title: `${plural(undatedDocs.length, "registro sanitario sin fecha", "registros sanitarios sin fecha")} de vencimiento`, detail: "Consulte la vigencia en ARCSA y regístrela: sin fecha, el sistema no puede avisar antes de que venzan.", target: "regulatory", action: "Ver vigencias" }] : []),
     ...(marketStale ? [{ tone: "info" as const, title: "Actualizar el mercado SERCOP", detail: `Los datos son del ${marketDate}. Descargue el archivo del mes en data.open-contracting.org y haga doble clic en «actualizar-mercado» en la carpeta de Volia Control.`, target: "market", action: "Ver mercado" }] : []),
-    ...(!hasBackup ? [{ tone: "info" as const, title: "Aún no hay una copia de respaldo", detail: "Pulse «Respaldo cifrado» arriba a la derecha y elija una frase. Solo quien la conozca podrá abrir la copia.", target: "help", action: "Más detalles" }] : []),
+    ...(hasBackup && backupAge !== null && backupAge > 7 ? [{ tone: "soon" as const, title: `Hace ${backupAge} días que no guarda el respaldo`, detail: "Guárdelo ahora: toma menos de un minuto y protege todo lo que cargó desde entonces.", target: "home", action: "Guardar respaldo", event: "volia-open-cloud-sync" }] : []),
+    ...(!hasBackup ? [{ tone: "info" as const, title: "Aún no hay una copia de respaldo", detail: "Elija una frase secreta de 12 caracteres o más. Solo quien la conozca podrá abrir la copia.", target: "home", action: "Crear respaldo", event: "volia-open-cloud-sync" }] : []),
   ];
+
+  const checks: Check[] = [
+    { label: "Cobros al día", ok: overdueCases.length + overdueFinance.length === 0, target: "cases", hint: "Hay cobros o pagos vencidos" },
+    { label: "Registros vigentes", ok: expiredDocs.length === 0 && soonDocs.length === 0, target: "regulatory", hint: "Hay documentos vencidos o por vencer" },
+    { label: "Inventario en orden", ok: lowStock.length === 0 && expiringLots.length === 0, target: "inventory", hint: "Hay stock bajo o lotes por caducar" },
+    { label: "Costos con margen", ok: costAlerts.length === 0, target: "catalog", hint: "Hay productos que cuestan más que el mercado" },
+    { label: "Respaldo reciente", ok: hasBackup && (backupAge === null || backupAge <= 7), target: "home", hint: "El respaldo falta o está viejo" },
+    { label: "Mercado actualizado", ok: !marketStale, target: "market", hint: "Los datos de mercado tienen más de un mes" },
+  ];
+  const okCount = checks.filter((c) => c.ok).length;
+  const ringPct = Math.round((okCount / checks.length) * 100);
+  const openCheck = (c: Check) => (c.target === "home" ? window.dispatchEvent(new Event("volia-open-cloud-sync")) : onNavigate(c.target));
 
   const setup = [
     { done: catalogCount > 0, title: "Cargar el catálogo", detail: "Productos con costo y precio de venta.", target: "catalog" },
@@ -120,9 +138,22 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   return (
     <section className="home-dashboard home-v2">
       <header className="home-hello">
-        <p className="home-date">{dateLabel}</p>
-        <h2>{greeting(now)}.</h2>
-        <p className="home-lede">{tasks.some((t) => t.tone !== "info") ? `Hay ${plural(tasks.filter((t) => t.tone !== "info").length, "asunto", "asuntos")} que conviene revisar hoy.` : "No hay vencimientos ni alertas pendientes. Buen momento para avanzar con las cotizaciones."}</p>
+        <div className="home-hello-text">
+          <p className="home-date">{dateLabel}</p>
+          <h2>{greeting(now)}.</h2>
+          <p className="home-lede">{okCount === checks.length ? "Todo está al día. Buen momento para avanzar con una cotización." : tasks.some((t) => t.tone !== "info") ? `Hay ${plural(tasks.filter((t) => t.tone !== "info").length, "asunto", "asuntos")} que conviene revisar hoy. Vamos de a uno.` : "Casi todo está en orden. Quedan un par de detalles por completar."}</p>
+        </div>
+        <div className={`home-health${okCount === checks.length ? " is-full" : ""}`} aria-label={`${okCount} de ${checks.length} áreas al día`}>
+          <div className="health-ring" style={{ ["--pct" as string]: ringPct }}>
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle className="ring-bg" cx="60" cy="60" r="52" /><circle className="ring-fg" cx="60" cy="60" r="52" pathLength="100" strokeDasharray={`${ringPct} 100`} /></svg>
+            <div><strong>{okCount}</strong><span>de {checks.length}</span></div>
+          </div>
+          <ul className="health-list">
+            {checks.map((c) => <li key={c.label} className={c.ok ? "ok" : "todo"}>
+              {c.ok ? <span className="health-label"><i aria-hidden="true">✓</i>{c.label}</span> : <button type="button" onClick={() => openCheck(c)} title={c.hint}><i aria-hidden="true">!</i>{c.label}</button>}
+            </li>)}
+          </ul>
+        </div>
       </header>
 
       <div className="home-columns">
@@ -134,7 +165,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
                 <li key={task.title} className={`task ${task.tone}`}>
                   <span className="task-mark" aria-hidden="true" />
                   <div><strong>{task.title}</strong><small>{task.detail}</small></div>
-                  <button type="button" className="text-button" onClick={() => onNavigate(task.target)}>{task.action}</button>
+                  <button type="button" className="text-button" onClick={() => (task.event ? window.dispatchEvent(new Event(task.event)) : onNavigate(task.target))}>{task.action}</button>
                 </li>
               ))}
             </ul>
