@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   applyCloudSnapshot,
   getCloudState,
@@ -94,6 +95,7 @@ export default function CloudSyncModal() {
     if (result.success) window.setTimeout(() => window.location.reload(), 1300);
   };
 
+  const keyOk = passphrase.length >= 12;
   const statusLabel =
     state.status === "syncing"
       ? "guardando…"
@@ -119,7 +121,7 @@ export default function CloudSyncModal() {
         Respaldo cifrado: {statusLabel}
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           className="modal-backdrop"
           onMouseDown={(event) =>
@@ -171,7 +173,8 @@ export default function CloudSyncModal() {
               </div>
               <small>
                 Utilice la misma clave en sus otras computadoras. Si la pierde,
-                nadie podrá recuperar la copia cifrada.
+                nadie podrá recuperar la copia cifrada.{" "}
+                <strong>{keyOk ? "Longitud correcta." : `Lleva ${passphrase.length} de 12 caracteres como mínimo.`}</strong>
               </small>
             </div>
 
@@ -185,7 +188,7 @@ export default function CloudSyncModal() {
                 </p>
                 <button
                   className="primary-button"
-                  disabled={busy}
+                  disabled={busy || !keyOk}
                   onClick={runPush}
                 >
                   Guardar copia cifrada
@@ -200,7 +203,7 @@ export default function CloudSyncModal() {
                 </p>
                 <button
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || !keyOk}
                   onClick={runPreview}
                 >
                   Revisar copia disponible
@@ -238,8 +241,8 @@ export default function CloudSyncModal() {
               <div className={`${styles.notice} ${styles[notice.kind]}`} role="status">
                 <strong>{notice.text}</strong>
                 {notice.authRequired && (
-                  <a href="/signin-with-chatgpt?return_to=%2F" target="_top">
-                    Iniciar sesión para continuar
+                  <a href="/" target="_top">
+                    Su sesión venció: recargue para volver a ingresar con su correo
                   </a>
                 )}
                 {notice.conflict && (
@@ -256,7 +259,8 @@ export default function CloudSyncModal() {
               <span>{dateTime(state.lastSync)}</span>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
