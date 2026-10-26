@@ -13,7 +13,7 @@ import { readStoredArray, STORAGE_KEYS } from "../lib/storage";
 import AlertsCard from "./AlertsCard";
 
 type CaseSummary = { status: string; amount: number; paidAmount: number; dueDate: string; patient: string };
-type FinanceSummary = { status: string; direction: "income" | "expense"; dueDate: string; subtotal: number; iva: number; withholding: number; counterparty: string };
+type FinanceSummary = { sourceCaseId?: string; status: string; direction: "income" | "expense"; dueDate: string; subtotal: number; iva: number; withholding: number; counterparty: string };
 type Task = { tone: "urgent" | "soon" | "info"; title: string; detail: string; target: string; action: string; event?: string };
 type Check = { label: string; ok: boolean; target: string; hint: string };
 
@@ -89,7 +89,10 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const pendingCases = cases.filter((item) => item.status !== "paid");
   const pendingValue = pendingCases.reduce((sum, item) => sum + Math.max(0, Number(item.amount || 0) - Number(item.paidAmount || 0)), 0);
   const overdueCases = pendingCases.filter((item) => item.dueDate && item.dueDate < today);
-  const overdueFinance = finance.filter((item) => item.status !== "paid" && item.dueDate && item.dueDate < today);
+  const isOverdue = (item: FinanceSummary) => item.status !== "paid" && !!item.dueDate && item.dueDate < today;
+  // Los cobros ligados a una cirugía ya cuentan en "cobros vencidos"; aquí solo van los pagos a proveedores y los cobros sueltos.
+  const overdueFinance = finance.filter((item) => item.direction === "expense" && isOverdue(item));
+  const looseReceivables = finance.filter((item) => item.direction === "income" && !item.sourceCaseId && isOverdue(item));
   const lowStock = inventory.filter((item) => Math.max(0, item.stock - item.reserved) <= item.minimum);
   const expiringLots = inventory.filter((item) => item.expiry && daysUntil(item.expiry, today) <= 120);
   const expiredDocs = docs.filter((d) => d.expiresAt && daysUntil(d.expiresAt, today) < 0);
@@ -102,7 +105,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const backupAge = lastSync ? Math.max(0, -daysUntil(lastSync.slice(0, 10), today)) : null;
 
   const tasks: Task[] = [
-    ...(overdueCases.length ? [{ tone: "urgent" as const, title: `${plural(overdueCases.length, "cobro vencido", "cobros vencidos")}`, detail: "Llame o escriba a la entidad y registre el compromiso de pago.", target: "cases", action: "Ver cobros" }] : []),
+    ...(overdueCases.length + looseReceivables.length ? [{ tone: "urgent" as const, title: `${plural(overdueCases.length + looseReceivables.length, "cobro vencido", "cobros vencidos")}`, detail: "Llame o escriba a la entidad y registre el compromiso de pago.", target: "cases", action: "Ver cobros" }] : []),
     ...(expiredDocs.length ? [{ tone: "urgent" as const, title: `${plural(expiredDocs.length, "documento regulatorio vencido", "documentos regulatorios vencidos")}`, detail: "No los presente en una oferta hasta renovarlos.", target: "regulatory", action: "Ver vigencias" }] : []),
     ...(overdueFinance.length ? [{ tone: "urgent" as const, title: `${plural(overdueFinance.length, "pago vencido", "pagos vencidos")} en finanzas`, detail: "Registre el pago o actualice la fecha.", target: "finance", action: "Ver finanzas" }] : []),
     ...(soonDocs.length ? [{ tone: "soon" as const, title: `${soonDocs[0].reference} vence en ${daysUntil(soonDocs[0].expiresAt!, today)} días`, detail: soonDocs.length > 1 ? `Y ${plural(soonDocs.length - 1, "documento más", "documentos más")} en los próximos 90 días.` : soonDocs[0].subject, target: "regulatory", action: "Ver vigencias" }] : []),
@@ -116,7 +119,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   ];
 
   const checks: Check[] = [
-    { label: "Cobros al día", ok: overdueCases.length + overdueFinance.length === 0, target: "cases", hint: "Hay cobros o pagos vencidos" },
+    { label: "Cobros al día", ok: overdueCases.length + looseReceivables.length + overdueFinance.length === 0, target: "cases", hint: "Hay cobros o pagos vencidos" },
     { label: "Registros vigentes", ok: expiredDocs.length === 0 && soonDocs.length === 0, target: "regulatory", hint: "Hay documentos vencidos o por vencer" },
     { label: "Inventario en orden", ok: lowStock.length === 0 && expiringLots.length === 0, target: "inventory", hint: "Hay stock bajo o lotes por caducar" },
     { label: "Costos con margen", ok: costAlerts.length === 0, target: "catalog", hint: "Hay productos que cuestan más que el mercado" },
