@@ -6,7 +6,7 @@ import HecamCenter from "./HecamCenter";
 import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
-import { buyerRanking, compareWithAward, filterProcesses, ourRecord, winnerRanking, type MarketFilter, type MarketProcess } from "../lib/market";
+import { amountOf, buyerOptions, buyerRanking, compareWithAward, filterProcesses, ourRecord, provinceCounts, provinceOf, winnerRanking, type MarketFilter, type MarketProcess } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
 const money = (v: number | null) => v === null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -41,6 +41,11 @@ export default function MarketCenter() {
   const visible = useMemo(() => filterProcesses(all, filter), [all, filter]);
   const record = useMemo(() => ourRecord(all), [all]);
   const winners = useMemo(() => winnerRanking(visible, 10), [visible]);
+  const provinces = useMemo(() => provinceCounts(all), [all]);
+  const buyerList = useMemo(() => buyerOptions(all), [all]);
+  const filtered = !!(filter.minAmount || filter.buyer || filter.province || filter.winner || filter.query || (filter.category && filter.category !== "todas"));
+  const detail = useMemo(() => [...visible].sort((a, b) => amountOf(b) - amountOf(a)).slice(0, 60), [visible]);
+  const clearFilters = () => setFilter({ category: "todas", query: "", onlyOurs: false });
   const buyers = useMemo(() => buyerRanking(visible, 10), [visible]);
   const ours = useMemo(() => all.filter((p) => p.vb).sort((a, b) => (b.a ?? 0) - (a.a ?? 0)), [all]);
   const links = useMemo(() => linkQuotesToProcesses(ours.map((p) => p.id), quotes), [ours, quotes]);
@@ -104,16 +109,33 @@ export default function MarketCenter() {
       <div className="market-filters">
         {(["todas", "insumos", "trauma"] as const).map((c) => <button key={c} className={filter.category === c ? "primary-button" : "secondary-button"} onClick={() => setFilter({ ...filter, category: c })}>{c === "todas" ? "Todas" : c === "insumos" ? "Insumos y dispositivos" : "Traumatología"}</button>)}
       </div>
+      <div className="market-filters" role="group" aria-label="Monto mínimo">
+        {([[0, "Cualquier monto"], [10000, "Más de $10 mil"], [50000, "Más de $50 mil"]] as const).map(([v, label]) => <button key={v} className={(filter.minAmount ?? 0) === v ? "primary-button" : "secondary-button"} onClick={() => setFilter({ ...filter, minAmount: v || undefined })}>{label}</button>)}
+      </div>
+      <div className="business-form">
+        <label><span>Provincia</span><select value={filter.province ?? ""} onChange={(e) => setFilter({ ...filter, province: e.target.value || undefined })}><option value="">Todas</option>{provinces.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
+        <label><span>Hospital o entidad</span><select value={filter.buyer ?? ""} onChange={(e) => setFilter({ ...filter, buyer: e.target.value || undefined })}><option value="">Todas</option>{buyerList.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
+      </div>
+      <p className="module-note">La provincia se toma de la fuente cuando la trae; si no, se deduce de la ciudad que aparece en el nombre de la entidad. Las entidades sin ciudad en el nombre (por ejemplo el IESS) no entran en este filtro. El monto es el adjudicado y, si el proceso aún no se adjudica, el presupuesto referencial.</p>
+      {filtered && <div className="inline-actions"><button type="button" className="secondary-button" onClick={clearFilters}>Quitar filtros</button></div>}
     </section>
 
     <div className="market-columns">
       <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Competencia</p><h3>Quién gana (por monto)</h3></div></div>
-        <ol className="market-ranking">{winners.map((w) => <li key={w.name}><span>{w.name}</span><strong>{money(w.amount)}</strong><small>{w.wins} procesos</small></li>)}</ol>
+        <ol className="market-ranking">{winners.map((w) => <li key={w.name}><span><button type="button" className="link-button" aria-pressed={filter.winner === w.name} onClick={() => setFilter({ ...filter, winner: filter.winner === w.name ? undefined : w.name })}>{w.name}</button></span><strong>{money(w.amount)}</strong><small>{w.wins} procesos · toca el nombre para ver cada proceso</small></li>)}</ol>
       </section>
       <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Clientes</p><h3>Quién compra (por procesos)</h3></div></div>
         <ol className="market-ranking">{buyers.map((b) => <li key={b.buyer}><span>{b.buyer}</span><strong>{b.processes} procesos</strong><small>{money(b.awarded)} · {b.avgTenderers ?? "—"} oferentes</small></li>)}</ol>
       </section>
     </div>
+    {filtered && <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Detalle</p><h3>{filter.winner ? `Procesos adjudicados a ${filter.winner}` : "Procesos con los filtros actuales"}</h3></div><span className="module-note">{visible.length > detail.length ? `Los ${detail.length} de mayor monto, de ${visible.length}` : `${visible.length} procesos`}</span></div>
+      <div className="inventory-list">{detail.map((p) => <article className="inventory-row" key={p.id}>
+        <div className="inventory-name"><span className={`status-dot ${p.vw ? "green" : p.w ? "red" : "yellow"}`}></span><div><strong>{p.id}</strong><small>{p.b}{provinceOf(p) ? ` · ${provinceOf(p)}` : ""} · {METHOD[p.m]} · {p.o} oferentes</small><small>{p.t}</small></div></div>
+        <div className="inventory-metrics"><div><span>{p.a ? "Adjudicado" : "Presupuesto"}</span><strong>{money(p.a ?? p.p)}</strong></div><div><span>Ganador</span><strong>{p.w || "Sin adjudicar"}</strong></div></div>
+      </article>)}</div>
+      {!visible.length && <div className="module-empty">Ningún proceso cumple estos filtros.</div>}
+    </section>}
+
     <p className="module-note">Fuente: {data.source}{data.generatedAt ? `, actualizado el ${data.generatedAt}` : ""}. Para actualizar, descargue el archivo del mes y haga doble clic en «actualizar-mercado» en la carpeta de Volia Control. Solo el 25 % de los procesos de 2026 publica ítems; por eso el análisis es por proceso y no por producto.</p>
   </section>;
 }

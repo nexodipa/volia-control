@@ -14,6 +14,13 @@ const methodOf = (details) =>
   /subasta inversa/i.test(details) ? "SIE" : /licitaci/i.test(details) ? "LIC" : /cat[aá]logo/i.test(details) ? "CAT" : /bienes y servicios [uú]nicos/i.test(details) ? "BSU" : "OTRO";
 const TRAUMA = /traumatolog|osteos[ií]ntesis|ortop[eé]d|pr[oó]tesis|implante/i;
 
+// Provincia del comprador según la fuente OCDS (parties[].address.region); vacío si el archivo no la trae.
+const regionOf = (rel) => {
+  const parties = Array.isArray(rel.parties) ? rel.parties : [];
+  const buyer = parties.find((x) => x.id && x.id === rel.buyer?.id) ?? parties.find((x) => Array.isArray(x.roles) && x.roles.includes("buyer"));
+  return String(buyer?.address?.region ?? "").trim();
+};
+
 const byId = new Map();
 let read = 0;
 let year = "";
@@ -46,6 +53,7 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
     a: s.awardedAmount,
     vb: s.weBid,
     vw: s.weWon,
+    ...(regionOf(rel) ? { r: regionOf(rel) } : {}),
   });
 }
 const processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
@@ -58,4 +66,5 @@ writeFileSync(out, JSON.stringify({
 // Archivo mínimo con la fecha: Inicio lo lee sin bajar los 400 KB del mercado completo.
 writeFileSync(out.replace(/mercado-sercop-\d+\.json$/, "mercado-meta.json"), JSON.stringify({ generatedAt: new Date().toISOString().slice(0, 10), processes: processes.length }));
 const ours = processes.filter((p) => p.vb).length;
-console.log(`Listo: ${read} registros leídos, ${processes.length} procesos de mercado (${ours} con oferta de ${ourName}). Guardado en ${out}`);
+const withRegion = processes.filter((p) => p.r).length;
+console.log(`Listo: ${read} registros leídos, ${processes.length} procesos de mercado (${ours} con oferta de ${ourName}). Guardado en ${out}. Con provincia en la fuente: ${withRegion}.`);
