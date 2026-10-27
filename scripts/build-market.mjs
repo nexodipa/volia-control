@@ -8,6 +8,8 @@ import { createInterface } from "node:readline";
 import { isRelevantProcess, summarizeProcess } from "../lib/ocds.ts";
 
 const [input, output, ourName = "VOLIA"] = process.argv.slice(2);
+// Si el archivo trae varios años ("todos los años"), solo se guarda el año en curso (o MARKET_YEAR=2025).
+const WANT_YEAR = process.env.MARKET_YEAR || String(new Date().getFullYear());
 if (!input) { console.error("Uso: node scripts/build-market.mjs <archivo.jsonl.gz> [salida.json]"); process.exit(1); }
 
 const methodOf = (details) =>
@@ -33,6 +35,7 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   if (rel.compiledRelease) rel = rel.compiledRelease;
   if (!isRelevantProcess(rel, undefined, ourName)) continue;
   const s = summarizeProcess(rel, ourName);
+  if (!String(s.date).startsWith(WANT_YEAR)) continue;
   const id = String(rel.ocid ?? "").replace(/^ocds-[a-z0-9]+-/i, "");
   if (!id) continue;
   const prev = byId.get(id);
@@ -57,7 +60,7 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   });
 }
 const processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
-const out = output || `public/data/mercado-sercop-${year || new Date().getFullYear()}.json`;
+const out = output || `public/data/mercado-sercop-${WANT_YEAR}.json`;
 writeFileSync(out, JSON.stringify({
   source: "SERCOP, Contrataciones Abiertas OCDS (data.open-contracting.org/en/publication/110), licencia CC BY 3.0 EC",
   generatedAt: new Date().toISOString().slice(0, 10),
