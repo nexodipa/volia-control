@@ -62,7 +62,7 @@ test("la prueba sin enviar no toca nada y respeta el presupuesto de consultas", 
   const many = Array.from({ length: 60 }, () => [row({ id: 5, description: "material quirúrgico" })]);
   const world = fakeWorld(Object.fromEntries(["dispositivos médicos", "insumos médicos", "implantes", "traumatología"].map((t) => [t, many])));
   const out = await collectCandidates(world.fetcher, 2026, "2026-10-27");
-  assert.ok(world.calls.length <= 36); assert.equal(out.truncated, true);
+  assert.ok(world.calls.length <= 36 && world.calls.length >= 11); assert.equal(out.truncated, true);
   const db = fakeDb(); const r = await runSercopCheck(db, cfg, { fetcher: world.fetcher, now: new Date("2026-10-27T15:00:00Z"), dryRun: true });
   assert.equal(r.sent, false); assert.equal(db.seen.size, 0);
 });
@@ -75,4 +75,15 @@ test("el correo corta en 40 y avisa", () => {
   const rows = Array.from({ length: 45 }, (_, i) => row({ id: i, title: `P${i}`, description: "material" }));
   const d = buildSercopDigest(rows, "2026-10-27", false, true);
   assert.match(d.text, /Se muestran 40 de 45/); assert.match(d.text, /se cortó/);
+});
+
+import { runAndRecordSercop, readLastSercop } from "../lib/sercop-alerts.ts";
+test("anota el último resultado y lo devuelve", async () => {
+  const store = new Map();
+  const db = { prepare(q) { const st = { q, args: [], bind(...a) { st.args = a; return st; }, async all() { if (/sercop_meta/.test(q)) return { results: store.has("last") ? [{ data: store.get("last") }] : [] }; return { results: [] }; } }; return st; }, async batch(sts) { for (const s of sts) if (/sercop_meta/.test(s.q)) store.set("last", s.args[0]); } };
+  const bad = async () => ({ ok: false, status: 503, json: async () => ({}) });
+  const r = await runAndRecordSercop(db, cfg, { fetcher: bad, now: new Date("2026-10-27T15:00:00Z") });
+  assert.equal(r.ok, false);
+  const last = await readLastSercop(db);
+  assert.equal(last.ok, false); assert.match(last.message, /No se pudo consultar/);
 });

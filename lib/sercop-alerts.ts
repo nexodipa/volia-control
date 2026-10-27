@@ -47,24 +47,33 @@ export function isRecent(row: Pick<SercopRow, "year" | "month">, today: string):
 
 export type Fetcher = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
+/** Cada consulta al SERCOP tarda unos 20 s, así que se hacen en paralelo y con tiempo máximo. */
+const REQUEST_TIMEOUT_MS = 50_000;
+
 export async function collectCandidates(fetcher: Fetcher, year: number, today: string) {
   const found = new Map<string, SercopRow>();
   let used = 0, truncated = false, failures = 0;
-  for (const term of SEARCH_TERMS) {
-    let pages = 1;
-    for (let page = 1; page <= Math.min(pages, MAX_PAGES_PER_TERM); page += 1) {
-      if (used >= FETCH_BUDGET) { truncated = true; break; }
-      used += 1;
-      try {
-        const res = await fetcher(`${SERCOP_API}?year=${year}&search=${encodeURIComponent(term)}&page=${page}`);
-        if (!res.ok) { failures += 1; break; }
-        const parsed = parsePage(await res.json());
-        pages = parsed.pages;
-        for (const r of parsed.rows) if (isRecent(r, today) && isMedical(r)) found.set(r.ocid, r);
-      } catch { failures += 1; break; }
-    }
-    if (pages > MAX_PAGES_PER_TERM) truncated = true;
+  const get = async (term: string, page: number) => {
+    used += 1;
+    try {
+      const res = await fetcher(`${SERCOP_API}?year=${year}&search=${encodeURIComponent(term)}&page=${page}`);
+      if (!res.ok) { failures += 1; return null; }
+      const parsed = parsePage(await res.json());
+      for (const r of parsed.rows) if (isRecent(r, today) && isMedical(r)) found.set(r.ocid, r);
+      return parsed.pages;
+    } catch { failures += 1; return null; }
+  };
+  // Ola 1: la primera página de cada término, todas a la vez.
+  const firstPages = await Promise.all(SEARCH_TERMS.map((t) => get(t, 1)));
+  // Ola 2: páginas siguientes, repartidas por turnos entre términos hasta agotar el presupuesto.
+  const plan: [string, number][] = [];
+  for (let page = 2; page <= MAX_PAGES_PER_TERM; page += 1) {
+    SEARCH_TERMS.forEach((t, i) => { if ((firstPages[i] ?? 1) >= page) plan.push([t, page]); });
   }
+  const room = Math.max(0, FETCH_BUDGET - SEARCH_TERMS.length);
+  if (plan.length > room) truncated = true;
+  await Promise.all(plan.slice(0, room).map(([t, p]) => get(t, p)));
+  if (firstPages.some((p) => (p ?? 1) > MAX_PAGES_PER_TERM)) truncated = true;
   return { rows: [...found.values()].sort((a, b) => b.id - a.id), used, truncated, failures };
 }
 
@@ -88,9 +97,29 @@ export type SercopResult = { ok: boolean; sent: boolean; message: string; found?
 type SeenDb = AlertDb & { batch(statements: unknown[]): Promise<unknown> };
 const COLLECTION = "sercop_seen";
 
+export type SercopLast = { at: string; ok: boolean; sent: boolean; message: string };
+
+export async function readLastSercop(db: AlertDb): Promise<SercopLast | null> {
+  try {
+    const row = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'sercop_meta' AND record_id = 'last'").all<{ data: string }>()).results[0];
+    return row ? (JSON.parse(row.data) as SercopLast) : null;
+  } catch { return null; }
+}
+
+/** Ejecuta la revisión y deja anotado el resultado para mostrarlo en Inicio (no cuenta si es prueba). */
+export async function runAndRecordSercop(db: SeenDb, cfg: AlertConfig | undefined, opts: { fetcher?: Fetcher; now?: Date } = {}): Promise<SercopResult> {
+  const result = await runSercopCheck(db, cfg, opts).catch((e): SercopResult => ({ ok: false, sent: false, message: `Error inesperado: ${e instanceof Error ? e.message : "desconocido"}` }));
+  try {
+    const stmt = db.prepare("INSERT OR REPLACE INTO shared_records (collection, record_id, data, updated_at, deleted, updated_by) VALUES ('sercop_meta', 'last', ?, ?, 0, 'sercop-alert')") as unknown as { bind(...v: unknown[]): unknown };
+    const at = new Date().toISOString();
+    await db.batch([stmt.bind(JSON.stringify({ at, ok: result.ok, sent: result.sent, message: result.message } satisfies SercopLast), at)]);
+  } catch { /* anotar el resultado es opcional */ }
+  return result;
+}
+
 export async function runSercopCheck(db: SeenDb, cfg: AlertConfig | undefined, opts: { fetcher?: Fetcher; now?: Date; dryRun?: boolean } = {}): Promise<SercopResult> {
   const today = ecuadorToday(opts.now);
-  const fetcher: Fetcher = opts.fetcher ?? ((u) => fetch(u, { headers: { Accept: "application/json" } }));
+  const fetcher: Fetcher = opts.fetcher ?? ((u) => fetch(u, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }));
   const { rows, truncated, failures, used } = await collectCandidates(fetcher, Number(today.slice(0, 4)), today);
   if (!rows.length && failures >= used) return { ok: false, sent: false, message: "No se pudo consultar el SERCOP (la interfaz no respondió). Se reintenta en la próxima ejecución." };
   const seen = new Set((await db.prepare("SELECT record_id FROM shared_records WHERE collection = 'sercop_seen'").all<{ record_id: string }>()).results.map((r) => r.record_id));

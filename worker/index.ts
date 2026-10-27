@@ -2,7 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { sendDigest } from "../lib/alert-sender";
-import { runSercopCheck } from "../lib/sercop-alerts";
+import { runAndRecordSercop } from "../lib/sercop-alerts";
 
 interface Env {
   ASSETS: Fetcher;
@@ -42,7 +42,9 @@ const worker = {
       __VOLIA_AUTH__?: { mode?: string; teamDomain?: string; aud?: string };
       __VOLIA_GEMINI_KEY__?: string;
       __VOLIA_ALERTS__?: { url?: string; secret?: string };
+      __VOLIA_CTX__?: ExecutionContext;
     };
+    runtime.__VOLIA_CTX__ = ctx;
     runtime.__VOLIA_DB__ = env.DB;
     runtime.__VOLIA_ALLOWED_OWNER_IDS__ = env.VOLIA_ALLOWED_OWNER_IDS;
     runtime.__VOLIA_GEMINI_KEY__ = env.GEMINI_API_KEY;
@@ -72,7 +74,7 @@ const worker = {
         .catch((e) => console.error("[alertas] error", e)),
     );
     ctx.waitUntil(
-      runSercopCheck(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
+      runAndRecordSercop(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
         .then((r) => console.log(`[sercop] ${r.message}`))
         .catch((e) => console.error("[sercop] error", e)),
     );

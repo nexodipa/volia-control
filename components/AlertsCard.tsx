@@ -30,11 +30,21 @@ export default function AlertsCard() {
 
   const checkSercop = async () => {
     setBusy(true);
-    setMessage("");
+    setMessage("Revisando el SERCOP… tarda cerca de un minuto, no cierre esta página.");
+    const started = Date.now();
     try {
       const res = await fetch("/api/sercop-alerts", { method: "POST" });
-      const body = (await res.json().catch(() => ({}))) as { message?: string };
-      setMessage(body.message || (res.ok ? "Revisión lista." : "No se pudo revisar el SERCOP."));
+      if (!res.ok && res.status !== 202) {
+        const body = (await res.json().catch(() => ({}))) as { message?: string };
+        setMessage(body.message || "No se pudo iniciar la revisión.");
+        return;
+      }
+      for (let i = 0; i < 30; i += 1) {
+        await new Promise((r) => setTimeout(r, 6000));
+        const last = ((await (await fetch("/api/sercop-alerts", { cache: "no-store" })).json().catch(() => ({}))) as { last?: { at: string; message: string } | null }).last;
+        if (last && new Date(last.at).getTime() >= started - 2000) { setMessage(last.message); return; }
+      }
+      setMessage("La revisión sigue en curso. Vuelva a mirar en unos minutos.");
     } catch {
       setMessage("No se pudo conectar. Revise la conexión e intente de nuevo.");
     } finally {
