@@ -2974,6 +2974,7 @@ td {
   gap: 6px;
 }
 .business-form input,
+.business-form select,
 .document-form input,
 .document-form select,
 .document-form textarea,
@@ -5385,3 +5386,6 @@ textarea:focus-visible {
 .pliego-upload.is-busy { opacity: .7; cursor: progress; }
 .arcsa-line { color: #0d5c4e; }
 .arcsa-line.missing { color: #8a5210; }
+.link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--accent, #1f6f5c); text-align: left; text-decoration: underline; cursor: pointer; overflow-wrap: anywhere; }
+.link-button[aria-pressed="true"] { font-weight: 700; text-decoration: none; }
+.link-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

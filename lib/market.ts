@@ -15,18 +15,81 @@ export type MarketProcess = {
   a: number | null; // monto adjudicado
   vb: boolean; // Volia ofertó
   vw: boolean; // Volia ganó
+  r?: string; // provincia del comprador, tal como la publica la fuente (si la trae)
 };
 
-export type MarketFilter = { category?: "todas" | "trauma" | "insumos"; query?: string; onlyOurs?: boolean };
+export type MarketFilter = {
+  category?: "todas" | "trauma" | "insumos";
+  query?: string;
+  onlyOurs?: boolean;
+  minAmount?: number; // USD; compara con el monto adjudicado y, si no hay, con el presupuesto referencial
+  buyer?: string; // entidad compradora exacta (hospital)
+  province?: string;
+  winner?: string; // proveedor ganador exacto
+};
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+// Ciudad o cantón que aparece en el nombre del comprador → provincia. Solo se usa cuando la fuente no trae provincia.
+const CITY_PROVINCE: [string, string][] = [
+  ["quito", "Pichincha"], ["pichincha", "Pichincha"], ["guayaquil", "Guayas"], ["guayas", "Guayas"], ["cuenca", "Azuay"], ["azuay", "Azuay"],
+  ["ambato", "Tungurahua"], ["tungurahua", "Tungurahua"], ["loja", "Loja"], ["manta", "Manabí"], ["portoviejo", "Manabí"], ["manabi", "Manabí"],
+  ["riobamba", "Chimborazo"], ["chimborazo", "Chimborazo"], ["ibarra", "Imbabura"], ["imbabura", "Imbabura"], ["machala", "El Oro"], ["el oro", "El Oro"],
+  ["esmeraldas", "Esmeraldas"], ["latacunga", "Cotopaxi"], ["cotopaxi", "Cotopaxi"], ["santo domingo", "Santo Domingo de los Tsáchilas"],
+  ["babahoyo", "Los Ríos"], ["quevedo", "Los Ríos"], ["los rios", "Los Ríos"], ["tulcan", "Carchi"], ["carchi", "Carchi"], ["guaranda", "Bolívar"], ["bolivar", "Bolívar"],
+  ["azogues", "Cañar"], ["canar", "Cañar"], ["puyo", "Pastaza"], ["pastaza", "Pastaza"], ["tena", "Napo"], ["napo", "Napo"], ["macas", "Morona Santiago"],
+  ["morona", "Morona Santiago"], ["zamora", "Zamora Chinchipe"], ["lago agrio", "Sucumbíos"], ["sucumbios", "Sucumbíos"], ["orellana", "Orellana"],
+  ["santa elena", "Santa Elena"], ["galapagos", "Galápagos"],
+];
+
+// Hospitales muy conocidos cuyo nombre no menciona la ciudad. Solo entran los que tienen una sola sede y provincia segura.
+const KNOWN_BUYER_PROVINCE: [string, string][] = [
+  ["carlos andrade marin", "Pichincha"], ["eugenio espejo", "Pichincha"], ["enrique garces", "Pichincha"], ["pablo arturo suarez", "Pichincha"],
+  ["baca ortiz", "Pichincha"], ["luz elena arismendi", "Pichincha"], ["fuerzas armadas no. 1", "Pichincha"], ["fuerzas armadas no 1", "Pichincha"],
+  ["teodoro maldonado", "Guayas"], ["guasmo sur", "Guayas"], ["efren jurado", "Guayas"], ["abel gilbert", "Guayas"], ["luis vernaza", "Guayas"],
+  ["roberto gilbert", "Guayas"], ["icaza bustamante", "Guayas"], ["homero castanier", "Cañar"], ["manuel ygnacio monteros", "Loja"],
+  ["isidro ayora", "Loja"], ["milagro", "Guayas"], ["vicente corral moscoso", "Azuay"], ["teofilo davila", "El Oro"], ["mariana de jesus", "Guayas"], ["verdi cevallos", "Manabí"], ["rafael rodriguez zambrano", "Manabí"],
+];
+
+/** Provincia del proceso: la de la fuente si existe; si no, la deducida del nombre del comprador; si no, "". */
+export function provinceOf(p: MarketProcess): string {
+  if (p.r) {
+    const r = norm(p.r).trim();
+    const known = CITY_PROVINCE.find(([, v]) => norm(v) === r);
+    return known ? known[1] : p.r.trim().toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+  }
+  const b = norm(p.b);
+  for (const [k, v] of KNOWN_BUYER_PROVINCE) if (b.includes(k)) return v;
+  for (const [k, v] of CITY_PROVINCE) if (new RegExp(`(^|[^a-z])${k}([^a-z]|$)`).test(b)) return v;
+  return "";
+}
+
+export const amountOf = (p: MarketProcess) => p.a ?? p.p ?? 0;
 
 export function filterProcesses(list: MarketProcess[], f: MarketFilter = {}) {
   const q = norm(f.query ?? "").trim();
   return list.filter((p) =>
     (!f.category || f.category === "todas" || p.c === f.category) &&
     (!f.onlyOurs || p.vb) &&
+    (!f.minAmount || amountOf(p) >= f.minAmount) &&
+    (!f.buyer || p.b === f.buyer) &&
+    (!f.province || provinceOf(p) === f.province) &&
+    (!f.winner || winnersOf(p).includes(f.winner)) &&
     (!q || norm(`${p.id} ${p.b} ${p.t} ${p.w}`).includes(q)));
+}
+
+/** Provincias presentes con cuántos procesos tiene cada una (ordenadas por cantidad). */
+export function provinceCounts(list: MarketProcess[]) {
+  const m = new Map<string, number>();
+  for (const p of list) { const k = provinceOf(p); if (k) m.set(k, (m.get(k) ?? 0) + 1); }
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({ name, count }));
+}
+
+/** Compradores (hospitales y otras entidades) con su número de procesos, para el selector. */
+export function buyerOptions(list: MarketProcess[]) {
+  const m = new Map<string, number>();
+  for (const p of list) m.set(p.b, (m.get(p.b) ?? 0) + 1);
+  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([name, count]) => ({ name, count }));
 }
 
 const winnersOf = (p: MarketProcess) => p.w.split(" / ").map((x) => x.trim()).filter(Boolean);

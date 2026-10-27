@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buyerRanking, compareWithAward, filterProcesses, ourRecord, winnerRanking } from "../lib/market.ts";
+import { amountOf, buyerOptions, buyerRanking, compareWithAward, filterProcesses, ourRecord, provinceCounts, provinceOf, winnerRanking } from "../lib/market.ts";
 
 const P = (o) => ({ id: "x", d: "2026-01-01", b: "H1", m: "SIE", s: "active", c: "insumos", t: "", p: null, o: 0, w: "", a: null, vb: false, vw: false, ...o });
 const list = [
@@ -60,4 +60,35 @@ test("pricing risk flags high margins against strong competition", () => {
   assert.equal(pricingRisk(20, 5), null);
   assert.equal(pricingRisk(60, 1.5), null);
   assert.equal(pricingRisk(50, null), null);
+});
+
+test("amount threshold uses the award, falling back to the reference budget", () => {
+  assert.equal(amountOf(P({ a: 5, p: 99 })), 5);
+  assert.equal(amountOf(P({ a: null, p: 99 })), 99);
+  assert.equal(filterProcesses(list, { minAmount: 10000 }).length, 3);
+  assert.equal(filterProcesses(list, { minAmount: 25000 }).length, 1);
+  assert.equal(filterProcesses([P({ id: "9", p: 60000 })], { minAmount: 50000 }).length, 1);
+});
+
+test("buyer and winner filters match exactly", () => {
+  assert.equal(filterProcesses(list, { buyer: "HE-1" }).length, 2);
+  assert.equal(filterProcesses(list, { buyer: "HE" }).length, 0);
+  assert.deepEqual(filterProcesses(list, { winner: "PRODIMEDA" }).map((p) => p.id), ["2", "5"]);
+  assert.equal(filterProcesses(list, { winner: "B.BRAUN" }).length, 1);
+  assert.deepEqual(buyerOptions(list).map((b) => b.name), ["GAD DMQ", "HCAM", "HE-1"]);
+});
+
+test("province comes from the source, else from the buyer name, else empty", () => {
+  assert.equal(provinceOf(P({ b: "HOSPITAL X", r: "AZUAY" })), "Azuay");
+  assert.equal(provinceOf(P({ b: "HOSPITAL X", r: "NAPO" })), "Napo");
+  assert.equal(provinceOf(P({ b: "H", r: "SANTA ELENA" })), "Santa Elena");
+  assert.equal(provinceOf(P({ b: "HOSPITAL GENERAL DOCENTE DE AMBATO" })), "Tungurahua");
+  assert.equal(provinceOf(P({ b: "HOSPITAL NAVAL GUAYAQUIL" })), "Guayas");
+  assert.equal(provinceOf(P({ b: "HOSPITAL DE ESPECIALIDADES CARLOS ANDRADE MARIN" })), "Pichincha");
+  assert.equal(provinceOf(P({ b: "Hospital Eugenio Espejo" })), "Pichincha");
+  assert.equal(provinceOf(P({ b: "INSTITUTO ECUATORIANO DE SEGURIDAD SOCIAL" })), "");
+  assert.equal(provinceOf(P({ b: "MANTARAYA" })), "");
+  const l = [P({ id: "a", b: "HOSPITAL DE LOJA" }), P({ id: "b", b: "CLINICA QUITO" }), P({ id: "c", b: "SIN CIUDAD" }), P({ id: "d", b: "H", r: "Loja" })];
+  assert.deepEqual(provinceCounts(l), [{ name: "Loja", count: 2 }, { name: "Pichincha", count: 1 }]);
+  assert.equal(filterProcesses(l, { province: "Loja" }).length, 2);
 });
