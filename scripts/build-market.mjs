@@ -2,7 +2,7 @@
 // SERCOP (OCDS, .jsonl.gz) que se descarga una vez al mes. Deja solo los procesos de insumos,
 // dispositivos médicos y traumatología, más todos donde Volia ofertó, con el último estado de cada uno.
 // Uso: node scripts/build-market.mjs <archivo.jsonl.gz> [salida.json] [nombre propio]
-import { createReadStream, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { createInterface } from "node:readline";
 import { isRelevantProcess, summarizeProcess } from "../lib/ocds.ts";
@@ -25,6 +25,10 @@ const regionOf = (rel) => {
 
 const byId = new Map();
 let read = 0;
+// Para archivos enormes: MARKET_STATE=ruta.json guarda el avance al terminar y lo retoma en la siguiente pasada,
+// de modo que se pueden procesar varios trozos del archivo uno tras otro (cada trozo es un .jsonl o .jsonl.gz).
+const STATE = process.env.MARKET_STATE;
+if (STATE && existsSync(STATE)) { const st = JSON.parse(readFileSync(STATE, "utf8")); for (const e of st.entries) byId.set(e.id, e); read = st.read || 0; }
 let year = "";
 const stream = input.endsWith(".gz") ? createReadStream(input).pipe(createGunzip()) : createReadStream(input);
 for await (const line of createInterface({ input: stream, crlfDelay: Infinity })) {
@@ -59,6 +63,7 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
     ...(regionOf(rel) ? { r: regionOf(rel) } : {}),
   });
 }
+if (STATE) writeFileSync(STATE, JSON.stringify({ read, entries: [...byId.values()] }));
 const processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
 const out = output || `public/data/mercado-sercop-${WANT_YEAR}.json`;
 writeFileSync(out, JSON.stringify({
