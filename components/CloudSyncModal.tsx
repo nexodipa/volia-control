@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   applyCloudSnapshot,
+  armAutoBackup,
+  disarmAutoBackup,
+  getAutoPreference,
   getCloudState,
+  isAutoArmed,
+  markBackedUpNow,
   previewCloudSnapshot,
   pushToCloud,
   type CloudPreview,
@@ -35,6 +40,8 @@ export default function CloudSyncModal() {
   const [state, setState] = useState<CloudState>(() => getCloudState());
   const [preview, setPreview] = useState<CloudPreview | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [armed, setArmed] = useState(false);
+  const [pref, setPref] = useState(false);
 
   const close = () => {
     setPassphrase("");
@@ -44,7 +51,8 @@ export default function CloudSyncModal() {
   };
 
   useEffect(() => {
-    const refresh = () => setState(getCloudState());
+    const refresh = () => { setState(getCloudState()); setArmed(isAutoArmed()); setPref(getAutoPreference()); };
+    refresh();
     const show = () => { setState(getCloudState()); setNotice(null); setPreview(null); setOpen(true); };
     window.addEventListener("volia-cloud-sync-updated", refresh);
     window.addEventListener("volia-open-cloud-sync", show);
@@ -56,6 +64,7 @@ export default function CloudSyncModal() {
     setPreview(null);
     setNotice({ text: "Cifrando y guardando la copia…", kind: "info" });
     const result = await pushToCloud(passphrase);
+    if (result.success) markBackedUpNow();
     setBusy(false);
     setState(getCloudState());
     setNotice({
@@ -64,6 +73,16 @@ export default function CloudSyncModal() {
       authRequired: result.authRequired,
       conflict: result.conflict,
     });
+    return result.success;
+  };
+
+  const turnAuto = async (on: boolean) => {
+    if (!on) { disarmAutoBackup(); setArmed(false); setPref(false); setNotice({ text: "Respaldo automático apagado. Desde ahora guarda a mano.", kind: "info" }); return; }
+    if (!keyOk) { setNotice({ text: "Escriba primero la clave de 12 caracteres o más.", kind: "error" }); return; }
+    if (await runPush()) {
+      armAutoBackup(passphrase); setArmed(true); setPref(true);
+      setNotice({ text: "Listo. Mientras esta pestaña esté abierta, la copia se actualiza sola cada vez que haya cambios.", kind: "success" });
+    }
   };
 
   const runPreview = async () => {
@@ -105,7 +124,11 @@ export default function CloudSyncModal() {
         ? "revisar"
         : state.status === "offline"
           ? "sin conexión"
-          : state.revision > 0
+          : armed
+          ? "automático"
+          : pref
+            ? "automático en pausa"
+        : state.revision > 0
             ? `versión ${state.revision}`
             : "sin activar";
 
@@ -178,6 +201,14 @@ export default function CloudSyncModal() {
                 nadie podrá recuperar la copia cifrada.{" "}
                 <strong>{keyOk ? "Longitud correcta." : `Lleva ${passphrase.length} de 12 caracteres como mínimo.`}</strong>
               </small>
+            </div>
+
+            <div style={{ margin: "14px 0", padding: "12px 14px", border: "1px solid var(--line, #cbd3c8)", borderRadius: 10, display: "grid", gap: 8 }}>
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+                <input type="checkbox" checked={armed} disabled={busy} onChange={(e) => void turnAuto(e.target.checked)} style={{ marginTop: 4 }} />
+                <span><strong>Guardar solo mientras trabajo</strong><br /><small>Cada 5 minutos, si hubo cambios, se actualiza la copia cifrada. La clave se queda únicamente en la memoria de esta pestaña: si la cierra o recarga, se pierde y hay que escribirla otra vez.</small></span>
+              </label>
+              {pref && !armed && <small role="status"><strong>En pausa.</strong> Escriba su clave y marque la casilla para reanudar.</small>}
             </div>
 
             <div className={styles.actionGrid}>

@@ -123,6 +123,8 @@ Es una traducción automática: siempre debe revisarla una persona. Si el archiv
 5. Para recuperar datos, pulse **Restaurar** y seleccione el archivo.
 6. Después de restaurar, revise totales, inventario y expedientes.
 
+**Respaldo automático.** En **Respaldo cifrado**, escriba la clave y marque **Guardar solo mientras trabajo**. Mientras la pestaña esté abierta, la copia se actualiza sola cada 5 minutos si hubo cambios. La clave solo vive en la memoria de la pestaña: si la cierra o recarga, hay que escribirla otra vez. Si el botón dice "revisar", el guardado automático se detuvo (sesión vencida o hay una versión más nueva): ábralo y siga las indicaciones.
+
 Nunca envíe el respaldo por un canal público ni lo suba a GitHub.
 
 ## 12. Lista antes de cerrar
