@@ -34,12 +34,9 @@ export default function AlertsCard() {
     const started = Date.now();
     try {
       const res = await fetch("/api/sercop-alerts", { method: "POST" });
-      if (!res.ok && res.status !== 202) {
-        const body = (await res.json().catch(() => ({}))) as { message?: string };
-        setMessage(body.message || "No se pudo iniciar la revisión.");
-        return;
-      }
-      for (let i = 0; i < 30; i += 1) {
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      if (body?.message) { setMessage(body.message); return; }
+      for (let i = 0; i < 20; i += 1) {
         await new Promise((r) => setTimeout(r, 6000));
         const last = ((await (await fetch("/api/sercop-alerts", { cache: "no-store" })).json().catch(() => ({}))) as { last?: { at: string; message: string } | null }).last;
         if (last && new Date(last.at).getTime() >= started - 2000) { setMessage(last.message); return; }
