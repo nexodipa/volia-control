@@ -116,7 +116,7 @@ export default function MarketCenter() {
         <label><span>Provincia</span><select value={filter.province ?? ""} onChange={(e) => setFilter({ ...filter, province: e.target.value || undefined })}><option value="">Todas</option>{provinces.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
         <label><span>Hospital o entidad</span><select value={filter.buyer ?? ""} onChange={(e) => setFilter({ ...filter, buyer: e.target.value || undefined })}><option value="">Todas</option>{buyerList.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
       </div>
-      <p className="module-note">La provincia se toma de la fuente cuando la trae; si no, se deduce de la ciudad que aparece en el nombre de la entidad. Las entidades sin ciudad en el nombre (por ejemplo el IESS) no entran en este filtro. El monto es el adjudicado y, si el proceso aún no se adjudica, el presupuesto referencial.</p>
+      <p className="module-note">La provincia es la que publica el SERCOP para la entidad compradora; cuando no la trae, se deduce de la ciudad que aparece en su nombre. Las entidades sin ninguna de las dos no entran en este filtro. El monto es el adjudicado y, si el proceso aún no se adjudica, el presupuesto referencial.</p>
       {filtered && <div className="inline-actions"><button type="button" className="secondary-button" onClick={clearFilters}>Quitar filtros</button></div>}
     </section>
 

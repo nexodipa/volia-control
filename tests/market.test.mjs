@@ -82,6 +82,7 @@ test("province comes from the source, else from the buyer name, else empty", () 
   assert.equal(provinceOf(P({ b: "HOSPITAL X", r: "AZUAY" })), "Azuay");
   assert.equal(provinceOf(P({ b: "HOSPITAL X", r: "NAPO" })), "Napo");
   assert.equal(provinceOf(P({ b: "H", r: "SANTA ELENA" })), "Santa Elena");
+  for (const [raw, want] of [["MANABI", "Manabí"], ["LOS RIOS", "Los Ríos"], ["CAÑAR", "Cañar"], ["GALAPAGOS", "Galápagos"], ["SUCUMBIOS", "Sucumbíos"], ["ZAMORA CHINCHIPE", "Zamora Chinchipe"], ["MORONA SANTIAGO", "Morona Santiago"]]) assert.equal(provinceOf(P({ b: "H", r: raw })), want);
   assert.equal(provinceOf(P({ b: "HOSPITAL GENERAL DOCENTE DE AMBATO" })), "Tungurahua");
   assert.equal(provinceOf(P({ b: "HOSPITAL NAVAL GUAYAQUIL" })), "Guayas");
   assert.equal(provinceOf(P({ b: "HOSPITAL DE ESPECIALIDADES CARLOS ANDRADE MARIN" })), "Pichincha");
