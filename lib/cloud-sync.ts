@@ -1,6 +1,7 @@
 "use client";
 
 import { recordActivity } from "./activity-log";
+import { AUTO_CHECK_MS, dataFingerprint, shouldAutoBackup } from "./auto-backup";
 import { BACKUP_KEYS, isValidBackupValue, STORAGE_KEYS } from "./storage";
 
 const CLOUD_STATE_KEY = "volia-cloud-state-v2";
@@ -442,4 +443,60 @@ export function applyCloudSnapshot(preview: CloudPreview): CloudResult {
         "No se pudo aplicar la copia. Los datos existentes permanecen sin cambios.",
     };
   }
+}
+
+// ── Respaldo automático mientras la pestaña esté abierta ─────────────────────────────────────────
+// La clave NUNCA se guarda en disco: vive solo en esta variable. Si se cierra o recarga la pestaña, hay que
+// escribirla de nuevo. Lo único que se recuerda es la preferencia (activado o no) y la huella de lo último guardado.
+const AUTO_PREF_KEY = "volia-autobackup-pref-v1";
+const AUTO_HASH_KEY = "volia-autobackup-hash-v1";
+let sessionKey: string | null = null;
+let autoTimer: number | null = null;
+let autoBusy = false;
+let lastAttemptAt = 0;
+
+export const getAutoPreference = () => typeof window !== "undefined" && localStorage.getItem(AUTO_PREF_KEY) === "1";
+export const isAutoArmed = () => sessionKey !== null;
+const notifyAuto = () => typeof window !== "undefined" && window.dispatchEvent(new Event("volia-cloud-sync-updated"));
+const currentFingerprint = () => dataFingerprint(collectLocalData());
+const rememberFingerprint = () => localStorage.setItem(AUTO_HASH_KEY, currentFingerprint());
+
+export function armAutoBackup(passphrase: string) {
+  validatePassphrase(passphrase);
+  sessionKey = passphrase;
+  localStorage.setItem(AUTO_PREF_KEY, "1");
+  rememberFingerprint();
+  lastAttemptAt = Date.now();
+  startAutoLoop();
+  notifyAuto();
+}
+
+export function disarmAutoBackup(forgetPreference = true) {
+  sessionKey = null;
+  if (forgetPreference) localStorage.removeItem(AUTO_PREF_KEY);
+  if (autoTimer !== null) { window.clearInterval(autoTimer); autoTimer = null; }
+  notifyAuto();
+}
+
+/** Marca como "ya guardado" lo que hay ahora (se llama después de cada guardado manual exitoso). */
+export function markBackedUpNow() { rememberFingerprint(); }
+
+async function autoTick() {
+  const changed = localStorage.getItem(AUTO_HASH_KEY) !== currentFingerprint();
+  if (!shouldAutoBackup({ armed: sessionKey !== null, busy: autoBusy, online: navigator.onLine, changed, now: Date.now(), lastAttemptAt })) return;
+  autoBusy = true; lastAttemptAt = Date.now();
+  try {
+    const result = await pushToCloud(sessionKey as string);
+    if (result.success) rememberFingerprint();
+    else if (result.authRequired || result.conflict) {
+      // Sesión vencida o alguien guardó una versión más nueva: no se insiste, se avisa y se pide intervención.
+      disarmAutoBackup(false);
+      saveCloudState({ status: "error", lastError: result.conflict ? "El respaldo automático se detuvo: hay una versión más nueva en la nube. Revísela antes de seguir." : "El respaldo automático se detuvo: su sesión venció. Recargue la página." });
+    }
+  } finally { autoBusy = false; }
+}
+
+function startAutoLoop() {
+  if (autoTimer !== null || typeof window === "undefined") return;
+  autoTimer = window.setInterval(() => { void autoTick(); }, AUTO_CHECK_MS);
 }
