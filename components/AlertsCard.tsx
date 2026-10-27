@@ -28,6 +28,20 @@ export default function AlertsCard() {
     }
   };
 
+  const checkSercop = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/sercop-alerts", { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { message?: string };
+      setMessage(body.message || (res.ok ? "Revisión lista." : "No se pudo revisar el SERCOP."));
+    } catch {
+      setMessage("No se pudo conectar. Revise la conexión e intente de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (configured === null) return null;
   return (
     <section aria-labelledby="home-alerts-title">
@@ -37,7 +51,8 @@ export default function AlertsCard() {
           ? "Cada día hábil a las 08:00 se envía a Gmail lo que cambió: cobros vencidos, pagos por vencer y registros sanitarios. Los lunes llega el informe completo."
           : "Aún no están activadas. Siga la guía de docs/alertas-gmail.md y ejecute configurar-alertas.cmd."}
       </p>
-      {configured && <button type="button" className="secondary-button" onClick={send} disabled={busy}>{busy ? "Enviando…" : "Enviar un resumen de prueba"}</button>}
+      {configured && <p className="task-clear">También cada día revisa el SERCOP y te escribe solo si salió un proceso médico nuevo.</p>}
+      {configured && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="secondary-button" onClick={send} disabled={busy}>{busy ? "Trabajando…" : "Enviar un resumen de prueba"}</button><button type="button" className="secondary-button" onClick={checkSercop} disabled={busy}>Revisar el SERCOP ahora</button></div>}
       {message && <p className="memory-confirmation" role="status">{message}</p>}
     </section>
   );

@@ -2,6 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { sendDigest } from "../lib/alert-sender";
+import { runSercopCheck } from "../lib/sercop-alerts";
 
 interface Env {
   ASSETS: Fetcher;
@@ -69,6 +70,11 @@ const worker = {
       sendDigest(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
         .then((r) => console.log(`[alertas] ${r.message}`))
         .catch((e) => console.error("[alertas] error", e)),
+    );
+    ctx.waitUntil(
+      runSercopCheck(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
+        .then((r) => console.log(`[sercop] ${r.message}`))
+        .catch((e) => console.error("[sercop] error", e)),
     );
   },
 };
