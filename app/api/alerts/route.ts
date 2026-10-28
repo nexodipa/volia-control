@@ -1,4 +1,6 @@
-import { alertsConfigured, sendDigest } from "../../../lib/alert-sender";
+import { alertsConfigured } from "../../../lib/alert-sender";
+import { readMeta, runAndRecordDigest, runHealth } from "../../../lib/heartbeat";
+import { sendMonthlyReport } from "../../../lib/monthly-sender";
 import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +10,18 @@ const config = () => (globalThis as typeof globalThis & { __VOLIA_ALERTS__?: { u
 export async function GET() {
   const access = await requireBusinessAccess();
   if (access instanceof Response) return access;
-  return apiJson({ configured: alertsConfigured(config()) });
+  const last = await readMeta(access.db as never, "digest");
+  return apiJson({ configured: alertsConfigured(config()), last, health: runHealth(last) });
 }
 
 // Envía ahora un resumen de prueba (siempre manda algo, aunque no haya novedades).
-export async function POST() {
+export async function POST(request: Request) {
   const access = await requireEditorAccess();
   if (access instanceof Response) return access;
-  const result = await sendDigest(access.db as never, config(), { test: true });
+  if (new URL(request.url).searchParams.get("informe") === "mensual") {
+    const report = await sendMonthlyReport(access.db as never, config(), { test: true });
+    return apiJson(report, report.ok ? 200 : 502);
+  }
+  const result = await runAndRecordDigest(access.db as never, config(), { test: true });
   return apiJson(result, result.ok ? 200 : 502);
 }

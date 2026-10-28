@@ -26,7 +26,7 @@ const localBindingConfig = {
   workers_dev: true,
   preview_urls: false,
   // 13:00 UTC = 08:00 en Ecuador, de lunes a viernes.
-  triggers: { crons: ["0 13 * * 1-5"] },
+  triggers: { crons: ["0 13 * * 1-5", "0 19 * * 1-5"] },
   ...(Object.keys(deployVars).length ? { vars: deployVars } : {}),
   d1_databases: d1
     ? [

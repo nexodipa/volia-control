@@ -16,6 +16,12 @@ El servidor arma un resumen cada día hábil a las 08:00 (hora de Ecuador) y lo 
 6. En la carpeta de Volia Control, doble clic en `configurar-alertas.cmd`: pegar la dirección y luego la clave `SECRET`.
 7. Publicar con `publicar-cloudflare.cmd` y, en Inicio, usar "Enviar un resumen de prueba".
 
+## Si algo falla
+
+- A las 14:00 (lunes a viernes) el servidor revisa si el resumen y la revisión del SERCOP de la mañana salieron bien; si no, los reintenta solos.
+- Inicio muestra un aviso amarillo cuando el último resumen falló o cuando pasaron dos días hábiles sin ejecutarse.
+- Vigilante externo (recomendado): en healthchecks.io cree un chequeo gratis con periodo de 1 día y margen de 6 horas, y pegue su dirección `https://hc-ping.com/...` en el paso 3 de `configurar-alertas.cmd`. El servidor le avisa después de cada ejecución; si no llega el aviso o llega un fallo, healthchecks le escribe a su correo personal, aunque el Worker o el script de Gmail estén caídos.
+
 ## Seguridad
 
 Los destinatarios están fijos en el script: quien conozca la clave solo puede escribir a esas direcciones. La clave y la dirección quedan como secretos del servidor, no en el repositorio. Gmail permite unos 100 correos diarios en cuentas gratuitas, muy por encima de lo que se envía aquí.

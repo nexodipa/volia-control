@@ -8,6 +8,8 @@ export type DigestFinance = {
   direction: "income" | "expense";
   status: "paid" | "pending";
   dueDate: string;
+  /** Fecha de emisión (AAAA-MM-DD); la usa el informe mensual. */
+  date?: string;
   counterparty: string;
   document: string;
   subtotal: number;
