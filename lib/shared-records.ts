@@ -2,7 +2,7 @@
 // Los adaptadores por colección (ids derivados, campos privados) viven en shared-adapters.ts.
 // Funciones puras: el cliente las usa para calcular qué subir y cómo quedar después de bajar; el servidor, para validar.
 
-export const SHARED_COLLECTION_NAMES = ["inventory", "movements", "finance", "quotes", "aliases"] as const;
+export const SHARED_COLLECTION_NAMES = ["inventory", "movements", "finance", "quotes", "aliases", "tenders"] as const;
 export type SharedCollection = (typeof SHARED_COLLECTION_NAMES)[number];
 
 export type SharedRecord = { id: string; data: unknown; updatedAt: string; deleted: boolean };

@@ -3,6 +3,7 @@
 // (tabla shared_records, colección "sercop_seen") y envía por Gmail solo lo nuevo.
 import { alertsConfigured, APP_URL, type AlertConfig, type AlertDb } from "./alert-sender.ts";
 import { ecuadorToday } from "./alert-digest.ts";
+import { followLink } from "./tenders.ts";
 
 export const SERCOP_API = "https://datosabiertos.compraspublicas.gob.ec/PLATAFORMA/api/search_ocds";
 export const SEARCH_TERMS = [
@@ -83,12 +84,13 @@ const short = (s: string | null, n = 220) => (s ?? "").replace(/\s+/g, " ").trim
 
 export function buildSercopDigest(rows: SercopRow[], today: string, first: boolean, truncated: boolean) {
   const shown = rows.slice(0, MAX_IN_EMAIL);
-  const line = (r: SercopRow) => `${r.title || r.ocid} · ${short(r.buyer, 80)} (${r.region ?? "—"}) · ${r.internal_type ?? "proceso"} · ${money(r.amount ?? r.budget)}\n   ${short(r.description)}`;
+  const follow = (r: SercopRow) => followLink(APP_URL, { ref: r.title || r.ocid, title: short(r.description, 160), buyer: short(r.buyer, 100), amount: r.budget ?? r.amount, province: r.region });
+  const line = (r: SercopRow) => `${r.title || r.ocid} · ${short(r.buyer, 80)} (${r.region ?? "—"}) · ${r.internal_type ?? "proceso"} · ${money(r.amount ?? r.budget)}\n   ${short(r.description)}\n   Dar seguimiento: ${follow(r)}`;
   const head = first ? `Primera revisión: ${rows.length} proceso(s) médico(s) publicados este mes o el anterior` : `${rows.length} proceso(s) nuevo(s) en el SERCOP`;
   const notes = [rows.length > shown.length ? `Se muestran ${shown.length} de ${rows.length}; los ${rows.length - shown.length} restantes llegan en el próximo aviso.` : "", truncated ? "La búsqueda se cortó por límite de consultas: puede haber más procesos que no se revisaron." : "", "Verifique cada proceso en el portal oficial del SERCOP antes de ofertar."].filter(Boolean);
   const subject = `Volia Control · SERCOP: ${rows.length} proceso(s) ${first ? "para revisar" : "nuevo(s)"} (${today})`;
   const text = [head, "", ...shown.map((r, i) => `${i + 1}. ${line(r)}`), "", ...notes, `Abrir el sistema: ${APP_URL}`].join("\n");
-  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2933"><h2 style="margin:0 0 12px">${esc(head)}</h2><ol style="padding-left:20px">${shown.map((r) => `<li style="margin-bottom:10px"><strong>${esc(r.title || r.ocid)}</strong><br>${esc(short(r.buyer, 80))} · ${esc(r.region ?? "—")} · ${esc(r.internal_type ?? "proceso")} · ${esc(money(r.amount ?? r.budget))}<br><span style="color:#44564c">${esc(short(r.description))}</span></li>`).join("")}</ol>${notes.map((n) => `<p style="color:#44564c">${esc(n)}</p>`).join("")}<p><a href="${esc(APP_URL)}">Abrir el sistema</a></p></div>`;
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2933"><h2 style="margin:0 0 12px">${esc(head)}</h2><ol style="padding-left:20px">${shown.map((r) => `<li style="margin-bottom:10px"><strong>${esc(r.title || r.ocid)}</strong><br>${esc(short(r.buyer, 80))} · ${esc(r.region ?? "—")} · ${esc(r.internal_type ?? "proceso")} · ${esc(money(r.amount ?? r.budget))}<br><span style="color:#44564c">${esc(short(r.description))}</span><br><a href="${esc(follow(r))}">Dar seguimiento en Volia</a></li>`).join("")}</ol>${notes.map((n) => `<p style="color:#44564c">${esc(n)}</p>`).join("")}<p><a href="${esc(APP_URL)}">Abrir el sistema</a></p></div>`;
   return { subject, text, html };
 }
 
