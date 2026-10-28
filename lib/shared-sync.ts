@@ -43,7 +43,7 @@ async function reason(res: Response) {
   return `Error ${res.status}`;
 }
 
-async function syncOne({ collection, key, makeId, share, restore }: SyncedCollection): Promise<SyncOutcome> {
+async function syncOne({ collection, key, makeId, share, restore }: SyncedCollection, readOnly = false): Promise<SyncOutcome> {
   const raw = readStoredArray<Record<string, unknown>>(key);
   const withIds = makeId ? ensureIds(raw, makeId) : { items: raw as Item[], changed: false };
   const local = withIds.items as Item[];
@@ -51,7 +51,8 @@ async function syncOne({ collection, key, makeId, share, restore }: SyncedCollec
     try { localStorage.setItem(key, JSON.stringify(local)); } catch { return { ok: false, reason: "No se pudo guardar en este equipo." }; }
   }
   const outgoing = share ? local.map(share) : local;
-  const changes = computeLocalChanges(outgoing, readShadow(collection), new Date().toISOString());
+  // Una cuenta de solo consulta no sube nada: lo que cambie en su equipo se queda ahí.
+  const changes = readOnly ? [] : computeLocalChanges(outgoing, readShadow(collection), new Date().toISOString());
   for (let i = 0; i < changes.length; i += CHUNK) {
     const res = await fetch(ENDPOINT, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collection, records: changes.slice(i, i + CHUNK) }) });
     if (!res.ok) return { ok: false, reason: await reason(res) };
@@ -75,14 +76,14 @@ async function syncOne({ collection, key, makeId, share, restore }: SyncedCollec
 let inFlight: Promise<SyncOutcome> | null = null;
 
 /** Sincroniza todas las colecciones, una a la vez. Llamadas simultáneas comparten la misma ejecución. */
-export function syncAll(): Promise<SyncOutcome> {
+export function syncAll(opts: { readOnly?: boolean } = {}): Promise<SyncOutcome> {
   if (inFlight) return inFlight;
   inFlight = (async () => {
     let changedLocally = false;
     let uploaded = 0;
     try {
       for (const entry of SYNCED_COLLECTIONS) {
-        const r = await syncOne(entry);
+        const r = await syncOne(entry, opts.readOnly);
         if (!r.ok) return r;
         changedLocally ||= r.changedLocally;
         uploaded += r.uploaded;

@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { ecuadorToday } from "../lib/alert-digest";
 import { needsRetry, pingHealthcheck, readMeta, RETRY_CRON, runAndRecordDigest } from "../lib/heartbeat";
+import { sendMonthlyReport } from "../lib/monthly-sender";
 import { readLastSercop, runAndRecordSercop } from "../lib/sercop-alerts";
 
 interface Env {
@@ -15,6 +16,7 @@ interface Env {
   GEMINI_API_KEY?: string;
   ALERT_WEBHOOK_URL?: string;
   ALERT_SECRET?: string;
+  VOLIA_VIEWER_EMAILS?: string;
   HEALTHCHECK_URL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -44,6 +46,7 @@ const worker = {
       __VOLIA_AUTH__?: { mode?: string; teamDomain?: string; aud?: string };
       __VOLIA_GEMINI_KEY__?: string;
       __VOLIA_ALERTS__?: { url?: string; secret?: string };
+      __VOLIA_ROLES__?: { viewers?: string };
       __VOLIA_CTX__?: ExecutionContext;
     };
     runtime.__VOLIA_CTX__ = ctx;
@@ -51,6 +54,7 @@ const worker = {
     runtime.__VOLIA_ALLOWED_OWNER_IDS__ = env.VOLIA_ALLOWED_OWNER_IDS;
     runtime.__VOLIA_GEMINI_KEY__ = env.GEMINI_API_KEY;
     runtime.__VOLIA_ALERTS__ = { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() };
+    runtime.__VOLIA_ROLES__ = { viewers: env.VOLIA_VIEWER_EMAILS };
     runtime.__VOLIA_AUTH__ = { mode: env.VOLIA_AUTH_MODE, teamDomain: env.CF_ACCESS_TEAM_DOMAIN, aud: env.CF_ACCESS_AUD };
     const url = new URL(request.url);
 
@@ -89,7 +93,13 @@ const worker = {
         console.log(`[sercop] ${r.message}`);
         return r.ok;
       };
+      const runMonthly = async () => {
+        const r = await sendMonthlyReport(db, cfg);
+        if (r.sent || !r.ok) console.log(`[informe] ${r.message}`);
+        return r.ok;
+      };
       const [digest, sercop] = await Promise.all([guard(runDigest()), guard(runSercop())]);
+      await guard(runMonthly());
       // El SERCOP responde lento y a veces cae: por la mañana su fallo no alarma porque a las 14:00 se reintenta.
       const pinged = await pingHealthcheck(env.HEALTHCHECK_URL, digest && (sercop || !retry));
       console.log(`[latido] resumen=${digest} sercop=${sercop} vigilante=${pinged}`);

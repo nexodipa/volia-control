@@ -1,4 +1,4 @@
-import { apiJson, requireBusinessAccess } from "../../../lib/server-auth";
+import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 import { fromRow, toRow, validateRecords, type RegulatoryRow } from "../../../lib/regulatory-api";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET() {
 
 // Inserta o actualiza por código solo los documentos enviados (los que cambiaron en el equipo).
 export async function PUT(request: Request) {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const raw = await request.text();
   if (raw.length > MAX_BODY_CHARS) return apiJson({ error: "El envío es demasiado grande." }, 413);
@@ -45,7 +45,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const code = new URL(request.url).searchParams.get("code") ?? "";
   if (!/^[a-z0-9._-]{1,120}$/i.test(code)) return apiJson({ error: "Código inválido." }, 400);

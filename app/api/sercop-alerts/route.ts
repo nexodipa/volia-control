@@ -1,5 +1,5 @@
 import { readLastSercop, runAndRecordSercop } from "../../../lib/sercop-alerts";
-import { apiJson, requireBusinessAccess } from "../../../lib/server-auth";
+import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET() {
 // waitUntil se corta ~30 s después de responder, así que la respuesta se mantiene abierta (con espacios de latido,
 // válidos antes de un JSON) hasta que termina la revisión.
 export async function POST() {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const enc = new TextEncoder();
   const db = access.db as never;

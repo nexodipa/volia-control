@@ -6,7 +6,8 @@ import HecamCenter from "./HecamCenter";
 import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
-import { amountOf, buyerOptions, buyerRanking, compareWithAward, filterProcesses, ourRecord, provinceCounts, provinceOf, winnerRanking, type MarketFilter, type MarketProcess } from "../lib/market";
+import { BarList, ColumnChart, Donut } from "./charts";
+import { amountOf, buyerOptions, buyerRanking, compareWithAward, competitionBuckets, filterProcesses, monthlyTotals, ourRecord, provinceCounts, provinceOf, provinceTotals, winnerRanking, type MarketFilter, type MarketProcess } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
 const money = (v: number | null) => v === null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -47,6 +48,9 @@ export default function MarketCenter() {
   const detail = useMemo(() => [...visible].sort((a, b) => amountOf(b) - amountOf(a)).slice(0, 60), [visible]);
   const clearFilters = () => setFilter({ category: "todas", query: "", onlyOurs: false });
   const buyers = useMemo(() => buyerRanking(visible, 10), [visible]);
+  const months = useMemo(() => monthlyTotals(visible), [visible]);
+  const competition = useMemo(() => competitionBuckets(visible), [visible]);
+  const topProvinces = useMemo(() => provinceTotals(visible, 8), [visible]);
   const ours = useMemo(() => all.filter((p) => p.vb).sort((a, b) => (b.a ?? 0) - (a.a ?? 0)), [all]);
   const links = useMemo(() => linkQuotesToProcesses(ours.map((p) => p.id), quotes), [ours, quotes]);
   const awardedTotal = visible.reduce((s, p) => s + (p.a ?? 0), 0);
@@ -79,6 +83,15 @@ export default function MarketCenter() {
       <article><span>Oferentes promedio</span><strong>{avgTenderers.toFixed(1)}</strong><small>Competencia por proceso</small></article>
       <article className={record.winRate !== null && record.winRate < 25 ? "warn" : ""}><span>Volia 2026</span><strong>{record.won} de {record.won + record.lost}</strong><small>Ganados entre los ya adjudicados · {record.pending} sin adjudicar</small></article>
     </div>
+
+    {visible.length > 0 && <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Panorama</p><h3>El mercado en gráficas{filtered ? " (con los filtros actuales)" : ""}</h3></div></div>
+      <div className="stat-grid">
+        {months.length > 1 && <section className="stat-panel"><h4>Monto adjudicado por mes</h4><ColumnChart label="Monto adjudicado por mes en dólares" data={months.map((m) => ({ label: m.label, values: [m.amount] }))} series={[{ name: "Monto adjudicado", tone: "green" }]} format={(n) => `$${new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(n)}`} /><p className="module-note">Octubre suele estar incompleto: el archivo del SERCOP se corta a mitad de mes.</p></section>}
+        {competition.some((b) => b.count > 0) && <section className="stat-panel"><h4>Cuánta competencia hay por proceso</h4><BarList tone="sun" items={competition.map((b) => ({ label: b.label, value: b.count, display: `${b.count} proceso(s)` }))} /><p className="module-note">{competition[0].count ? `${competition[0].count} proceso(s) tuvieron un solo oferente: ahí hay más espacio para entrar con buen precio.` : "Ningún proceso de esta selección tuvo un solo oferente."}</p></section>}
+        {topProvinces.length > 0 && <section className="stat-panel"><h4>Dónde se compra más (por monto)</h4><BarList items={topProvinces.map((p) => ({ label: p.name, value: p.amount, display: money(p.amount), hint: `${p.count} proceso(s)` }))} /></section>}
+        {record.won + record.lost + record.pending > 0 && <section className="stat-panel"><h4>Cómo le fue a Volia en 2026</h4><Donut label="Resultados de Volia en 2026" center={record.winRate === null ? "" : `${Math.round(record.winRate)} %`} slices={[{ label: "Ganados", value: record.won, tone: "green" }, { label: "Perdidos", value: record.lost, tone: "coral" }, { label: "Sin adjudicar", value: record.pending, tone: "gray" }]} /></section>}
+      </div>
+    </section>}
 
     <section className="business-card"><div className="section-heading"><div><p className="eyebrow">Comparador</p><h3>¿A qué distancia quedó nuestro precio del ganador?</h3></div></div>
       <div className="business-form">
