@@ -75,7 +75,7 @@ export function ColumnChart({ data, series, format = compact, label }: { data: C
           );
         })}
       </svg>
-      {series.length > 1 && <figcaption className="chart-legend">{series.map((s) => <span key={s.name}><i className={`tone-${s.tone}`} />{s.name}</span>)}</figcaption>}
+      {series.length > 1 && <figcaption className="viz-legend">{series.map((s) => <span key={s.name}><i className={`tone-${s.tone}`} />{s.name}</span>)}</figcaption>}
     </figure>
   );
 }
@@ -117,7 +117,7 @@ export function Donut({ slices, center, label }: { slices: Slice[]; center?: str
         ))}
         {center && <text x="70" y="75" textAnchor="middle" className="donut-center">{center}</text>}
       </svg>
-      <figcaption className="chart-legend vertical">{slices.map((s) => <span key={s.label}><i className={`tone-${s.tone}`} />{s.label}<strong>{s.display ?? compact(s.value)}</strong></span>)}</figcaption>
+      <figcaption className="viz-legend vertical">{slices.map((s) => <span key={s.label}><i className={`tone-${s.tone}`} />{s.label}<strong>{s.display ?? compact(s.value)}</strong></span>)}</figcaption>
     </figure>
   );
 }
