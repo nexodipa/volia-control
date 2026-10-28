@@ -76,6 +76,7 @@ export function isValidBackupValue(key: string, value: string) {
       STORAGE_KEYS.knowledgeMemory,
       STORAGE_KEYS.regulatoryDocs,
       STORAGE_KEYS.requirementAliases,
+      STORAGE_KEYS.tenders,
     ]);
     if (arrayKeys.has(key)) return Array.isArray(parsed);
     return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
