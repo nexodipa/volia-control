@@ -186,3 +186,41 @@ export function pricingRisk(marginPct: number, avgTenderers: number | null) {
   if (avgTenderers >= 3 && marginPct >= 30) return { level: "medio" as const, message: `Con ${avgTenderers} oferentes promedio, un margen de ${marginPct.toFixed(1)} % deja poco espacio en la puja.` };
   return null;
 }
+
+const MONTH_NAMES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** Procesos y monto adjudicado por mes (según la fecha del proceso), en orden cronológico y solo con meses que tienen datos. */
+export function monthlyTotals(list: MarketProcess[]) {
+  const byMonth = new Map<string, { count: number; amount: number }>();
+  for (const p of list) {
+    const key = /^\d{4}-\d{2}/.test(p.d) ? p.d.slice(0, 7) : "";
+    if (!key) continue;
+    const cur = byMonth.get(key) ?? { count: 0, amount: 0 };
+    cur.count += 1; cur.amount += p.a ?? 0;
+    byMonth.set(key, cur);
+  }
+  return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, v]) => ({ month, label: MONTH_NAMES[Number(month.slice(5, 7)) - 1] ?? month, ...v }));
+}
+
+/** Cuántos procesos tuvieron 1, 2, 3 a 5 o 6 o más oferentes (ignora los que no informan oferentes). */
+export function competitionBuckets(list: MarketProcess[]) {
+  const buckets = [{ label: "1 oferente", count: 0 }, { label: "2 oferentes", count: 0 }, { label: "3 a 5 oferentes", count: 0 }, { label: "6 o más", count: 0 }];
+  for (const p of list) {
+    if (!(p.o > 0)) continue;
+    buckets[p.o === 1 ? 0 : p.o === 2 ? 1 : p.o <= 5 ? 2 : 3].count += 1;
+  }
+  return buckets;
+}
+
+/** Provincias con más monto adjudicado; lo que no tiene provincia conocida no entra. */
+export function provinceTotals(list: MarketProcess[], limit = 8) {
+  const byProvince = new Map<string, { count: number; amount: number }>();
+  for (const p of list) {
+    const name = provinceOf(p);
+    if (!name) continue;
+    const cur = byProvince.get(name) ?? { count: 0, amount: 0 };
+    cur.count += 1; cur.amount += p.a ?? 0;
+    byProvince.set(name, cur);
+  }
+  return [...byProvince.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.amount - a.amount || b.count - a.count).slice(0, limit);
+}

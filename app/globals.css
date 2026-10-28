@@ -5424,3 +5424,5 @@ textarea:focus-visible {
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 14px 0; }
 @media (prefers-reduced-motion: no-preference) { .bar-track i { transition: width 0.4s var(--ease, ease); } }
 .beta-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--sun-soft, #fff4d9); color: var(--amber); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em; vertical-align: middle; }
+.chart-svg { max-width: 100%; }
+.stat-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); }
