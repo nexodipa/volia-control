@@ -2,13 +2,12 @@
 
 import { recordActivity } from "./activity-log";
 import { AUTO_CHECK_MS, dataFingerprint, shouldAutoBackup } from "./auto-backup";
+import { decryptJson, encryptJson, validatePassphrase } from "./backup-crypto";
 import { BACKUP_KEYS, isValidBackupValue, STORAGE_KEYS } from "./storage";
 
 const CLOUD_STATE_KEY = "volia-cloud-state-v2";
 const DEVICE_ID_KEY = "volia-device-id-v2";
 const API_ENDPOINT = "/api/sync";
-const PBKDF2_ITERATIONS = 600_000;
-const MIN_PASSPHRASE_LENGTH = 12;
 
 export type CloudState = {
   revision: number;
@@ -35,6 +34,11 @@ type BackupEnvelope = {
   deviceId: string;
   data: Record<string, string>;
 };
+
+function isEnvelope(value: unknown): value is BackupEnvelope {
+  const v = value as Partial<BackupEnvelope> | null;
+  return !!v && v.product === "Volia Control" && v.version === 3 && !!v.data && typeof v.data === "object";
+}
 
 export type CloudPreview = {
   revision: number;
@@ -112,103 +116,6 @@ function collectLocalData() {
   return data;
 }
 
-function validatePassphrase(passphrase: string) {
-  if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-    throw new Error(
-      "La clave debe tener al menos 12 caracteres. No se guarda en este dispositivo.",
-    );
-  }
-}
-
-async function deriveKey(password: string, salt: Uint8Array) {
-  const baseKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    { name: "PBKDF2" },
-    false,
-    ["deriveKey"],
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: new Uint8Array(salt), // copia con ArrayBuffer propio: mismo contenido, tipo aceptado por Web Crypto
-      iterations: PBKDF2_ITERATIONS,
-      hash: "SHA-256",
-    },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-
-function bytesToBase64(bytes: Uint8Array) {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(value: string) {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-}
-
-async function encryptEnvelope(envelope: BackupEnvelope, passphrase: string) {
-  validatePassphrase(passphrase);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(passphrase, salt);
-  const plain = new TextEncoder().encode(JSON.stringify(envelope));
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    plain,
-  );
-  const combined = new Uint8Array(28 + encrypted.byteLength);
-  combined.set(salt, 0);
-  combined.set(iv, 16);
-  combined.set(new Uint8Array(encrypted), 28);
-  return bytesToBase64(combined);
-}
-
-async function decryptEnvelope(payload: string, passphrase: string) {
-  validatePassphrase(passphrase);
-  try {
-    const bytes = base64ToBytes(payload);
-    if (bytes.length < 45) throw new Error("invalid");
-    const salt = bytes.slice(0, 16);
-    const iv = bytes.slice(16, 28);
-    const encrypted = bytes.slice(28);
-    const key = await deriveKey(passphrase, salt);
-    const plain = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      key,
-      encrypted,
-    );
-    const parsed = JSON.parse(new TextDecoder().decode(plain)) as BackupEnvelope;
-    if (
-      parsed.product !== "Volia Control" ||
-      parsed.version !== 3 ||
-      !parsed.data ||
-      typeof parsed.data !== "object"
-    ) {
-      throw new Error("invalid");
-    }
-    return parsed;
-  } catch {
-    throw new Error(
-      "La clave no coincide o la copia está dañada. No se modificó ningún dato.",
-    );
-  }
-}
-
 async function parseApiError(response: Response) {
   const body = (await response.json().catch(() => ({}))) as {
     error?: string;
@@ -236,16 +143,8 @@ export async function pushToCloud(passphrase: string): Promise<CloudResult> {
     const state = getCloudState();
     const data = collectLocalData();
     const deviceId = getDeviceId();
-    const payload = await encryptEnvelope(
-      {
-        product: "Volia Control",
-        version: 3,
-        exportedAt: new Date().toISOString(),
-        deviceId,
-        data,
-      },
-      passphrase,
-    );
+    const envelope: BackupEnvelope = { product: "Volia Control", version: 3, exportedAt: new Date().toISOString(), deviceId, data };
+    const payload = await encryptJson(envelope, passphrase);
 
     const response = await fetch(API_ENDPOINT, {
       method: "POST",
@@ -333,7 +232,7 @@ export async function previewCloudSnapshot(
       return { success: true, message: "Todavía no existe una copia en la nube." };
     }
 
-    const envelope = await decryptEnvelope(result.snapshot.payload, passphrase);
+    const envelope = await decryptJson(result.snapshot.payload, passphrase, isEnvelope);
     const validData: Record<string, string> = {};
     for (const [key, value] of Object.entries(envelope.data)) {
       if (
