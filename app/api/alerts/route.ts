@@ -1,5 +1,5 @@
 import { alertsConfigured, sendDigest } from "../../../lib/alert-sender";
-import { apiJson, requireBusinessAccess } from "../../../lib/server-auth";
+import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export async function GET() {
 
 // Envía ahora un resumen de prueba (siempre manda algo, aunque no haya novedades).
 export async function POST() {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const result = await sendDigest(access.db as never, config(), { test: true });
   return apiJson(result, result.ok ? 200 : 502);

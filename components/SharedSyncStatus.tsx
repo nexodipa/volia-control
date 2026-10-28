@@ -8,7 +8,7 @@ const INTERVAL_MS = 60_000;
 const DEBOUNCE_MS = 2_000;
 
 /** Sincroniza inventario, movimientos, finanzas, cotizaciones y equivalencias con la base compartida y muestra el estado. */
-export default function SharedSyncStatus({ onRemoteChange }: { onRemoteChange: () => void }) {
+export default function SharedSyncStatus({ onRemoteChange, readOnly = false }: { onRemoteChange: () => void; readOnly?: boolean }) {
   const [state, setState] = useState<{ ok: boolean | null; text: string }>({ ok: null, text: "Datos compartidos: conectando…" });
   const debounce = useRef<number | null>(null);
   const onChange = useRef(onRemoteChange);
@@ -17,11 +17,11 @@ export default function SharedSyncStatus({ onRemoteChange }: { onRemoteChange: (
   useEffect(() => {
     let alive = true;
     const run = async () => {
-      const r = await syncAll();
+      const r = await syncAll({ readOnly });
       if (!alive) return;
       if (r.ok) {
         const time = new Date().toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
-        setState({ ok: true, text: `Datos compartidos al día · ${time}` });
+        setState({ ok: true, text: readOnly ? `Solo consulta · al día ${time}` : `Datos compartidos al día · ${time}` });
         if (r.changedLocally) { onChange.current(); window.dispatchEvent(new Event("volia-memory-updated")); }
       } else {
         setState({ ok: false, text: `Solo en este equipo: ${r.reason}` });
@@ -46,7 +46,7 @@ export default function SharedSyncStatus({ onRemoteChange }: { onRemoteChange: (
       window.removeEventListener("focus", onFocus);
       window.removeEventListener(STORAGE_WRITE_EVENT, onWrite);
     };
-  }, []);
+  }, [readOnly]);
 
   return <span className={`shared-sync-pill ${state.ok === false ? "warn" : state.ok ? "ok" : ""}`} role="status" title="Inventario, movimientos, finanzas, cotizaciones (sin datos del paciente) y equivalencias se comparten entre los equipos autorizados.">{state.text}</span>;
 }

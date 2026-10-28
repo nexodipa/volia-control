@@ -1,4 +1,4 @@
-import { apiJson, requireBusinessAccess } from "../../../lib/server-auth";
+import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 import { isSharedCollection, validateSharedRecords } from "../../../lib/shared-records";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
 // Inserta o actualiza; una versión más vieja que la guardada se ignora (gana la modificación más reciente).
 export async function PUT(request: Request) {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const raw = await request.text();
   if (raw.length > 2_000_000) return apiJson({ error: "El envío es demasiado grande." }, 413);
