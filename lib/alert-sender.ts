@@ -24,7 +24,7 @@ export async function loadDigestInput(db: AlertDb) {
     try {
       const r = JSON.parse(row.data) as Partial<DigestFinance>;
       if ((r.direction === "income" || r.direction === "expense") && (r.status === "paid" || r.status === "pending")) {
-        records.push({ direction: r.direction, status: r.status, dueDate: String(r.dueDate ?? ""), counterparty: String(r.counterparty ?? ""), document: String(r.document ?? ""), subtotal: Number(r.subtotal) || 0, iva: Number(r.iva) || 0, withholding: Number(r.withholding) || 0 });
+        records.push({ direction: r.direction, status: r.status, dueDate: String(r.dueDate ?? ""), date: String((r as { date?: unknown }).date ?? ""), counterparty: String(r.counterparty ?? ""), document: String(r.document ?? ""), subtotal: Number(r.subtotal) || 0, iva: Number(r.iva) || 0, withholding: Number(r.withholding) || 0 });
       }
     } catch { /* registro ilegible: se omite */ }
   }

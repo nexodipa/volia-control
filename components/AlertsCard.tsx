@@ -29,6 +29,20 @@ export default function AlertsCard() {
     }
   };
 
+  const sendMonthly = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/alerts?informe=mensual", { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { message?: string };
+      setMessage(body.message || (res.ok ? "Informe enviado." : "No se pudo enviar."));
+    } catch {
+      setMessage("No se pudo conectar. Revise la conexión e intente de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const checkSercop = async () => {
     setBusy(true);
     setMessage("Revisando el SERCOP… tarda cerca de un minuto, no cierre esta página.");
@@ -56,7 +70,7 @@ export default function AlertsCard() {
       <h3 id="home-alerts-title">Alertas por correo</h3>
       <p className="task-clear">
         {configured
-          ? "Cada día hábil a las 08:00 se envía a Gmail lo que cambió: cobros vencidos, pagos por vencer y registros sanitarios. Los lunes llega el informe completo."
+          ? "Cada día hábil a las 08:00 se envía a Gmail lo que cambió: cobros vencidos, pagos por vencer y registros sanitarios. Los lunes llega el informe completo y el primer día hábil de cada mes, el informe mensual."
           : "Aún no están activadas. Siga la guía de docs/alertas-gmail.md y ejecute configurar-alertas.cmd."}
       </p>
       {configured && (status.health === "late" || status.health === "down") && (
@@ -67,7 +81,7 @@ export default function AlertsCard() {
         </p>
       )}
       {configured && <p className="task-clear">También cada día revisa el SERCOP y te escribe solo si salió un proceso médico nuevo.</p>}
-      {configured && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="secondary-button" onClick={send} disabled={busy}>{busy ? "Trabajando…" : "Enviar un resumen de prueba"}</button><button type="button" className="secondary-button" onClick={checkSercop} disabled={busy}>Revisar el SERCOP ahora</button></div>}
+      {configured && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="secondary-button" onClick={send} disabled={busy}>{busy ? "Trabajando…" : "Enviar un resumen de prueba"}</button><button type="button" className="secondary-button" onClick={checkSercop} disabled={busy}>Revisar el SERCOP ahora</button><button type="button" className="secondary-button" onClick={sendMonthly} disabled={busy}>Enviar un informe mensual de prueba</button></div>}
       {message && <p className="memory-confirmation" role="status">{message}</p>}
     </section>
   );

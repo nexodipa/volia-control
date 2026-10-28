@@ -1,5 +1,6 @@
 import { alertsConfigured } from "../../../lib/alert-sender";
 import { readMeta, runAndRecordDigest, runHealth } from "../../../lib/heartbeat";
+import { sendMonthlyReport } from "../../../lib/monthly-sender";
 import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +15,13 @@ export async function GET() {
 }
 
 // Envía ahora un resumen de prueba (siempre manda algo, aunque no haya novedades).
-export async function POST() {
+export async function POST(request: Request) {
   const access = await requireEditorAccess();
   if (access instanceof Response) return access;
+  if (new URL(request.url).searchParams.get("informe") === "mensual") {
+    const report = await sendMonthlyReport(access.db as never, config(), { test: true });
+    return apiJson(report, report.ok ? 200 : 502);
+  }
   const result = await runAndRecordDigest(access.db as never, config(), { test: true });
   return apiJson(result, result.ok ? 200 : 502);
 }
