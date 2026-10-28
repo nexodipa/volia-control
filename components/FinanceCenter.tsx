@@ -17,6 +17,9 @@ import {
 import { readStoredArray, readStoredObject, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
 import { INVENTORY_KEY, type StockItem } from "../lib/inventory-data";
+import { agingBuckets, monthlySeries } from "../lib/monthly-report";
+import { BarList, ColumnChart } from "./charts";
+import { compact } from "../lib/chart-math";
 import { applyPurchasesToStock, normalizeDocNumber, parseSriXml, planImport, type SriDocument } from "../lib/sri-xml";
 
 const OWN_RUC = "1793206800001";
@@ -180,6 +183,8 @@ export default function FinanceCenter() {
     [records],
   );
   const currentMonth = today().slice(0, 7);
+  const monthly = useMemo(() => monthlySeries(enriched, today(), 6), [enriched]);
+  const aging = useMemo(() => agingBuckets(enriched, today()), [enriched]);
   const monthRecords = enriched.filter((record) =>
     record.date.startsWith(currentMonth),
   );
@@ -836,6 +841,17 @@ export default function FinanceCenter() {
               <small>Margen {margin.toFixed(1)} %</small>
             </article>
           </div>
+          {monthly.some((m) => m.billed || m.expenses) && (
+            <section className="business-card">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Tendencia</p>
+                  <h3>Facturado y egresos, últimos 6 meses</h3>
+                </div>
+              </div>
+              <ColumnChart label="Facturado y egresos por mes" data={monthly.map((m) => ({ label: m.label, values: [m.billed, m.expenses] }))} series={[{ name: "Facturado", tone: "green" }, { name: "Egresos", tone: "coral" }]} format={(n) => `$${compact(n)}`} />
+            </section>
+          )}
           <div className="finance-grid">
             <section className="business-card cash-forecast">
               <div className="section-heading">
@@ -1013,6 +1029,18 @@ export default function FinanceCenter() {
 
       {view === "receivables" && (
         <div className="finance-grid">
+          {aging.some((b) => b.count) && (
+            <section className="business-card">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Cartera vencida</p>
+                  <h3>Antigüedad de lo que le deben</h3>
+                </div>
+                <strong>{money(aging.reduce((t, b) => t + b.amount, 0))}</strong>
+              </div>
+              <BarList tone="coral" items={aging.map((b) => ({ label: b.label, value: b.amount, display: money(b.amount), hint: `${b.count} cuenta(s)` }))} />
+            </section>
+          )}
           <section className="business-card">
             <div className="section-heading">
               <div>

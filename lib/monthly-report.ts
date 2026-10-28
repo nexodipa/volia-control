@@ -124,3 +124,16 @@ ${clients.length ? `<h3 style="margin:18px 0 6px">Principales clientes del mes</
 
   return { subject: `Volia Control · Informe de ${month.label}: facturado ${money(cur.billed)}, cobrado ${money(cur.collected)}`, text: lines.join("\n"), html, monthKey: month.key };
 }
+
+const SHORT_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** Facturado (con IVA) y egresos de los últimos `n` meses, terminando en el mes de `today`; para las gráficas de Finanzas. */
+export function monthlySeries(records: DigestFinance[], today: string, n = 6) {
+  const y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7)) - 1;
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - (n - 1 - i), 1));
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const f = monthFinance(records, key);
+    return { key, label: SHORT_MONTHS[d.getUTCMonth()], billed: f.billed, expenses: f.expenses };
+  });
+}
