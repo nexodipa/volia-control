@@ -1,12 +1,13 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { auditFilesLocally, type AuditResult } from "../lib/local-audit";
 import QuoteBuilder from "../components/QuoteBuilder";
 import CaseTracker from "../components/CaseTracker";
 import InventoryTracker from "../components/InventoryTracker";
 import MarketCenter from "../components/MarketCenter";
+import TenderTracker from "../components/TenderTracker";
 import RegulatoryCenter from "../components/RegulatoryCenter";
 import MovementAnalytics from "../components/MovementAnalytics";
 import FinanceCenter from "../components/FinanceCenter";
@@ -43,6 +44,7 @@ type Module =
   | "regulatory"
   | "analytics"
   | "market"
+  | "tenders"
   | "documents"
   | "translator"
   | "activity"
@@ -60,8 +62,9 @@ const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
   regulatory: { eyebrow: "CUMPLIMIENTO", title: "Registros sanitarios y vigencias" },
   analytics: { eyebrow: "ANÁLISIS OPERATIVO", title: "Movimientos y estadísticas" },
   market: { eyebrow: "INTELIGENCIA DE MERCADO", title: "Mercado público SERCOP" },
+  tenders: { eyebrow: "LICITACIONES", title: "Procesos en seguimiento" },
   documents: { eyebrow: "GESTIÓN ADMINISTRATIVA", title: "Generador de documentos" },
-  translator: { eyebrow: "IDIOMAS", title: "Traductor de documentos" },
+  translator: { eyebrow: "IDIOMAS · BETA", title: "Traductor de documentos (beta)" },
   activity: { eyebrow: "CONTROL INTERNO", title: "Historial de actividad" },
   knowledge: { eyebrow: "INTELIGENCIA Y MEMORIA", title: "Memoria y Base de Conocimiento" },
   help: { eyebrow: "ASISTENCIA", title: "Guía de uso de Volia Control" },
@@ -290,6 +293,12 @@ function Icon({
 
 export default function Home() {
   const [module, setModule] = useState<Module>("home");
+  // El enlace «Dar seguimiento» del correo del SERCOP abre directamente la pantalla de Procesos.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("seguir")) return;
+    const timer = window.setTimeout(() => setModule("tenders"), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   // Sube cuando llegan cambios de otro equipo; remonta los módulos que leen esos datos.
   const [dataVersion, setDataVersion] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -548,6 +557,13 @@ export default function Home() {
             Mercado SERCOP
           </button>
           <button
+            className={`nav-item ${module === "tenders" ? "active" : ""}`}
+            onClick={() => navigateTo("tenders")}
+          >
+            <Icon name="file" />
+            Procesos
+          </button>
+          <button
             className={`nav-item ${module === "documents" ? "active" : ""}`}
             onClick={() => navigateTo("documents")}
           >
@@ -559,7 +575,7 @@ export default function Home() {
             onClick={() => navigateTo("translator")}
           >
             <Icon name="documents" />
-            Traductor
+            Traductor <span className="beta-tag">beta</span>
           </button>
           <div className="nav-separator">Control y ayuda</div>
           <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y reglas</button>
@@ -671,7 +687,8 @@ export default function Home() {
               <Icon name="documents" />
               Documentos
             </button>
-            <button className={`module-tab ${module === "translator" ? "active" : ""}`} onClick={() => setModule("translator")} role="tab" aria-selected={module === "translator"}><Icon name="documents" />Traductor</button>
+            <button className={`module-tab ${module === "tenders" ? "active" : ""}`} onClick={() => setModule("tenders")} role="tab" aria-selected={module === "tenders"}><Icon name="file" />Procesos</button>
+            <button className={`module-tab ${module === "translator" ? "active" : ""}`} onClick={() => setModule("translator")} role="tab" aria-selected={module === "translator"}><Icon name="documents" />Traductor <span className="beta-tag">beta</span></button>
             <button className={`module-tab ${module === "knowledge" ? "active" : ""}`} onClick={() => setModule("knowledge")} role="tab" aria-selected={module === "knowledge"}><Icon name="knowledge" />Memoria</button>
             <button className={`module-tab ${module === "activity" ? "active" : ""}`} onClick={() => setModule("activity")} role="tab" aria-selected={module === "activity"}><Icon name="activity" />Historial</button>
             <button className={`module-tab ${module === "help" ? "active" : ""}`} onClick={() => setModule("help")} role="tab" aria-selected={module === "help"}><Icon name="help" />Ayuda</button>
@@ -1129,6 +1146,8 @@ export default function Home() {
             <MovementAnalytics />
           ) : module === "market" ? (
             <MarketCenter />
+          ) : module === "tenders" ? (
+            <TenderTracker />
           ) : module === "documents" ? (
             <><OfferPackage /><DocumentGenerator /></>
           ) : module === "translator" ? (

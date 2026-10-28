@@ -169,7 +169,7 @@ export default function TranslatorCenter() {
 
   return (
     <section className="business-module translator-module">
-      <div className="module-hero"><div><p className="eyebrow">Idiomas</p><h2>Traductor de documentos</h2><p>Sube un PDF o una foto en inglés y obtén el texto en español para revisar, corregir y descargar en Word o PDF.</p></div></div>
+      <div className="module-hero"><div><p className="eyebrow">Idiomas</p><h2>Traductor de documentos <span className="beta-tag">beta</span></h2><p>Sube un PDF o una foto en inglés y obtén el texto en español para revisar, corregir y descargar en Word o PDF. Está en prueba: revise siempre la traducción antes de usarla en un documento oficial y no suba datos de pacientes.</p></div></div>
       <section className="business-card">
         <div className="section-heading"><div><p className="eyebrow">Paso 1</p><h3>Elige el documento</h3></div></div>
         <label className="upload-drop" style={{ display: "block", padding: 24, border: "2px dashed var(--line, #cbd3c8)", borderRadius: 12, textAlign: "center", cursor: "pointer" }}>
