@@ -14,6 +14,7 @@ interface Env {
   GEMINI_API_KEY?: string;
   ALERT_WEBHOOK_URL?: string;
   ALERT_SECRET?: string;
+  VOLIA_VIEWER_EMAILS?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -42,6 +43,7 @@ const worker = {
       __VOLIA_AUTH__?: { mode?: string; teamDomain?: string; aud?: string };
       __VOLIA_GEMINI_KEY__?: string;
       __VOLIA_ALERTS__?: { url?: string; secret?: string };
+      __VOLIA_ROLES__?: { viewers?: string };
       __VOLIA_CTX__?: ExecutionContext;
     };
     runtime.__VOLIA_CTX__ = ctx;
@@ -49,6 +51,7 @@ const worker = {
     runtime.__VOLIA_ALLOWED_OWNER_IDS__ = env.VOLIA_ALLOWED_OWNER_IDS;
     runtime.__VOLIA_GEMINI_KEY__ = env.GEMINI_API_KEY;
     runtime.__VOLIA_ALERTS__ = { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() };
+    runtime.__VOLIA_ROLES__ = { viewers: env.VOLIA_VIEWER_EMAILS };
     runtime.__VOLIA_AUTH__ = { mode: env.VOLIA_AUTH_MODE, teamDomain: env.CF_ACCESS_TEAM_DOMAIN, aud: env.CF_ACCESS_AUD };
     const url = new URL(request.url);
 

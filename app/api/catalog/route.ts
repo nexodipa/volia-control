@@ -1,4 +1,4 @@
-import { apiJson, requireBusinessAccess } from "../../../lib/server-auth";
+import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 import { fromProductRow, toProductRow, validateProducts, type ProductRow } from "../../../lib/catalog-api";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export async function GET() {
 
 // Inserta o actualiza por código solo los productos enviados.
 export async function PUT(request: Request) {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const raw = await request.text();
   if (raw.length > 1_000_000) return apiJson({ error: "El envío es demasiado grande." }, 413);
@@ -41,7 +41,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const access = await requireBusinessAccess();
+  const access = await requireEditorAccess();
   if (access instanceof Response) return access;
   const code = (new URL(request.url).searchParams.get("code") ?? "").trim().toUpperCase();
   if (!code || code.length > 60) return apiJson({ error: "Código inválido." }, 400);

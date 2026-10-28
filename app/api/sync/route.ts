@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { READ_ONLY_MESSAGE, roleFor } from "../../../lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -155,6 +156,10 @@ export async function POST(request: Request) {
   if (!database) {
     return json({ error: "El almacenamiento en la nube no está disponible." }, 503);
   }
+
+  const viewer = await getChatGPTUser();
+  const viewers = (globalThis as typeof globalThis & { __VOLIA_ROLES__?: { viewers?: string } }).__VOLIA_ROLES__?.viewers;
+  if (viewer && roleFor(viewer.email, viewers) === "viewer") return json({ error: READ_ONLY_MESSAGE, code: "READ_ONLY" }, 403);
 
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return json({ error: "El contenido debe enviarse como JSON." }, 415);

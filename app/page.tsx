@@ -299,6 +299,13 @@ export default function Home() {
     const timer = window.setTimeout(() => setModule("tenders"), 0);
     return () => window.clearTimeout(timer);
   }, []);
+  // Cuentas de solo consulta: ven todo, pero el servidor no guarda sus cambios.
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/me", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d?.role === "viewer") setReadOnly(true); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   // Sube cuando llegan cambios de otro equipo; remonta los módulos que leen esos datos.
   const [dataVersion, setDataVersion] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -610,7 +617,7 @@ export default function Home() {
             <h1>{MODULE_INFO[module].title}</h1>
           </div>
           <div className="topbar-actions">
-            <SharedSyncStatus onRemoteChange={() => setDataVersion((v) => v + 1)} />
+            <SharedSyncStatus readOnly={readOnly} onRemoteChange={() => setDataVersion((v) => v + 1)} />
             <CloudSyncModal />
             <AccessibilityToolbar onHelp={() => navigateTo("help")} />
             <InstallManager />
@@ -693,6 +700,7 @@ export default function Home() {
             <button className={`module-tab ${module === "activity" ? "active" : ""}`} onClick={() => setModule("activity")} role="tab" aria-selected={module === "activity"}><Icon name="activity" />Historial</button>
             <button className={`module-tab ${module === "help" ? "active" : ""}`} onClick={() => setModule("help")} role="tab" aria-selected={module === "help"}><Icon name="help" />Ayuda</button>
           </div>
+          {readOnly && <p className="status-banner warning" role="status"><span><strong>Modo de solo consulta</strong>Puede ver toda la información, pero lo que cambie aquí se queda en este equipo y no se comparte ni se guarda en el servidor.</span></p>}
           <Fragment key={["home", "inventory", "analytics", "finance"].includes(module) ? `datos-${dataVersion}` : "fijo"}>
           {module === "home" ? (
             <HomeDashboard onNavigate={(target) => setModule(target as Module)} />
