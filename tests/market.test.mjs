@@ -93,3 +93,24 @@ test("province comes from the source, else from the buyer name, else empty", () 
   assert.deepEqual(provinceCounts(l), [{ name: "Loja", count: 2 }, { name: "Pichincha", count: 1 }]);
   assert.equal(filterProcesses(l, { province: "Loja" }).length, 2);
 });
+
+test("totales por mes: ordenados, con etiqueta en español y sin fechas inválidas", async () => {
+  const { monthlyTotals } = await import("../lib/market.ts");
+  const mk = (d, a) => ({ id: d + a, d, b: "H", m: "SIE", s: "active", c: "insumos", t: "", p: null, o: 1, w: "X", a, vb: false, vw: false });
+  const out = monthlyTotals([mk("2026-03-05", 100), mk("2026-01-20", 50), mk("2026-03-28", 25), mk("sin fecha", 999), mk("2026-02-01", null)]);
+  assert.deepEqual(out.map((m) => [m.month, m.label, m.count, m.amount]), [["2026-01", "ene", 1, 50], ["2026-02", "feb", 1, 0], ["2026-03", "mar", 2, 125]]);
+});
+
+test("competencia: reparte en 1, 2, 3 a 5 y 6 o más, e ignora los que no informan oferentes", async () => {
+  const { competitionBuckets } = await import("../lib/market.ts");
+  const mk = (o) => ({ id: "x" + o, d: "2026-01-01", b: "H", m: "SIE", s: "active", c: "insumos", t: "", p: null, o, w: "", a: null, vb: false, vw: false });
+  const out = competitionBuckets([1, 1, 2, 3, 5, 6, 12, 0].map(mk));
+  assert.deepEqual(out.map((b) => b.count), [2, 1, 2, 2]);
+});
+
+test("provincias por monto: ordena, limita y salta las que no tienen provincia", async () => {
+  const { provinceTotals } = await import("../lib/market.ts");
+  const mk = (r, a, b = "HOSPITAL X") => ({ id: r + a, d: "2026-01-01", b, m: "SIE", s: "active", c: "insumos", t: "", p: null, o: 1, w: "", a, vb: false, vw: false, r });
+  const out = provinceTotals([mk("PICHINCHA", 100), mk("GUAYAS", 500), mk("PICHINCHA", 300), mk(undefined, 9999, "ENTIDAD SIN CIUDAD")], 2);
+  assert.deepEqual(out.map((p) => [p.name, p.count, p.amount]), [["Guayas", 1, 500], ["Pichincha", 2, 400]]);
+});
