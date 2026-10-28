@@ -5409,11 +5409,11 @@ textarea:focus-visible {
 .chart-axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .chart-fill { fill: var(--tone); }
 .chart-line { stroke: var(--tone); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 0.86rem; color: var(--muted); }
-.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.chart-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--tone); display: inline-block; }
-.chart-legend.vertical { flex-direction: column; gap: 6px; margin-top: 0; }
-.chart-legend.vertical strong { color: var(--ink); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.viz-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 0.86rem; color: var(--muted); }
+.viz-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.viz-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--tone); display: inline-block; }
+.viz-legend.vertical { flex-direction: column; gap: 6px; margin-top: 0; }
+.viz-legend.vertical strong { color: var(--ink); margin-left: 4px; font-variant-numeric: tabular-nums; }
 .donut-figure { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .donut-svg { width: 150px; height: 150px; flex: none; }
 .donut-bg { stroke: var(--surface-soft, #eef3f1); stroke-width: 16; }
