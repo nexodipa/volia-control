@@ -1,8 +1,9 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { sendDigest } from "../lib/alert-sender";
-import { runAndRecordSercop } from "../lib/sercop-alerts";
+import { ecuadorToday } from "../lib/alert-digest";
+import { needsRetry, pingHealthcheck, readMeta, RETRY_CRON, runAndRecordDigest } from "../lib/heartbeat";
+import { readLastSercop, runAndRecordSercop } from "../lib/sercop-alerts";
 
 interface Env {
   ASSETS: Fetcher;
@@ -15,6 +16,7 @@ interface Env {
   ALERT_WEBHOOK_URL?: string;
   ALERT_SECRET?: string;
   VOLIA_VIEWER_EMAILS?: string;
+  HEALTHCHECK_URL?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -69,18 +71,32 @@ const worker = {
     return handler.fetch(request, env, ctx);
   },
 
-  // Cron diario (lunes a viernes, 08:00 de Ecuador): resumen de alertas por correo.
-  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(
-      sendDigest(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
-        .then((r) => console.log(`[alertas] ${r.message}`))
-        .catch((e) => console.error("[alertas] error", e)),
-    );
-    ctx.waitUntil(
-      runAndRecordSercop(env.DB as never, { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() })
-        .then((r) => console.log(`[sercop] ${r.message}`))
-        .catch((e) => console.error("[sercop] error", e)),
-    );
+  // Cron de las 08:00 (lunes a viernes): resumen de alertas por correo y revisión del SERCOP.
+  // Cron de las 14:00: si por la mañana algo falló o no corrió, lo reintenta. En ambos casos avisa al vigilante externo.
+  async scheduled(event: { cron?: string }, env: Env, ctx: ExecutionContext): Promise<void> {
+    const cfg = { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() };
+    const db = env.DB as never;
+    ctx.waitUntil((async () => {
+      const retry = event.cron === RETRY_CRON;
+      const today = ecuadorToday();
+      const guard = (p: Promise<boolean>) => p.catch((e) => { console.error("[cron] error", e); return false; });
+      const runDigest = async () => {
+        if (retry && !needsRetry(await readMeta(db, "digest"), today)) return true;
+        const r = await runAndRecordDigest(db, cfg);
+        console.log(`[alertas] ${r.message}`);
+        return r.ok;
+      };
+      const runSercop = async () => {
+        if (retry && !needsRetry(await readLastSercop(db), today)) return true;
+        const r = await runAndRecordSercop(db, cfg);
+        console.log(`[sercop] ${r.message}`);
+        return r.ok;
+      };
+      const [digest, sercop] = await Promise.all([guard(runDigest()), guard(runSercop())]);
+      // El SERCOP responde lento y a veces cae: por la mañana su fallo no alarma porque a las 14:00 se reintenta.
+      const pinged = await pingHealthcheck(env.HEALTHCHECK_URL, digest && (sercop || !retry));
+      console.log(`[latido] resumen=${digest} sercop=${sercop} vigilante=${pinged}`);
+    })());
   },
 };
 
