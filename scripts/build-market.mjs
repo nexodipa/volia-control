@@ -2,12 +2,14 @@
 // SERCOP (OCDS, .jsonl.gz) que se descarga una vez al mes. Deja solo los procesos de insumos,
 // dispositivos médicos y traumatología, más todos donde Volia ofertó, con el último estado de cada uno.
 // Uso: node scripts/build-market.mjs <archivo.jsonl.gz> [salida.json] [nombre propio]
-import { createReadStream, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { createInterface } from "node:readline";
 import { isRelevantProcess, summarizeProcess } from "../lib/ocds.ts";
 
 const [input, output, ourName = "VOLIA"] = process.argv.slice(2);
+// Si el archivo trae varios años ("todos los años"), solo se guarda el año en curso (o MARKET_YEAR=2025).
+const WANT_YEAR = process.env.MARKET_YEAR || String(new Date().getFullYear());
 if (!input) { console.error("Uso: node scripts/build-market.mjs <archivo.jsonl.gz> [salida.json]"); process.exit(1); }
 
 const methodOf = (details) =>
@@ -23,6 +25,10 @@ const regionOf = (rel) => {
 
 const byId = new Map();
 let read = 0;
+// Para archivos enormes: MARKET_STATE=ruta.json guarda el avance al terminar y lo retoma en la siguiente pasada,
+// de modo que se pueden procesar varios trozos del archivo uno tras otro (cada trozo es un .jsonl o .jsonl.gz).
+const STATE = process.env.MARKET_STATE;
+if (STATE && existsSync(STATE)) { const st = JSON.parse(readFileSync(STATE, "utf8")); for (const e of st.entries) byId.set(e.id, e); read = st.read || 0; }
 let year = "";
 const stream = input.endsWith(".gz") ? createReadStream(input).pipe(createGunzip()) : createReadStream(input);
 for await (const line of createInterface({ input: stream, crlfDelay: Infinity })) {
@@ -33,6 +39,7 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   if (rel.compiledRelease) rel = rel.compiledRelease;
   if (!isRelevantProcess(rel, undefined, ourName)) continue;
   const s = summarizeProcess(rel, ourName);
+  if (!String(s.date).startsWith(WANT_YEAR)) continue;
   const id = String(rel.ocid ?? "").replace(/^ocds-[a-z0-9]+-/i, "");
   if (!id) continue;
   const prev = byId.get(id);
@@ -56,8 +63,9 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
     ...(regionOf(rel) ? { r: regionOf(rel) } : {}),
   });
 }
+if (STATE) writeFileSync(STATE, JSON.stringify({ read, entries: [...byId.values()] }));
 const processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
-const out = output || `public/data/mercado-sercop-${year || new Date().getFullYear()}.json`;
+const out = output || `public/data/mercado-sercop-${WANT_YEAR}.json`;
 writeFileSync(out, JSON.stringify({
   source: "SERCOP, Contrataciones Abiertas OCDS (data.open-contracting.org/en/publication/110), licencia CC BY 3.0 EC",
   generatedAt: new Date().toISOString().slice(0, 10),
