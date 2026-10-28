@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ensureMapPolyfills } from "../lib/polyfills";
 import { buildTranslationPrompt, cleanModelOutput, itemsToText, looksEnglish, reflow, splitText, type TranslatedPage } from "../lib/translate";
 import { exportTranslationPdf, exportTranslationWord } from "../lib/translate-export";
 import { recordActivity } from "../lib/activity-log";
@@ -23,6 +24,7 @@ async function canvasFromImage(file: Blob): Promise<HTMLCanvasElement> {
   canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("El navegador no pudo preparar la imagen.");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); // un PNG transparente se leería como negro
   ctx.filter = "grayscale(1) contrast(1.15)";
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
@@ -69,11 +71,20 @@ export default function TranslatorCenter() {
           workerPath: new URL("tesseract.js/dist/worker.min.js", import.meta.url).toString(),
           corePath: new URL("tesseract.js-core/tesseract-core-simd-lstm.wasm.js", import.meta.url).toString(),
         });
+        // El umbral global por defecto deja en blanco una hoja con fondo gris y márgenes blancos (típico de un escaneo);
+        // el adaptativo (Sauvola) la lee bien y no empeora las imágenes limpias.
+        try { await worker.setParameters({ thresholding_method: "2" } as never); } catch { /* versión sin ese parámetro */ }
       }
       return (await worker.recognize(canvas)).data.text as string;
     };
     try {
-      if (f.type !== "application/pdf") { setStatus("Leyendo la foto…"); return [reflow(await ocr(await canvasFromImage(f)))]; }
+      if (f.type !== "application/pdf") {
+        setStatus("Leyendo la foto…");
+        const text = reflow(await ocr(await canvasFromImage(f)));
+        if (!text.trim()) throw new Error("No encontré texto en la foto. Pruebe con una más nítida y bien iluminada.");
+        return [text];
+      }
+      ensureMapPolyfills();
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
       const pdf = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
@@ -90,10 +101,14 @@ export default function TranslatorCenter() {
           const canvas = document.createElement("canvas");
           canvas.width = Math.round(viewport.width); canvas.height = Math.round(viewport.height);
           const ctx = canvas.getContext("2d", { willReadFrequently: true });
-          if (ctx) { await page.render({ canvas, canvasContext: ctx, viewport }).promise; text = await ocr(canvas); }
+          if (ctx) {
+            try { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); await page.render({ canvas, canvasContext: ctx, viewport }).promise; text = await ocr(canvas); }
+            catch { throw new Error(`No se pudo leer la página ${n} como imagen. Pruebe con una foto o captura más nítida.`); }
+          }
         }
         out.push(reflow(text));
       }
+      if (out.every((t) => !t.trim())) throw new Error("No encontré texto en este archivo. Si es un escaneo borroso, pruebe con una foto más nítida.");
       return out;
     } finally { if (worker) await (worker as { terminate: () => Promise<unknown> }).terminate(); }
   }

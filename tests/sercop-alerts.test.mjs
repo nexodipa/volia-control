@@ -74,7 +74,7 @@ test("si el SERCOP no responde, lo dice sin marcar nada", async () => {
 test("el correo corta en 40 y avisa", () => {
   const rows = Array.from({ length: 45 }, (_, i) => row({ id: i, title: `P${i}`, description: "material" }));
   const d = buildSercopDigest(rows, "2026-10-27", false, true);
-  assert.match(d.text, /Se muestran 40 de 45/); assert.match(d.text, /se cortó/);
+  assert.match(d.text, /Se muestran 40 de 45; los 5 restantes llegan en el próximo aviso/); assert.match(d.text, /se cortó/);
 });
 
 import { runAndRecordSercop, readLastSercop } from "../lib/sercop-alerts.ts";
@@ -86,4 +86,18 @@ test("anota el último resultado y lo devuelve", async () => {
   assert.equal(r.ok, false);
   const last = await readLastSercop(db);
   assert.equal(last.ok, false); assert.match(last.message, /No se pudo consultar/);
+});
+
+test("una ráfaga de más de 40 no pierde los que no caben: llegan en el siguiente aviso", async () => {
+  const rows = Array.from({ length: 45 }, (_, i) => row({ id: i + 1, description: "material de osteosíntesis " + i }));
+  const world = fakeWorld({ osteosíntesis: [rows.slice(0, 10), rows.slice(10, 20), rows.slice(20, 30), rows.slice(30, 40), rows.slice(40)] });
+  const db = fakeDb(); const sent = [];
+  globalThis.fetch = async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ ok: true }) }; };
+  const now = new Date("2026-10-27T15:00:00Z");
+  const r1 = await runSercopCheck(db, cfg, { fetcher: world.fetcher, now });
+  assert.equal(r1.sent, true); assert.equal(r1.fresh, 45); assert.equal(db.seen.size, 40); assert.match(r1.message, /otros 5 llegan en el próximo aviso/);
+  const r2 = await runSercopCheck(db, cfg, { fetcher: world.fetcher, now });
+  assert.equal(r2.sent, true); assert.equal(r2.fresh, 5); assert.equal(db.seen.size, 45);
+  const r3 = await runSercopCheck(db, cfg, { fetcher: world.fetcher, now });
+  assert.equal(r3.sent, false); assert.equal(sent.length, 2);
 });
