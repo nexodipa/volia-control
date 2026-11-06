@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   requirementAliases: "volia-requirement-aliases-v1",
   offerDraft: "volia-offer-draft-v1",
   tenders: "volia-tenders-v1",
+  docIssuers: "volia-doc-issuers-v1",
 } as const;
 
 export const BACKUP_KEYS = new Set<string>(Object.values(STORAGE_KEYS));
@@ -77,6 +78,7 @@ export function isValidBackupValue(key: string, value: string) {
       STORAGE_KEYS.regulatoryDocs,
       STORAGE_KEYS.requirementAliases,
       STORAGE_KEYS.tenders,
+      STORAGE_KEYS.docIssuers,
     ]);
     if (arrayKeys.has(key)) return Array.isArray(parsed);
     return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);

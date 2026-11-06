@@ -114,3 +114,55 @@ test("provincias por monto: ordena, limita y salta las que no tienen provincia",
   const out = provinceTotals([mk("PICHINCHA", 100), mk("GUAYAS", 500), mk("PICHINCHA", 300), mk(undefined, 9999, "ENTIDAD SIN CIUDAD")], 2);
   assert.deepEqual(out.map((p) => [p.name, p.count, p.amount]), [["Guayas", 1, 500], ["Pichincha", 2, 400]]);
 });
+
+import { activeFilters, clearFilterKey, facetOptions, filterProcesses as fp2, sortProcesses, usualSegment, voliaProfile } from "../lib/market.ts";
+
+const mk = (o) => ({ id: "X", d: "2026-05-10", b: "HOSPITAL A QUITO", m: "SIE", s: "complete", c: "insumos", t: "t", p: null, o: 3, w: "ACME", a: 50000, vb: false, vw: false, r: "PICHINCHA", ...o });
+
+test("filtros numéricos: monto máximo, oferentes, método, estado y período; lo desconocido no se cuela", () => {
+  const list = [mk({ id: "1", a: 20000, o: 2 }), mk({ id: "2", a: 80000, o: 6, m: "LIC" }), mk({ id: "3", a: null, p: null, o: 0, w: "" }), mk({ id: "4", a: 30000, o: 3, d: "2026-09-01" })];
+  const ids = (f) => fp2(list, f).map((p) => p.id);
+  assert.deepEqual(ids({ maxAmount: 40000 }), ["1", "4"], "sin monto conocido no entra bajo un máximo");
+  assert.deepEqual(ids({ minTenderers: 3, maxTenderers: 6 }), ["2", "4"]);
+  assert.deepEqual(ids({ maxTenderers: 2 }), ["1"], "sin oferentes informados no cuenta como 'pocos'");
+  assert.deepEqual(ids({ methods: ["LIC"] }), ["2"]);
+  assert.deepEqual(ids({ awarded: "no" }), ["3"]);
+  assert.deepEqual(ids({ awarded: "si" }), ["1", "2", "4"]);
+  assert.deepEqual(ids({ from: "2026-08" }), ["4"]);
+  assert.deepEqual(ids({ to: "2026-06" }), ["1", "2", "3"]);
+});
+
+test("facetas: los hospitales ofrecidos dependen de la provincia elegida y los conteos respetan los demás filtros", () => {
+  const list = [mk({ id: "1", b: "H QUITO", r: "PICHINCHA" }), mk({ id: "2", b: "H QUITO", r: "PICHINCHA" }), mk({ id: "3", b: "H GUAYAQUIL", r: "GUAYAS" }), mk({ id: "4", b: "H IBARRA", r: "IMBABURA", c: "trauma" })];
+  assert.deepEqual(facetOptions(list, { provinces: ["Pichincha"] }, "buyer"), [{ name: "H QUITO", count: 2 }]);
+  assert.deepEqual(facetOptions(list, { provinces: ["Pichincha"] }, "province").map((x) => x.name), ["Pichincha", "Guayas", "Imbabura"], "la propia faceta no se filtra a sí misma");
+  assert.deepEqual(facetOptions(list, { category: "trauma" }, "province"), [{ name: "Imbabura", count: 1 }]);
+});
+
+test("perfil de Volia: métodos, provincias repetidas y rango central de montos; segmento habitual", () => {
+  const list = [
+    mk({ id: "a", vb: true, a: 10000, r: "PICHINCHA" }), mk({ id: "b", vb: true, a: 30000, r: "PICHINCHA" }), mk({ id: "c", vb: true, a: 60000, r: "CHIMBORAZO" }),
+    mk({ id: "d", vb: true, a: 90000, r: "CHIMBORAZO" }), mk({ id: "e", vb: true, a: 1500000, r: "NAPO" }), mk({ id: "z", a: 40000 }),
+  ];
+  const prof = voliaProfile(list);
+  assert.equal(prof.bids, 5);
+  assert.deepEqual(prof.methods, ["SIE"]);
+  assert.deepEqual(prof.provinces.map((p) => p.name), ["Pichincha", "Chimborazo", "Napo"]);
+  assert.equal(prof.amountLow, 30000);
+  assert.equal(prof.amountHigh, 90000);
+  const seg = usualSegment(prof);
+  assert.deepEqual(seg.provinces, ["Pichincha", "Chimborazo"]);
+  assert.deepEqual(fp2(list, seg).map((p) => p.id), ["b", "c", "d", "z"], "z (Pichincha, 40 mil, SIE) también encaja");
+  assert.equal(voliaProfile([mk({})]), null);
+});
+
+test("ordenar, describir filtros activos y quitarlos por grupo", () => {
+  const list = [mk({ id: "1", a: 10, o: 9, d: "2026-01-01" }), mk({ id: "2", a: 30, o: 1, d: "2026-03-01" }), mk({ id: "3", a: 20, o: 5, d: "2026-02-01" })];
+  assert.deepEqual(sortProcesses(list, "monto").map((p) => p.id), ["2", "3", "1"]);
+  assert.deepEqual(sortProcesses(list, "fecha").map((p) => p.id), ["2", "3", "1"]);
+  assert.deepEqual(sortProcesses(list, "oferentes").map((p) => p.id), ["1", "3", "2"]);
+  const f = { category: "trauma", provinces: ["Pichincha"], minAmount: 20000, maxAmount: 250000, minTenderers: 3 };
+  assert.deepEqual(activeFilters(f).map((x) => x.label), ["Traumatología", "Pichincha", "$20 mil a $250 mil", "3 o más oferentes"]);
+  const cleared = clearFilterKey(clearFilterKey(f, "amount"), "provinces");
+  assert.deepEqual(activeFilters(cleared).map((x) => x.key), ["category", "tenderers"]);
+});
