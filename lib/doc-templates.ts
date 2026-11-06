@@ -95,6 +95,7 @@ function productLabel(line: string): string {
 /** Lo que aún falta para que la carta pueda mandarse a firmar. */
 export function authorizationMissing(i: AuthorizationInput): string[] {
   const out: string[] = [];
+  if (!i.distributor.trim()) out.push("empresa autorizada");
   if (!i.institution.trim()) out.push("institución contratante");
   if (!i.process.trim()) out.push("código del proceso");
   if (!i.brands.length) out.push("al menos una marca");

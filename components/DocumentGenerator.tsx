@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { exportBusinessPdf, exportBusinessWord, type BusinessExport } from "../lib/business-exports";
 import { businessIsoDate } from "../lib/date-utils";
+import { DEFAULT_COMPANY } from "../lib/offer-package";
 import { addMonths, authorizationLetter, letterDate, authorizationMissing, parseBrandLines, prefillFromCase, prefillFromTender, suggestRegistrations, type AuthorizationInput } from "../lib/doc-templates";
 import { exportAuthorizationLetter } from "../lib/authorization-docx";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
@@ -17,6 +18,7 @@ type DocData = {
   type: DocType; number: string; date: string; recipient: string; role: string; institution: string; patient: string; patientId: string; hcl: string;
   surgeryDate: string; contract: string; subject: string; detail: string; amount: string; signer: string; signerRole: string;
   // Carta de autorización de marca (la firma el fabricante o su representante)
+  letterhead: "volia" | "otro"; authorized: string; authorizedRuc: string;
   issuer: string; issuerAddress: string; issuerPhone: string; issuerEmail: string; productLine: string; brands: string; validUntil: string;
 };
 type StoredDocument = { id: string; savedAt: string; data: DocData };
@@ -26,7 +28,7 @@ type Issuer = Pick<DocData, "issuer" | "issuerAddress" | "issuerPhone" | "issuer
 const KEY = "volia-document-draft-v1";
 const VOLIA = { name: "VOLIA S.A.S.", ruc: "1793206800001" };
 const TYPES: Record<DocType, { label: string; hint: string; subject: string; intro: string }> = {
-  authorization: { label: "Carta de autorización de marca", hint: "La firma el fabricante o su representante; Volia la prepara.", subject: "Autorización de distribución", intro: "" },
+  authorization: { label: "Carta de autorización de marca", hint: "Con el membrete de Volia, o con el de un fabricante para que él la firme.", subject: "Autorización de distribución", intro: "" },
   implants: { label: "Carta de implantes utilizados", hint: "Para el cobro de una cirugía.", subject: "Detalle de implantes utilizados", intro: "Por medio de la presente se deja constancia de los dispositivos e insumos utilizados durante el procedimiento indicado." },
   delivery: { label: "Acta de entrega-recepción", hint: "Entrega de bienes a la entidad.", subject: "Entrega de equipos e insumos", intro: "Las partes dejan constancia de la entrega y recepción conforme de los bienes detallados a continuación." },
   technical: { label: "Informe técnico", hint: "Revisión con hallazgos y recomendaciones.", subject: "Informe técnico de revisión", intro: "Se presenta el resultado de la revisión técnica efectuada, incluyendo antecedentes, hallazgos y recomendaciones." },
@@ -35,7 +37,8 @@ const TYPES: Record<DocType, { label: string; hint: string; subject: string; int
 const today = businessIsoDate;
 const INITIAL: DocData = {
   type: "authorization", number: `VOL-DOC-${today().replaceAll("-", "")}`, date: today(), recipient: "", role: "", institution: "", patient: "", patientId: "", hcl: "",
-  surgeryDate: "", contract: "", subject: TYPES.authorization.subject, detail: "", amount: "", signer: "", signerRole: "REPRESENTANTE",
+  surgeryDate: "", contract: "", subject: TYPES.authorization.subject, detail: "", amount: "", signer: "", signerRole: "REPRESENTANTE LEGAL",
+  letterhead: "volia", authorized: "", authorizedRuc: "",
   issuer: "", issuerAddress: "", issuerPhone: "", issuerEmail: "", productLine: "", brands: "", validUntil: addMonths(today(), 2),
 };
 const FIELDS: Record<Exclude<DocType, "authorization">, Array<[keyof DocData, string]>> = {
@@ -77,10 +80,14 @@ export default function DocumentGenerator() {
   const isAuth = data.type === "authorization";
 
   const auth: AuthorizationInput = useMemo(() => ({
-    date: data.date, city: "Quito", institution: data.institution, distributor: VOLIA.name, distributorRuc: VOLIA.ruc, productLine: data.productLine,
+    date: data.date, city: "Quito", institution: data.institution, distributor: data.letterhead === "volia" ? data.authorized : VOLIA.name, distributorRuc: data.letterhead === "volia" ? data.authorizedRuc : VOLIA.ruc, productLine: data.productLine,
     brands: parseBrandLines(data.brands), process: data.contract, validUntil: data.validUntil, signer: data.signer, signerRole: data.signerRole,
   }), [data]);
   const letter = useMemo(() => authorizationLetter(auth), [auth]);
+  const ownLetterhead = data.letterhead === "volia";
+  const head = ownLetterhead
+    ? { name: DEFAULT_COMPANY.name, address: DEFAULT_COMPANY.address, phone: DEFAULT_COMPANY.phone, email: DEFAULT_COMPANY.email, voliaLogo: true }
+    : { name: data.issuer, address: data.issuerAddress, phone: data.issuerPhone, email: data.issuerEmail, voliaLogo: false };
   const missing = useMemo(() => (isAuth ? authorizationMissing(auth) : []), [isAuth, auth]);
 
   const fillRegistrations = () => {
@@ -105,7 +112,7 @@ export default function DocumentGenerator() {
   };
   const applyIssuer = (name: string) => { const i = issuers.find((x) => x.issuer === name); if (i) set(i); };
   const rememberIssuer = () => {
-    if (!isAuth || !data.issuer.trim()) return;
+    if (!isAuth || ownLetterhead || !data.issuer.trim()) return;
     const entry: Issuer = { issuer: data.issuer, issuerAddress: data.issuerAddress, issuerPhone: data.issuerPhone, issuerEmail: data.issuerEmail, signer: data.signer, signerRole: data.signerRole, productLine: data.productLine, brands: data.brands };
     const next = [entry, ...issuers.filter((x) => x.issuer !== entry.issuer)].slice(0, 30);
     setIssuers(next);
@@ -128,7 +135,7 @@ export default function DocumentGenerator() {
   const log = (what: string) => recordActivity("Documentos", what, `${data.number || "Sin número"} · ${label}`, "export");
   const downloadWord = async () => {
     archive();
-    if (isAuth) { rememberIssuer(); await exportAuthorizationLetter(auth, { name: data.issuer, address: data.issuerAddress, phone: data.issuerPhone, email: data.issuerEmail }); }
+    if (isAuth) { rememberIssuer(); await exportAuthorizationLetter(auth, head); }
     else await exportBusinessWord(exportPayload(), data.number || label);
     log("Documento exportado en Word");
   };
@@ -187,9 +194,10 @@ export default function DocumentGenerator() {
           )}
           {isAuth ? (
             <>
-              {issuers.length > 0 && <label><span>Emisor anterior</span><select value="" onChange={(e) => applyIssuer(e.target.value)}><option value="">Reutilizar membrete y marcas…</option>{issuers.map((i) => <option key={i.issuer} value={i.issuer}>{i.issuer}</option>)}</select></label>}
+              <label><span>Membrete</span><select value={data.letterhead} onChange={(e) => set({ letterhead: e.target.value as DocData["letterhead"], signerRole: e.target.value === "volia" ? "REPRESENTANTE LEGAL" : "REPRESENTANTE" })}><option value="volia">Volia S.A.S. (nuestro logo y datos)</option><option value="otro">Otro emisor (fabricante o representante)</option></select></label>
+              {!ownLetterhead && issuers.length > 0 && <label><span>Emisor anterior</span><select value="" onChange={(e) => applyIssuer(e.target.value)}><option value="">Reutilizar membrete y marcas…</option>{issuers.map((i) => <option key={i.issuer} value={i.issuer}>{i.issuer}</option>)}</select></label>}
               <div className="business-form two">
-                {input("issuer", "Quién emite (fabricante o representante)", true)}
+                {ownLetterhead ? <>{input("authorized", "Empresa que autorizamos", true)}{input("authorizedRuc", "RUC de esa empresa")}</> : input("issuer", "Quién emite (fabricante o representante)", true)}
                 {input("institution", "Institución contratante")}
                 {input("contract", "Código del proceso")}
                 {input("productLine", "Línea de productos", true)}
@@ -200,7 +208,7 @@ export default function DocumentGenerator() {
               </div>
               <label><span>Marcas y registros sanitarios (una marca por línea)</span><textarea rows={4} placeholder={"MARCA | registro 1, registro 2"} value={data.brands} onChange={(e) => set({ brands: e.target.value })} /></label>
               <button type="button" className="secondary-button" onClick={fillRegistrations}>Buscar registros en Vigencias</button>
-              <details className="form-more"><summary>Membrete del emisor</summary><div className="business-form two">{input("issuerAddress", "Dirección", true)}{input("issuerPhone", "Teléfono")}{input("issuerEmail", "Correo")}</div></details>
+              {!ownLetterhead && <details className="form-more"><summary>Membrete del emisor</summary><div className="business-form two">{input("issuerAddress", "Dirección", true)}{input("issuerPhone", "Teléfono")}{input("issuerEmail", "Correo")}</div></details>}
               {note && <p className="memory-confirmation" role="status">{note}</p>}
               {missing.length > 0 && <p className="local-note">Falta: {missing.join(", ")}.</p>}
             </>
@@ -219,7 +227,9 @@ export default function DocumentGenerator() {
         </section>
         {isAuth ? (
           <section className="generated-document letter" aria-label="Carta de autorización">
-            <header><div className="doc-brand"><div><strong>{data.issuer || "[Membrete del emisor]"}</strong>{data.issuerAddress && <small>{data.issuerAddress}</small>}{(data.issuerPhone || data.issuerEmail) && <small>{[data.issuerPhone && `Telf: ${data.issuerPhone}`, data.issuerEmail].filter(Boolean).join(" · ")}</small>}</div></div></header>
+            <header>{ownLetterhead
+              ? <div className="doc-brand"><img src={VOLIA_LOGO_DATA_URL} alt="Volia S.A.S." width="105" height="50" /><div><strong>{DEFAULT_COMPANY.name}</strong><small>{DEFAULT_COMPANY.address}</small><small>Telf: {DEFAULT_COMPANY.phone} · {DEFAULT_COMPANY.email}</small></div></div>
+              : <div className="doc-brand"><div><strong>{data.issuer || "[Membrete del emisor]"}</strong>{data.issuerAddress && <small>{data.issuerAddress}</small>}{(data.issuerPhone || data.issuerEmail) && <small>{[data.issuerPhone && `Telf: ${data.issuerPhone}`, data.issuerEmail].filter(Boolean).join(" · ")}</small>}</div></div>}</header>
             <p>Quito, {letterDate(data.date)}</p>
             <div className="doc-addressee">{letter.salutation.slice(0, 3).map((l, i) => i === 1 ? <strong key={i}>{l}</strong> : <span key={i}>{l}</span>)}</div>
             <p>{letter.salutation[3]}</p>
@@ -227,7 +237,7 @@ export default function DocumentGenerator() {
             <ul className="letter-brands">{letter.bullets.map((b) => <li key={b}>{b}</li>)}</ul>
             {letter.closing.map((c) => <p key={c}>{c}</p>)}
             <div className="signature-space"><span>{letter.signoff[0]}</span><div></div><strong>{letter.signoff[1]}</strong><small>{letter.signoff[2]}</small></div>
-            <footer><span>Borrador preparado por VOLIA S.A.S. para la firma del emisor.</span></footer>
+            <footer><span>{ownLetterhead ? "Documento institucional de VOLIA S.A.S." : "Borrador preparado por VOLIA S.A.S. para la firma del emisor."}</span></footer>
           </section>
         ) : (
           <section className="generated-document" aria-label="Documento generado">

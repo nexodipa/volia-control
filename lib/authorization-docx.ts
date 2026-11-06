@@ -1,12 +1,13 @@
 // Word de la carta de autorización de marca. Lleva el membrete de quien la firma (el fabricante o su
 // representante), no el de Volia, y deja el espacio de la firma en blanco: la firma es de esa persona.
-import { safeName } from "./business-exports";
+import { getLogoBytes, safeName } from "./business-exports";
 import { authorizationLetter, letterDate, type AuthorizationInput } from "./doc-templates";
 
-export type Letterhead = { name: string; address: string; phone: string; email: string };
+export type Letterhead = { name: string; address: string; phone: string; email: string; /** Con el logo de Volia en el encabezado, en lugar del nombre del emisor en texto. */ voliaLogo?: boolean };
 
 export async function exportAuthorizationLetter(input: AuthorizationInput, head: Letterhead) {
-  const { AlignmentType, Document, Footer, Header, Packer, Paragraph, TextRun, BorderStyle } = await import("docx");
+  const { AlignmentType, Document, Footer, Header, ImageRun, Packer, Paragraph, TextRun, BorderStyle } = await import("docx");
+  const logo = head.voliaLogo ? await getLogoBytes() : null;
   const letter = authorizationLetter(input);
   const size = 22;
   const p = (text: string, o: { bold?: boolean; after?: number; before?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) =>
@@ -24,7 +25,7 @@ export async function exportAuthorizationLetter(input: AuthorizationInput, head:
   const doc = new Document({
     sections: [{
       properties: { page: { margin: { top: 1500, right: 1500, bottom: 1300, left: 1500 } } },
-      headers: { default: new Header({ children: [new Paragraph({ children: [new TextRun({ text: head.name || "[Membrete del emisor]", bold: true, size: 30, color: "1F4E79" })] })] }) },
+      headers: { default: new Header({ children: [new Paragraph({ children: logo ? [new ImageRun({ data: logo, transformation: { width: 150, height: 72 }, type: "jpg" })] : [new TextRun({ text: head.name || "[Membrete del emisor]", bold: true, size: 30, color: "1F4E79" })] })] }) },
       footers: {
         default: new Footer({
           children: [

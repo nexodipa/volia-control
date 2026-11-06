@@ -5475,3 +5475,4 @@ textarea:focus-visible {
 .mk-profile { font-size: 0.86rem; }
 .letter-brands, .letter-brands li { font-size: 0.95rem; }
 .generated-document.letter .doc-addressee span { color: inherit; }
+.generated-document.letter .letter-brands, .generated-document.letter .letter-brands li { font-size: 13px; line-height: 1.7; }

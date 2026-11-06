@@ -58,3 +58,8 @@ test("registros sugeridos desde Vigencias por nombre de marca, sin tildes ni may
 test("autollenado desde una cirugía", () => {
   assert.deepEqual(prefillFromCase({ patient: "P", hospital: "H", surgeryDate: "2026-10-01", contract: "C-1", amount: 1500.5, invoice: "001-001-000123" }), { institution: "H", patient: "P", surgeryDate: "2026-10-01", contract: "C-1", amount: "1500.5", detail: "Factura: 001-001-000123" });
 });
+
+test("sin empresa autorizada la carta no está lista", () => {
+  assert.deepEqual(authorizationMissing(input({ distributor: "" })), ["empresa autorizada"]);
+  assert.match(authorizationLetter(input({ distributor: "" })).closing[0], /^\[Distribuidor\]/);
+});
