@@ -138,6 +138,14 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const setupLeft = setup.filter((s) => !s.done).length;
   const dateLabel = new Intl.DateTimeFormat("es-EC", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Guayaquil" }).format(now);
 
+  const renderTask = (task: (typeof tasks)[number]) => (
+    <li key={task.title} className={`task ${task.tone}`}>
+      <span className="task-mark" aria-hidden="true" />
+      <div><strong>{task.title}</strong><small>{task.detail}</small></div>
+      <button type="button" className="text-button" onClick={() => (task.event ? window.dispatchEvent(new Event(task.event)) : onNavigate(task.target))}>{task.action}</button>
+    </li>
+  );
+
   return (
     <section className="home-dashboard home-v2">
       <header className="home-hello">
@@ -163,21 +171,24 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
         <section className="home-today" aria-labelledby="home-today-title">
           <h3 id="home-today-title">Para hoy</h3>
           {tasks.length ? (
-            <ul className="task-list">
-              {tasks.map((task) => (
-                <li key={task.title} className={`task ${task.tone}`}>
-                  <span className="task-mark" aria-hidden="true" />
-                  <div><strong>{task.title}</strong><small>{task.detail}</small></div>
-                  <button type="button" className="text-button" onClick={() => (task.event ? window.dispatchEvent(new Event(task.event)) : onNavigate(task.target))}>{task.action}</button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="task-list">{tasks.slice(0, 3).map(renderTask)}</ul>
+              {tasks.length > 3 && (
+                <details className="task-more">
+                  <summary>Ver {tasks.length - 3} más</summary>
+                  <ul className="task-list">{tasks.slice(3).map(renderTask)}</ul>
+                </details>
+              )}
+            </>
           ) : <p className="task-clear">Todo al día.</p>}
 
           {setupLeft > 0 && (
-            <div className="setup-card">
-              <h4>Para dejar Volia Control listo</h4>
-              <p>{setupLeft === 1 ? "Falta un paso." : `Faltan ${setupLeft} pasos.`} Cada uno hace más útiles las alertas y la comparación con el mercado.</p>
+            <details className="setup-card" open={tasks.length === 0}>
+              <summary>
+                <strong>Para dejar Volia Control listo</strong>
+                <span>{setupLeft === 1 ? "Falta un paso" : `Faltan ${setupLeft} pasos`}</span>
+              </summary>
+              <p>Cada uno hace más útiles las alertas y la comparación con el mercado.</p>
               <ol>
                 {setup.map((s) => (
                   <li key={s.title} className={s.done ? "done" : ""}>
@@ -188,7 +199,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
                   </li>
                 ))}
               </ol>
-            </div>
+            </details>
           )}
         </section>
 
