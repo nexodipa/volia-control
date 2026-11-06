@@ -1,0 +1,53 @@
+name: Actualizar Mercado SERCOP
+
+# El SERCOP publica el archivo de Contrataciones Abiertas una vez al mes. Este flujo lo descarga,
+# regenera public/data/mercado-sercop-<año>.json y abre un PR para revisar. No publica nada solo.
+on:
+  schedule:
+    - cron: "17 11 14 * *" # día 14 de cada mes, 06:17 hora de Quito
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  mercado:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Descargar el archivo del año
+        run: |
+          YEAR=$(date +%Y)
+          curl -fL --retry 3 --retry-delay 20 -o "$RUNNER_TEMP/sercop.jsonl.gz" \
+            "https://data.open-contracting.org/en/publication/110/download?name=${YEAR}.jsonl.gz"
+          ls -lh "$RUNNER_TEMP/sercop.jsonl.gz"
+          gzip -t "$RUNNER_TEMP/sercop.jsonl.gz"
+          echo "YEAR=$YEAR" >> "$GITHUB_ENV"
+      - name: Regenerar los datos
+        run: node --experimental-strip-types --no-warnings scripts/build-market.mjs "$RUNNER_TEMP/sercop.jsonl.gz" | tee "$RUNNER_TEMP/build.log"
+      - name: Comprobar que el resultado es razonable
+        run: |
+          F="public/data/mercado-sercop-${YEAR}.json"
+          git show "HEAD:$F" > "$RUNNER_TEMP/anterior.json" 2>/dev/null || echo '{"processes":[]}' > "$RUNNER_TEMP/anterior.json"
+          node scripts/comparar-mercado.mjs "$RUNNER_TEMP/anterior.json" "$F"
+      - name: Abrir PR con los datos nuevos
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- public/data; then echo "Sin cambios en los datos."; exit 0; fi
+          BRANCH="datos/mercado-$(date +%Y-%m-%d)"
+          git config user.name "volia-control-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add public/data
+          git commit -m "Datos de mercado SERCOP $(date +%Y-%m-%d)"
+          git push -u origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "Datos de mercado SERCOP $(date +%Y-%m-%d)" \
+            --body "$(printf 'Actualización mensual automática desde Contrataciones Abiertas (SERCOP).\n\n```\n%s\n```\n\nAl hacer merge y publicar, Mercado SERCOP e Inicio usan estos datos.' "$(cat "$RUNNER_TEMP/build.log")")" \
+            || echo "No se pudo abrir el PR automáticamente; la rama $BRANCH quedó subida."
