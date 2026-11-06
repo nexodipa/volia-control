@@ -58,6 +58,6 @@ export function applyArcsa(records: RegulatoryRecord[], suggestions: ArcsaSugges
 
 let cache: Promise<ArcsaCatastro | null> | null = null;
 export function loadArcsa(): Promise<ArcsaCatastro | null> {
-  if (!cache) cache = fetch("/data/arcsa-catastro.json", { cache: "force-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!cache) cache = fetch("/data/arcsa-catastro.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   return cache;
 }

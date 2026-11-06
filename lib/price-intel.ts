@@ -38,7 +38,7 @@ let cache: Promise<PriceData> | null = null;
 /** Carga una sola vez los tres archivos de precios (en el navegador). */
 export function loadPriceData(): Promise<PriceData> {
   if (cache) return cache;
-  const get = (url: string) => fetch(url, { cache: "force-cache" }).then((r) => (r.ok ? r.json() : { items: [] })).then((d) => d.items ?? []).catch(() => []);
+  const get = (url: string) => fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : { items: [] })).then((d) => d.items ?? []).catch(() => []);
   cache = Promise.all([get("/data/precios-mercado-items.json"), get("/data/hecam-2026.json"), get("/data/costos-proveedores.json")])
     .then(([market, hecam, suppliers]) => ({ market, hecam, suppliers }));
   return cache;

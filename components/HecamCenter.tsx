@@ -16,7 +16,7 @@ export default function HecamCenter() {
 
   useEffect(() => {
     let alive = true;
-    fetch("/data/hecam-2026.json", { cache: "force-cache" }).then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
+    fetch("/data/hecam-2026.json", { cache: "no-cache" }).then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
       .then((d) => { if (alive) setItems(d.items); }).catch((e) => { if (alive) setError(`No se pudo cargar la programación del HECAM (${e.message}).`); });
     return () => { alive = false; };
   }, []);

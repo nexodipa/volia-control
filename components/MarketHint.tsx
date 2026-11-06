@@ -5,7 +5,7 @@ import { buyerProfile, pricingRisk, type MarketProcess } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
 let cache: Promise<MarketProcess[]> | null = null;
-const loadMarket = () => (cache ??= fetch(DATA_URL, { cache: "force-cache" }).then((r) => (r.ok ? r.json() : { processes: [] })).then((d) => d.processes ?? []).catch(() => []));
+const loadMarket = () => (cache ??= fetch(DATA_URL, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : { processes: [] })).then((d) => d.processes ?? []).catch(() => []));
 const money = (v: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
 
 /** Contexto de mercado para la entidad de la cotización. No muestra nada si no hay datos de esa entidad. */
