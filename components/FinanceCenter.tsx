@@ -21,6 +21,7 @@ import { agingBuckets, monthlySeries } from "../lib/monthly-report";
 import { BarList, ColumnChart } from "./charts";
 import { compact } from "../lib/chart-math";
 import { applyPurchasesToStock, normalizeDocNumber, parseSriXml, planImport, type SriDocument } from "../lib/sri-xml";
+import { ExportMenu } from "./ExportMenu";
 
 const OWN_RUC = "1793206800001";
 
@@ -548,21 +549,7 @@ export default function FinanceCenter() {
           </p>
         </div>
         <div className="hero-actions export-actions">
-          <button
-            className="secondary-button"
-            onClick={exportPdf}
-          >
-            PDF
-          </button>
-          <button
-            className="secondary-button"
-            onClick={exportWord}
-          >
-            Word
-          </button>
-          <button className="secondary-button" onClick={exportCsv}>
-            Excel/CSV
-          </button>
+          <ExportMenu onPdf={exportPdf} onWord={exportWord} onCsv={exportCsv} />
           <label className="secondary-button sri-import" title="Facturas, notas de crédito y retenciones descargadas del SRI">
             Importar XML del SRI
             <input type="file" accept=".xml,text/xml,application/xml" multiple hidden onChange={(e) => { void importSri(e.target.files); e.target.value = ""; }} />
@@ -861,6 +848,10 @@ export default function FinanceCenter() {
                 </div>
                 <span>Próximas 8 semanas</span>
               </div>
+              {weeklyFlow.every((w) => !w.income && !w.expense) ? (
+                <p className="empty-chart">Aún no hay cobros ni pagos previstos. Cuando registre vencimientos, aquí verá cómo se mueve la caja semana a semana.</p>
+              ) : (
+              <>
               <div className="week-chart">
                 {weeklyFlow.map((week) => (
                   <div className="week-column" key={week.label}>
@@ -896,6 +887,8 @@ export default function FinanceCenter() {
                   <i className="expense"></i>Salidas previstas
                 </span>
               </div>
+              </>
+              )}
             </section>
             <section className="business-card finance-alerts">
               <div className="section-heading">

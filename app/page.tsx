@@ -507,12 +507,27 @@ export default function Home() {
         <nav aria-label="Navegación principal">
           <button className={`nav-item ${module === "home" ? "active" : ""}`} onClick={() => navigateTo("home")}><Icon name="home" />Inicio</button>
           <button
-            className={`nav-item ${module === "audit" ? "active" : ""}`}
-            onClick={() => navigateTo("audit")}
+            className={`nav-item ${module === "cases" ? "active" : ""}`}
+            onClick={() => navigateTo("cases")}
           >
-            <Icon name="scan" />
-            Auditor inteligente
+            <Icon name="cases" />
+            Cirugías y cobros
           </button>
+          <button
+            className={`nav-item ${module === "inventory" ? "active" : ""}`}
+            onClick={() => navigateTo("inventory")}
+          >
+            <Icon name="inventory" />
+            Inventario
+          </button>
+          <button
+            className={`nav-item ${module === "finance" ? "active" : ""}`}
+            onClick={() => navigateTo("finance")}
+          >
+            <Icon name="finance" />
+            Finanzas
+          </button>
+          <div className="nav-separator">Vender</div>
           <button
             className={`nav-item ${module === "quote" ? "active" : ""}`}
             onClick={() => navigateTo("quote")}
@@ -522,26 +537,27 @@ export default function Home() {
           </button>
           <button className={`nav-item ${module === "catalog" ? "active" : ""}`} onClick={() => navigateTo("catalog")}><Icon name="catalog" />Catálogo maestro</button>
           <button
-            className={`nav-item ${module === "cases" ? "active" : ""}`}
-            onClick={() => navigateTo("cases")}
+            className={`nav-item ${module === "tenders" ? "active" : ""}`}
+            onClick={() => navigateTo("tenders")}
           >
-            <Icon name="cases" />
-            Cirugías y cobros
+            <Icon name="file" />
+            Procesos
           </button>
           <button
-            className={`nav-item ${module === "finance" ? "active" : ""}`}
-            onClick={() => navigateTo("finance")}
+            className={`nav-item ${module === "market" ? "active" : ""}`}
+            onClick={() => navigateTo("market")}
           >
-            <Icon name="finance" />
-            Finanzas
+            <Icon name="analytics" />
+            Mercado SERCOP
           </button>
           <button
-            className={`nav-item ${module === "inventory" ? "active" : ""}`}
-            onClick={() => navigateTo("inventory")}
+            className={`nav-item ${module === "audit" ? "active" : ""}`}
+            onClick={() => navigateTo("audit")}
           >
-            <Icon name="inventory" />
-            Inventario
+            <Icon name="scan" />
+            Auditor inteligente
           </button>
+          <div className="nav-separator">Cumplimiento y análisis</div>
           <button
             className={`nav-item ${module === "regulatory" ? "active" : ""}`}
             onClick={() => navigateTo("regulatory")}
@@ -555,20 +571,6 @@ export default function Home() {
           >
             <Icon name="analytics" />
             Estadísticas
-          </button>
-          <button
-            className={`nav-item ${module === "market" ? "active" : ""}`}
-            onClick={() => navigateTo("market")}
-          >
-            <Icon name="analytics" />
-            Mercado SERCOP
-          </button>
-          <button
-            className={`nav-item ${module === "tenders" ? "active" : ""}`}
-            onClick={() => navigateTo("tenders")}
-          >
-            <Icon name="file" />
-            Procesos
           </button>
           <button
             className={`nav-item ${module === "documents" ? "active" : ""}`}

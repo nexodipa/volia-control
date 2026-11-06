@@ -9,6 +9,7 @@ import { recordActivity } from "../lib/activity-log";
 import InstitutionContacts from "./InstitutionContacts";
 import { findResponsible, normalizeContact, responsibleSummary, type InstitutionContact } from "../lib/institution-contacts";
 import { getInsightsForEntity, learnFromCase } from "../lib/knowledge-memory";
+import { ExportMenu } from "./ExportMenu";
 
 type WorkflowStatus = "surgery" | "documents" | "ready" | "submitted" | "review" | "observed" | "approved" | "paid";
 
@@ -152,7 +153,7 @@ export default function CaseTracker() {
   };
 
   return <section className="case-module">
-    <div className="case-hero"><div><p className="eyebrow">Control operativo</p><h2>Cirugías, facturación y cobros</h2><p>Centraliza cada caso, detecta documentos pendientes y vigila el dinero por cobrar.</p></div><div className="case-actions export-actions"><button className="secondary-button" onClick={exportPdf}>PDF</button><button className="secondary-button" onClick={exportWord}>Word</button><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button><button className="primary-button" onClick={() => setShowForm((value) => !value)}>{showForm ? "Cerrar registro" : "+ Registrar cirugía"}</button></div></div>
+    <div className="case-hero"><div><p className="eyebrow">Control operativo</p><h2>Cirugías, facturación y cobros</h2><p>Centraliza cada caso, detecta documentos pendientes y vigila el dinero por cobrar.</p></div><div className="case-actions export-actions"><ExportMenu onPdf={exportPdf} onWord={exportWord} onCsv={exportCsv} /><button className="primary-button" onClick={() => setShowForm((value) => !value)}>{showForm ? "Cerrar registro" : "+ Registrar cirugía"}</button></div></div>
 
     <div className="case-kpis">
       <article><span>Por cobrar</span><strong>{money(kpis.pending)}</strong><small>Valor aún no recuperado</small></article>
