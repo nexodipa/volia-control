@@ -57,6 +57,8 @@ const KNOWN_BUYER_PROVINCE: [string, string][] = [
   ["teodoro maldonado", "Guayas"], ["guasmo sur", "Guayas"], ["efren jurado", "Guayas"], ["abel gilbert", "Guayas"], ["luis vernaza", "Guayas"],
   ["roberto gilbert", "Guayas"], ["icaza bustamante", "Guayas"], ["homero castanier", "Cañar"], ["manuel ygnacio monteros", "Loja"],
   ["isidro ayora", "Loja"], ["milagro", "Guayas"], ["vicente corral moscoso", "Azuay"], ["teofilo davila", "El Oro"], ["mariana de jesus", "Guayas"], ["verdi cevallos", "Manabí"], ["rafael rodriguez zambrano", "Manabí"],
+  ["samborondon", "Guayas"], ["hospital basico ancon", "Santa Elena"], ["la libertad", "Santa Elena"], ["la concordia", "Santo Domingo de los Tsáchilas"],
+  ["gustavo dominguez", "Santo Domingo de los Tsáchilas"], ["cosme rennella", "Cotopaxi"],
 ];
 
 /** Provincia del proceso: la de la fuente si existe; si no, la deducida del nombre del comprador; si no, "". */
@@ -351,4 +353,27 @@ export function clearFilterKey(f: MarketFilter, key: string): MarketFilter {
   if (key === "query") n.query = "";
   if (key === "onlyOurs") n.onlyOurs = false;
   return n;
+}
+
+
+/** Lee un monto en dólares escrito a mano ("28.000", "1.500,50", "1500.5"). Solo importan los dólares enteros. */
+export function parseAmount(text: string): number | undefined {
+  const t = text.trim().replace(/[^\d.,]/g, "");
+  const dec = t.match(/[.,](\d{1,2})$/); // separador decimal: coma o punto seguidos de 1 o 2 dígitos al final
+  const whole = (dec ? t.slice(0, t.length - dec[0].length) : t).replace(/[^\d]/g, "");
+  const n = Number(whole);
+  return n > 0 ? n : undefined;
+}
+
+/** Agrega o quita un valor de una lista de selección múltiple; devuelve undefined si queda vacía. */
+export function toggleIn<T>(list: T[] | undefined, value: T): T[] | undefined {
+  const cur = list ?? [];
+  const next = cur.includes(value) ? cur.filter((x) => x !== value) : [...cur, value];
+  return next.length ? next : undefined;
+}
+
+/** Mantiene coherente el rango de meses: si el mes que se acaba de mover deja el rango al revés, arrastra al otro. */
+export function fixMonthRange(from: string | undefined, to: string | undefined, moved: "from" | "to") {
+  if (from && to && from > to) return moved === "from" ? { from, to: from } : { from: to, to };
+  return { from, to };
 }

@@ -5504,3 +5504,14 @@ details.setup-card > summary span { color: var(--muted); font-size: 13px; }
 details.setup-card > summary strong { font-size: 15px; }
 details.setup-card[open] > summary { margin-bottom: 4px; }
 .empty-chart { margin: 8px 0 0; padding: 28px 20px; border-radius: 12px; background: var(--surface-soft, #f1f6f4); color: var(--muted); font-size: 14px; line-height: 1.55; text-align: center; }
+
+/* Filtros de selección múltiple del mercado */
+.mk-multi { display: grid; gap: 6px; align-content: start; position: relative; }
+.mk-multi > span { font-size: 13px; font-weight: 700; }
+.mk-multi > details > summary { cursor: pointer; list-style: none; padding: 12px 14px; border: 1px solid var(--line, #d9e3df); border-radius: 12px; background: #fff; min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14.5px; overflow: hidden; }
+.mk-multi > details > summary::-webkit-details-marker { display: none; }
+.mk-multi > details > summary::after { content: "▾"; font-size: 11px; flex: none; }
+.mk-multi-list { margin-top: 6px; max-height: 280px; overflow: auto; display: grid; gap: 2px; padding: 8px; border: 1px solid var(--line, #d9e3df); border-radius: 12px; background: #fff; }
+.mk-multi-list label { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.mk-multi-list label:hover { background: #eef5f2; }
+.mk-multi-list small { color: var(--muted); }

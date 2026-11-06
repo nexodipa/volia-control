@@ -166,3 +166,32 @@ test("ordenar, describir filtros activos y quitarlos por grupo", () => {
   const cleared = clearFilterKey(clearFilterKey(f, "amount"), "provinces");
   assert.deepEqual(activeFilters(cleared).map((x) => x.key), ["category", "tenderers"]);
 });
+
+test("parseAmount entiende montos escritos a mano", async () => {
+  const { parseAmount } = await import("../lib/market.ts");
+  assert.equal(parseAmount("28.000"), 28000);
+  assert.equal(parseAmount("1.500,50"), 1500);
+  assert.equal(parseAmount("1500.50"), 1500);
+  assert.equal(parseAmount("$ 226 000"), 226000);
+  assert.equal(parseAmount("1,234,567"), 1234567);
+  assert.equal(parseAmount(""), undefined);
+  assert.equal(parseAmount("abc"), undefined);
+});
+
+test("toggleIn y fixMonthRange", async () => {
+  const { toggleIn, fixMonthRange } = await import("../lib/market.ts");
+  assert.deepEqual(toggleIn(undefined, "a"), ["a"]);
+  assert.deepEqual(toggleIn(["a", "b"], "a"), ["b"]);
+  assert.equal(toggleIn(["a"], "a"), undefined);
+  assert.deepEqual(fixMonthRange("2026-08", "2026-03", "from"), { from: "2026-08", to: "2026-08" });
+  assert.deepEqual(fixMonthRange("2026-08", "2026-03", "to"), { from: "2026-03", to: "2026-03" });
+  assert.deepEqual(fixMonthRange("2026-02", "2026-03", "from"), { from: "2026-02", to: "2026-03" });
+});
+
+test("las entidades sin provincia publicada se ubican por su nombre", async () => {
+  const { provinceOf } = await import("../lib/market.ts");
+  const base = { id: "x", d: "2026-01-01", m: "SIE", c: "insumos", t: "", p: null, o: 1, w: "", a: null, vb: false, vw: false };
+  assert.equal(provinceOf({ ...base, b: "HOSPITAL BASICO ANCON" }), "Santa Elena");
+  assert.equal(provinceOf({ ...base, b: "CENTRO CLINICO HOSPITAL DEL DIA SAMBORONDON" }), "Guayas");
+  assert.equal(provinceOf({ ...base, b: "GAD MUNICIPAL DEL CANTON LA CONCORDIA" }), "Santo Domingo de los Tsáchilas");
+});
