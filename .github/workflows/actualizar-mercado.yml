@@ -32,14 +32,9 @@ jobs:
         run: node --experimental-strip-types --no-warnings scripts/build-market.mjs "$RUNNER_TEMP/sercop.jsonl.gz" | tee "$RUNNER_TEMP/build.log"
       - name: Comprobar que el resultado es razonable
         run: |
-          node -e '
-            const fs = require("fs");
-            const f = `public/data/mercado-sercop-${process.env.YEAR}.json`;
-            const now = JSON.parse(fs.readFileSync(f, "utf8")).processes.length;
-            const before = Number(require("child_process").execSync(`git show HEAD:${f} | node -e "let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>console.log(JSON.parse(s).processes.length))"`).toString().trim() || 0);
-            console.log({ before, now });
-            if (now < before * 0.9) { console.error("Menos del 90 % de los procesos anteriores: no se abre el PR."); process.exit(1); }
-          '
+          F="public/data/mercado-sercop-${YEAR}.json"
+          git show "HEAD:$F" > "$RUNNER_TEMP/anterior.json" 2>/dev/null || echo '{"processes":[]}' > "$RUNNER_TEMP/anterior.json"
+          node scripts/comparar-mercado.mjs "$RUNNER_TEMP/anterior.json" "$F"
       - name: Abrir PR con los datos nuevos
         env:
           GH_TOKEN: ${{ github.token }}
