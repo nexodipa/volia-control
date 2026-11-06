@@ -7,7 +7,7 @@ import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
 import { BarList, ColumnChart, Donut } from "./charts";
-import { activeFilters, buyerRanking, clearFilterKey, compareWithAward, competitionBuckets, facetOptions, filterProcesses, monthlyTotals, ourRecord, provinceOf, provinceTotals, sortProcesses, usualSegment, voliaProfile, winnerRanking, type MarketFilter, type MarketProcess, type SortKey } from "../lib/market";
+import { activeFilters, buyerRanking, clearFilterKey, compareWithAward, competitionBuckets, facetOptions, filterProcesses, fixMonthRange, monthlyTotals, ourRecord, parseAmount, provinceOf, provinceTotals, sortProcesses, toggleIn, usualSegment, voliaProfile, winnerRanking, type MarketFilter, type MarketProcess, type SortKey } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
 const money = (v: number | null) => v === null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -56,7 +56,7 @@ export default function MarketCenter() {
   const sorted = useMemo(() => sortProcesses(visible, sort), [visible, sort]);
   const clearFilters = () => { setFilter({ category: "todas", query: "", onlyOurs: false }); setShown(30); };
   const change = (patch: MarketFilter) => { setFilter((f) => ({ ...f, ...patch })); setShown(30); };
-  const num = (v: string) => { const n = Number(v.replace(/[^\d]/g, "")); return n > 0 ? n : undefined; };
+  const num = parseAmount;
   const buyers = useMemo(() => buyerRanking(visible, 10), [visible]);
   const months = useMemo(() => monthlyTotals(visible), [visible]);
   const competition = useMemo(() => competitionBuckets(visible), [visible]);
@@ -94,7 +94,15 @@ export default function MarketCenter() {
       </div>
       {profile && <p className="mk-profile">Volia ha ofertado en {profile.bids} procesos: {profile.methods.map((m) => METHOD[m].toLowerCase()).join(" y ")}, sobre todo en {profile.provinces.slice(0, 2).map((x) => x.name).join(" y ")}, con montos centrales de {money(profile.amountLow)} a {money(profile.amountHigh)}{profile.medianTenderers ? ` y unos ${profile.medianTenderers} oferentes` : ""}. El botón aplica esos criterios y puedes ajustarlos abajo.</p>}
       <div className="mk-grid">
-        <label><span>Provincia</span><select value={filter.province ?? ((filter.provinces?.length ?? 0) > 1 ? "__multi" : filter.provinces?.[0] ?? "")} onChange={(e) => change({ province: undefined, provinces: e.target.value ? [e.target.value] : undefined, buyer: undefined })}><option value="">Todas</option>{(filter.provinces?.length ?? 0) > 1 && <option value="__multi" disabled>{filter.provinces?.join(", ")}</option>}{provinceOpts.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
+        <div className="mk-multi"><span>Provincia</span>
+          <details>
+            <summary>{filter.provinces?.length ? filter.provinces.join(", ") : "Todas"}</summary>
+            <div className="mk-multi-list">
+              {provinceOpts.map((x) => <label key={x.name}><input type="checkbox" checked={!!filter.provinces?.includes(x.name)} onChange={() => change({ province: undefined, provinces: toggleIn(filter.provinces, x.name), buyer: undefined })} />{x.name} <small>({x.count})</small></label>)}
+              {(filter.provinces ?? []).filter((n) => !provinceOpts.some((x) => x.name === n)).map((n) => <label key={n}><input type="checkbox" checked onChange={() => change({ provinces: toggleIn(filter.provinces, n), buyer: undefined })} />{n} <small>(0)</small></label>)}
+            </div>
+          </details>
+        </div>
         <label><span>Hospital o entidad</span><select value={filter.buyer ?? ""} onChange={(e) => change({ buyer: e.target.value || undefined })}><option value="">Todas ({buyerOpts.length})</option>{buyerOpts.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
         <label><span>Monto desde (USD)</span><input inputMode="numeric" placeholder="Sin mínimo" value={filter.minAmount ?? ""} onChange={(e) => change({ minAmount: num(e.target.value) })} /></label>
         <label><span>Monto hasta (USD)</span><input inputMode="numeric" placeholder="Sin máximo" value={filter.maxAmount ?? ""} onChange={(e) => change({ maxAmount: num(e.target.value) })} /></label>
@@ -102,11 +110,18 @@ export default function MarketCenter() {
       <details className="mk-more"><summary>Más filtros: rubro, método, competencia, estado y período</summary>
       <div className="mk-grid">
         <label><span>Rubro</span><select value={filter.category ?? "todas"} onChange={(e) => change({ category: e.target.value as MarketFilter["category"] })}><option value="todas">Todos</option>{categoryOpts.map((x) => <option key={x.name} value={x.name}>{x.name === "trauma" ? "Traumatología" : "Insumos y dispositivos"} ({x.count})</option>)}</select></label>
-        <label><span>Método</span><select value={filter.methods?.length === 1 ? filter.methods[0] : ""} onChange={(e) => change({ methods: e.target.value ? [e.target.value as MarketProcess["m"]] : undefined })}><option value="">Todos</option>{methodOpts.map((x) => <option key={x.name} value={x.name}>{METHOD[x.name as MarketProcess["m"]]} ({x.count})</option>)}</select></label>
+        <div className="mk-multi"><span>Método</span>
+          <details>
+            <summary>{filter.methods?.length ? filter.methods.map((m) => METHOD[m]).join(", ") : "Todos"}</summary>
+            <div className="mk-multi-list">
+              {methodOpts.map((x) => <label key={x.name}><input type="checkbox" checked={!!filter.methods?.includes(x.name as MarketProcess["m"])} onChange={() => change({ methods: toggleIn(filter.methods, x.name as MarketProcess["m"]) })} />{METHOD[x.name as MarketProcess["m"]]} <small>({x.count})</small></label>)}
+            </div>
+          </details>
+        </div>
         <label><span>Competencia</span><select value={`${filter.minTenderers ?? ""}-${filter.maxTenderers ?? ""}`} onChange={(e) => { const [a, b] = e.target.value.split("-"); change({ minTenderers: a ? Number(a) : undefined, maxTenderers: b ? Number(b) : undefined }); }}><option value="-">Cualquiera</option><option value="1-2">Poca: 1 a 2 oferentes</option><option value="3-5">Media: 3 a 5 oferentes</option><option value="6-">Mucha: 6 o más</option></select></label>
         <label><span>Estado</span><select value={filter.awarded ?? ""} onChange={(e) => change({ awarded: (e.target.value || undefined) as MarketFilter["awarded"] })}><option value="">Todos</option><option value="si">Adjudicados</option><option value="no">Sin adjudicar</option></select></label>
-        <label><span>Publicados desde</span><select value={filter.from ?? ""} onChange={(e) => change({ from: e.target.value || undefined })}><option value="">Inicio</option>{monthKeys.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-        <label><span>hasta</span><select value={filter.to ?? ""} onChange={(e) => change({ to: e.target.value || undefined })}><option value="">Hoy</option>{monthKeys.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+        <label><span>Publicados desde</span><select value={filter.from ?? ""} onChange={(e) => change(fixMonthRange(e.target.value || undefined, filter.to, "from"))}><option value="">Inicio</option>{monthKeys.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+        <label><span>hasta</span><select value={filter.to ?? ""} onChange={(e) => change(fixMonthRange(filter.from, e.target.value || undefined, "to"))}><option value="">Hoy</option>{monthKeys.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
       </div>
       </details>
       {active.length > 0 && <div className="mk-chips" aria-label="Filtros activos">{active.map((a) => <button key={a.key} type="button" className="mk-chip" onClick={() => { setFilter((f) => clearFilterKey(f, a.key)); setShown(30); }} aria-label={`Quitar ${a.label}`}>{a.label}<span aria-hidden="true"> ×</span></button>)}<button type="button" className="link-button" onClick={clearFilters}>Quitar todos</button></div>}
