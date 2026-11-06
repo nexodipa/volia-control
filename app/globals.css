@@ -5476,3 +5476,11 @@ textarea:focus-visible {
 .letter-brands, .letter-brands li { font-size: 0.95rem; }
 .generated-document.letter .doc-addressee span { color: inherit; }
 .generated-document.letter .letter-brands, .generated-document.letter .letter-brands li { font-size: 13px; line-height: 1.7; }
+
+/* Responsables por institución */
+.contacts-panel > summary { cursor: pointer; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.contact-group { margin-top: 14px; }
+.contact-group h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.contact-group ul { list-style: none; margin: 0; padding: 0; }
+.contact-group li { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); font-size: 0.92rem; }
+.contact-group li small { display: block; color: var(--muted); }
