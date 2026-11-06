@@ -25,6 +25,7 @@ export const SYNCED_COLLECTIONS: SyncedCollection[] = [
   { collection: "quotes", key: STORAGE_KEYS.quoteHistory, makeId: quoteId, share: shareQuote, restore: restoreQuote },
   { collection: "aliases", key: STORAGE_KEYS.requirementAliases, makeId: aliasId },
   { collection: "tenders", key: STORAGE_KEYS.tenders },
+  { collection: "contacts", key: STORAGE_KEYS.institutionContacts },
 ];
 export const SYNCED_KEYS = new Set(SYNCED_COLLECTIONS.map((c) => c.key));
 

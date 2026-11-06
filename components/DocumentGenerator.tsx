@@ -9,6 +9,7 @@ import { addMonths, authorizationLetter, letterDate, authorizationMissing, parse
 import { exportAuthorizationLetter } from "../lib/authorization-docx";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { normalizeTender, TENDER_STATUS, type Tender } from "../lib/tenders";
+import { findResponsible, normalizeContact, type InstitutionContact } from "../lib/institution-contacts";
 import { readStoredArray, readStoredObject, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { VOLIA_LOGO_DATA_URL } from "../lib/volia-logo";
 import { recordActivity } from "../lib/activity-log";
@@ -57,6 +58,7 @@ export default function DocumentGenerator() {
   const [cases, setCases] = useState<CaseLite[]>([]);
   const [records, setRecords] = useState<RegulatoryRecord[]>(REGULATORY_SEED);
   const [issuers, setIssuers] = useState<Issuer[]>([]);
+  const [contacts, setContacts] = useState<InstitutionContact[]>([]);
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -68,6 +70,7 @@ export default function DocumentGenerator() {
       const stored = readStoredArray<RegulatoryRecord>(STORAGE_KEYS.regulatoryDocs);
       if (stored.length) setRecords(stored);
       setIssuers(readStoredArray<Issuer>(STORAGE_KEYS.docIssuers));
+      setContacts(readStoredArray<unknown>(STORAGE_KEYS.institutionContacts).map(normalizeContact).filter((c): c is InstitutionContact => !!c));
       setReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -107,7 +110,11 @@ export default function DocumentGenerator() {
       if (t) set(prefillFromTender(t));
     } else if (value.startsWith("c:")) {
       const c = cases.find((x) => x.id === value.slice(2));
-      if (c) set(prefillFromCase(c));
+      if (c) {
+        const who = findResponsible(contacts, c.hospital, c.surgeryDate);
+        set({ ...prefillFromCase(c), ...(who ? { recipient: who.name, role: who.role } : {}) });
+        setNote(who ? `Destinatario: ${who.name}, responsable de ${c.hospital} en esa fecha.` : "");
+      }
     }
   };
   const applyIssuer = (name: string) => { const i = issuers.find((x) => x.issuer === name); if (i) set(i); };
@@ -192,6 +199,7 @@ export default function DocumentGenerator() {
               </select>
             </label>
           )}
+          {note && <p className="memory-confirmation" role="status">{note}</p>}
           {isAuth ? (
             <>
               <label><span>Membrete</span><select value={data.letterhead} onChange={(e) => set({ letterhead: e.target.value as DocData["letterhead"], signerRole: e.target.value === "volia" ? "REPRESENTANTE LEGAL" : "REPRESENTANTE" })}><option value="volia">Volia S.A.S. (nuestro logo y datos)</option><option value="otro">Otro emisor (fabricante o representante)</option></select></label>
@@ -209,7 +217,6 @@ export default function DocumentGenerator() {
               <label><span>Marcas y registros sanitarios (una marca por línea)</span><textarea rows={4} placeholder={"MARCA | registro 1, registro 2"} value={data.brands} onChange={(e) => set({ brands: e.target.value })} /></label>
               <button type="button" className="secondary-button" onClick={fillRegistrations}>Buscar registros en Vigencias</button>
               {!ownLetterhead && <details className="form-more"><summary>Membrete del emisor</summary><div className="business-form two">{input("issuerAddress", "Dirección", true)}{input("issuerPhone", "Teléfono")}{input("issuerEmail", "Correo")}</div></details>}
-              {note && <p className="memory-confirmation" role="status">{note}</p>}
               {missing.length > 0 && <p className="local-note">Falta: {missing.join(", ")}.</p>}
             </>
           ) : (

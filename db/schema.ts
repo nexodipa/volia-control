@@ -245,7 +245,7 @@ export const auditEvents = sqliteTable(
 // (inventario, movimientos, finanzas, historial de cotizaciones sin datos del paciente, equivalencias de requerimientos).
 // Cada registro es el JSON del módulo; se fusiona por id con la marca de tiempo más reciente. Los borrados son lápidas.
 // No se usa para datos de pacientes: esos quedan solo en el respaldo cifrado.
-export const SHARED_COLLECTIONS = ["inventory", "movements", "finance", "quotes", "aliases"] as const;
+export const SHARED_COLLECTIONS = ["inventory", "movements", "finance", "quotes", "aliases", "tenders", "contacts"] as const;
 
 export const sharedRecords = sqliteTable(
   "shared_records",

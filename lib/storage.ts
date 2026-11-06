@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
   offerDraft: "volia-offer-draft-v1",
   tenders: "volia-tenders-v1",
   docIssuers: "volia-doc-issuers-v1",
+  institutionContacts: "volia-institution-contacts-v1",
 } as const;
 
 export const BACKUP_KEYS = new Set<string>(Object.values(STORAGE_KEYS));
@@ -79,6 +80,7 @@ export function isValidBackupValue(key: string, value: string) {
       STORAGE_KEYS.requirementAliases,
       STORAGE_KEYS.tenders,
       STORAGE_KEYS.docIssuers,
+      STORAGE_KEYS.institutionContacts,
     ]);
     if (arrayKeys.has(key)) return Array.isArray(parsed);
     return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);

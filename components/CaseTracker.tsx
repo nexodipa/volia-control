@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { exportBusinessPdf, exportBusinessWord, type BusinessExport } from "../lib/business-exports";
 import { downloadCsv } from "../lib/csv";
 import { businessIsoDate } from "../lib/date-utils";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
+import InstitutionContacts from "./InstitutionContacts";
+import { findResponsible, normalizeContact, responsibleSummary, type InstitutionContact } from "../lib/institution-contacts";
 import { getInsightsForEntity, learnFromCase } from "../lib/knowledge-memory";
 
 type WorkflowStatus = "surgery" | "documents" | "ready" | "submitted" | "review" | "observed" | "approved" | "paid";
@@ -51,11 +53,6 @@ const LEGACY_DEMO_CASE_IDS = new Set(["demo-1", "demo-2", "demo-3"]);
 
 const EMPTY: CaseRecord = { id: "", patient: "", hospital: "", surgeryDate: today(), contract: "", invoice: "", amount: 0, paidAmount: 0, submittedDate: "", dueDate: "", status: "surgery", notes: "", documents: { letter: false, invoice: false, surgery: false, implants: false, signatures: false } };
 
-function responsibleFor(date: string) {
-  if (!date) return { name: "Pendiente", period: "Ingrese una fecha", matched: false };
-  return { name: "Revisión manual", period: "Configure el responsable institucional", matched: false };
-}
-
 function automaticStatus(record: CaseRecord): WorkflowStatus {
   const complete = Object.values(record.documents).every(Boolean);
   if (record.paidAmount >= record.amount && record.amount > 0) return "paid";
@@ -66,6 +63,7 @@ function automaticStatus(record: CaseRecord): WorkflowStatus {
 
 export default function CaseTracker() {
   const [records, setRecords] = useState<CaseRecord[]>([]);
+  const [contacts, setContacts] = useState<InstitutionContact[]>([]);
   const [draft, setDraft] = useState<CaseRecord>({ ...EMPTY, documents: { ...EMPTY.documents } });
   const [restored, setRestored] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -86,11 +84,17 @@ export default function CaseTracker() {
   }, []);
 
   useEffect(() => { if (restored) writeStoredJson(STORAGE_KEYS.cases, records); }, [records, restored]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setContacts(readStoredArray<unknown>(STORAGE_KEYS.institutionContacts).map(normalizeContact).filter((c): c is InstitutionContact => !!c)), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const saveContacts = (next: InstitutionContact[]) => { setContacts(next); writeStoredJson(STORAGE_KEYS.institutionContacts, next); };
+  const responsibleOf = useCallback((hospital: string, date: string) => responsibleSummary(findResponsible(contacts, hospital, date), hospital, date), [contacts]);
 
   const enriched = useMemo(() => records.map((record) => {
     const status = automaticStatus(record);
-    return { ...record, status, responsible: responsibleFor(record.surgeryDate), pending: Math.max(0, record.amount - record.paidAmount), overdue: !!record.dueDate && status !== "paid" && new Date(`${record.dueDate}T23:59:59`) < new Date() };
-  }), [records]);
+    return { ...record, status, responsible: responsibleOf(record.hospital, record.surgeryDate), pending: Math.max(0, record.amount - record.paidAmount), overdue: !!record.dueDate && status !== "paid" && new Date(`${record.dueDate}T23:59:59`) < new Date() };
+  }), [records, responsibleOf]);
   const visible = enriched.filter((record) => {
     const query = search.trim().toLowerCase();
     const matchesSearch = !query || [record.patient, record.hospital, record.contract, record.invoice, record.responsible.name].some((value) => value.toLowerCase().includes(query));
@@ -103,7 +107,7 @@ export default function CaseTracker() {
     incomplete: enriched.filter((record) => !Object.values(record.documents).every(Boolean)).length,
     overdue: enriched.filter((record) => record.overdue).length,
   }), [enriched]);
-  const draftResponsible = responsibleFor(draft.surgeryDate);
+  const draftResponsible = responsibleOf(draft.hospital, draft.surgeryDate);
 
   const saveCase = () => {
     if (!draft.patient.trim() || !draft.surgeryDate || draft.amount <= 0) return;
@@ -157,6 +161,8 @@ export default function CaseTracker() {
       <article className={kpis.overdue ? "danger" : ""}><span>Cobros vencidos</span><strong>{kpis.overdue}</strong><small>Necesitan seguimiento</small></article>
     </div>
 
+    <InstitutionContacts contacts={contacts} onChange={saveContacts} institutions={[...new Set(records.map((r) => r.hospital).filter(Boolean))]} />
+
     {showForm && <section className="case-form-card">
       <div className="case-section-title"><div><p className="eyebrow">Nuevo caso</p><h3>Registrar cirugía o entrega</h3></div><span>Los campos con * son obligatorios</span></div>
       <div className="case-form-grid">
@@ -183,7 +189,7 @@ export default function CaseTracker() {
           ))}
         </div>
       )}
-      <div className={`responsible-rule ${draftResponsible.matched ? "matched" : "manual"}`}><span>RESPONSABLE SEGÚN FECHA</span><strong>{draftResponsible.name}</strong><small>{draftResponsible.period}</small></div>
+      <div className={`responsible-rule ${draftResponsible.matched ? "matched" : "manual"}`}><span>RESPONSABLE SEGÚN FECHA</span><strong>{draftResponsible.name}</strong><small>{draftResponsible.detail}</small></div>
       <div className="document-checks"><span>Documentos recibidos</span><div>{DOCUMENTS.map(([key, label]) => <label key={key}><input type="checkbox" checked={draft.documents[key]} onChange={() => setDraft({ ...draft, documents: { ...draft.documents, [key]: !draft.documents[key] } })} /><span>{label}</span></label>)}</div></div>
       <label className="case-notes"><span>Observaciones</span><textarea value={draft.notes} placeholder="Pendientes, llamadas o aclaraciones" onChange={(event) => setDraft({ ...draft, notes: event.target.value })} /></label>
       <div className="case-form-footer"><small>La información se guarda únicamente en este dispositivo.</small><div>{draft.id && <button className="secondary-button" onClick={() => { setDraft({ ...EMPTY, surgeryDate: today(), documents: { ...EMPTY.documents } }); setShowForm(false); }}>Cancelar edición</button>}<button className="primary-button" disabled={!draft.patient.trim() || !draft.surgeryDate || draft.amount <= 0} onClick={saveCase}>{draft.id ? "Actualizar caso" : "Guardar caso"}</button></div></div>
@@ -195,7 +201,7 @@ export default function CaseTracker() {
         const completeCount = Object.values(record.documents).filter(Boolean).length;
         return <article className={`case-row ${record.overdue ? "is-overdue" : ""}`} key={record.id}>
           <div className="case-main"><div className="case-name"><span className={`status-dot ${record.overdue ? "red" : STATUS[record.status].tone}`}></span><div><strong>{record.patient}</strong><small>{record.hospital} · Cirugía {dateLabel(record.surgeryDate)}</small></div></div><span className={`status-pill ${record.overdue ? "red" : STATUS[record.status].tone}`}>{record.overdue ? "Cobro vencido" : STATUS[record.status].label}</span></div>
-          <div className="case-details"><div><span>Responsable por fecha</span><strong className={record.responsible.matched ? "" : "manual-text"}>{record.responsible.name}</strong><small>{record.responsible.period}</small></div><div><span>Factura / contrato</span><strong>{record.invoice || "Sin factura"}</strong><small>{record.contract || "Sin contrato"}</small></div><div><span>Documentos</span><strong>{completeCount}/5 completos</strong><div className="mini-progress"><i style={{ width: `${completeCount * 20}%` }}></i></div></div><div className="case-money"><span>Pendiente</span><strong>{money(record.pending)}</strong><small>de {money(record.amount)}</small></div></div>
+          <div className="case-details"><div><span>Responsable por fecha</span><strong className={record.responsible.matched ? "" : "manual-text"}>{record.responsible.name}</strong><small>{record.responsible.detail}</small></div><div><span>Factura / contrato</span><strong>{record.invoice || "Sin factura"}</strong><small>{record.contract || "Sin contrato"}</small></div><div><span>Documentos</span><strong>{completeCount}/5 completos</strong><div className="mini-progress"><i style={{ width: `${completeCount * 20}%` }}></i></div></div><div className="case-money"><span>Pendiente</span><strong>{money(record.pending)}</strong><small>de {money(record.amount)}</small></div></div>
           <details className="case-expand"><summary>Gestionar expediente</summary><div className="case-management"><div><span>Actualizar estado</span><select value={record.status} onChange={(event) => setStatus(record.id, event.target.value as WorkflowStatus)}>{Object.entries(STATUS).map(([value, status]) => <option value={value} key={value}>{status.label}</option>)}</select><div className="record-actions"><button className="edit-record" onClick={() => editCase(record)}>Editar caso</button><button className="delete-record" onClick={() => deleteCase(record.id)}>Eliminar</button></div></div><div className="record-docs"><span>Checklist documental</span>{DOCUMENTS.map(([key, label]) => <label key={key}><input type="checkbox" checked={record.documents[key]} onChange={() => markDocument(record.id, key)} />{label}</label>)}</div><div><span>Fechas y notas</span><p>Presentada: {dateLabel(record.submittedDate)}<br />Pago esperado: {dateLabel(record.dueDate)}</p><small>{record.notes || "Sin observaciones."}</small></div></div></details>
         </article>;
       })}{!visible.length && <div className="case-empty"><strong>No hay expedientes con estos filtros</strong><span>Cambia la búsqueda o registra una nueva cirugía.</span></div>}</div>
