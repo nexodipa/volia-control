@@ -26,6 +26,14 @@ export type MarketFilter = {
   buyer?: string; // entidad compradora exacta (hospital)
   province?: string;
   winner?: string; // proveedor ganador exacto
+  maxAmount?: number; // USD; deja fuera los procesos sin monto conocido
+  minTenderers?: number;
+  maxTenderers?: number; // deja fuera los que no informan oferentes
+  methods?: MarketProcess["m"][];
+  provinces?: string[]; // varias provincias a la vez (se suma a `province`)
+  awarded?: "si" | "no"; // con o sin monto adjudicado
+  from?: string; // AAAA-MM, mes de publicación
+  to?: string;
 };
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -72,8 +80,16 @@ export function filterProcesses(list: MarketProcess[], f: MarketFilter = {}) {
     (!f.category || f.category === "todas" || p.c === f.category) &&
     (!f.onlyOurs || p.vb) &&
     (!f.minAmount || amountOf(p) >= f.minAmount) &&
+    (!f.maxAmount || (amountOf(p) > 0 && amountOf(p) <= f.maxAmount)) &&
+    (!f.minTenderers || p.o >= f.minTenderers) &&
+    (!f.maxTenderers || (p.o > 0 && p.o <= f.maxTenderers)) &&
+    (!f.methods?.length || f.methods.includes(p.m)) &&
+    (!f.awarded || (f.awarded === "si") === (p.a != null && p.a > 0)) &&
+    (!f.from || p.d.slice(0, 7) >= f.from) &&
+    (!f.to || p.d.slice(0, 7) <= f.to) &&
     (!f.buyer || p.b === f.buyer) &&
     (!f.province || provinceOf(p) === f.province) &&
+    (!f.provinces?.length || f.provinces.includes(provinceOf(p))) &&
     (!f.winner || winnersOf(p).includes(f.winner)) &&
     (!q || norm(`${p.id} ${p.b} ${p.t} ${p.w}`).includes(q)));
 }
@@ -223,4 +239,116 @@ export function provinceTotals(list: MarketProcess[], limit = 8) {
     byProvince.set(name, cur);
   }
   return [...byProvince.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.amount - a.amount || b.count - a.count).slice(0, limit);
+}
+
+export type FacetKey = "province" | "buyer" | "method" | "category";
+
+/**
+ * Opciones de un filtro con cuántos procesos habría si las eliges, respetando todos los demás filtros.
+ * Así el selector de hospitales solo muestra los de la provincia elegida y los conteos no mienten.
+ */
+export function facetOptions(list: MarketProcess[], f: MarketFilter, key: FacetKey) {
+  const rest: MarketFilter = { ...f };
+  if (key === "province") { rest.province = undefined; rest.provinces = undefined; }
+  if (key === "buyer") rest.buyer = undefined;
+  if (key === "method") rest.methods = undefined;
+  if (key === "category") rest.category = "todas";
+  const counts = new Map<string, number>();
+  for (const p of filterProcesses(list, rest)) {
+    const name = key === "province" ? provinceOf(p) : key === "buyer" ? p.b : key === "method" ? p.m : p.c;
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "es"));
+}
+
+const quantile = (sorted: number[], q: number) => {
+  if (!sorted.length) return 0;
+  const pos = (sorted.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+};
+
+export type VoliaProfile = {
+  bids: number;
+  methods: MarketProcess["m"][];
+  provinces: { name: string; bids: number }[];
+  categories: { name: "trauma" | "insumos"; bids: number }[];
+  amountLow: number; // primer cuartil de los montos de los procesos donde ofertamos, redondeado a miles
+  amountHigh: number; // tercer cuartil
+  medianTenderers: number | null;
+};
+
+/** Cómo es lo que Volia suele ofertar, a partir de los procesos donde participó. Null si aún no hay participaciones. */
+export function voliaProfile(list: MarketProcess[]): VoliaProfile | null {
+  const bids = list.filter((p) => p.vb);
+  if (!bids.length) return null;
+  const tally = <T extends string>(values: T[]) => { const m = new Map<T, number>(); for (const v of values) m.set(v, (m.get(v) ?? 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+  const amounts = bids.map(amountOf).filter((a) => a > 0).sort((a, b) => a - b);
+  const tenderers = bids.map((p) => p.o).filter((o) => o > 0).sort((a, b) => a - b);
+  const provinces = tally(bids.map(provinceOf).filter(Boolean));
+  return {
+    bids: bids.length,
+    methods: tally(bids.map((p) => p.m)).map(([m]) => m),
+    provinces: provinces.map(([name, n]) => ({ name, bids: n })),
+    categories: tally(bids.map((p) => p.c)).map(([name, n]) => ({ name, bids: n })),
+    amountLow: amounts.length ? Math.floor(quantile(amounts, 0.25) / 1000) * 1000 : 0,
+    amountHigh: amounts.length ? Math.ceil(quantile(amounts, 0.75) / 1000) * 1000 : 0,
+    medianTenderers: tenderers.length ? quantile(tenderers, 0.5) : null,
+  };
+}
+
+/** Filtro que describe «lo que solemos ofertar»: mismos métodos, provincias donde ya ofertamos más de una vez y el rango central de montos. */
+export function usualSegment(profile: VoliaProfile): MarketFilter {
+  const repeat = profile.provinces.filter((p) => p.bids >= 2).map((p) => p.name);
+  return {
+    category: "todas",
+    methods: profile.methods,
+    provinces: repeat.length ? repeat : profile.provinces.slice(0, 1).map((p) => p.name),
+    minAmount: profile.amountLow || undefined,
+    maxAmount: profile.amountHigh || undefined,
+  };
+}
+
+export type SortKey = "monto" | "fecha" | "oferentes";
+
+export function sortProcesses(list: MarketProcess[], by: SortKey) {
+  const out = [...list];
+  if (by === "fecha") return out.sort((a, b) => b.d.localeCompare(a.d));
+  if (by === "oferentes") return out.sort((a, b) => b.o - a.o || amountOf(b) - amountOf(a));
+  return out.sort((a, b) => amountOf(b) - amountOf(a));
+}
+
+/** Filtros activos como etiquetas legibles (para mostrarlos como chips que se pueden quitar uno a uno). */
+export function activeFilters(f: MarketFilter): { key: string; label: string }[] {
+  const money = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)} M` : n >= 1000 ? `$${Math.round(n / 1000)} mil` : `$${n}`);
+  const out: { key: string; label: string }[] = [];
+  if (f.category && f.category !== "todas") out.push({ key: "category", label: f.category === "trauma" ? "Traumatología" : "Insumos y dispositivos" });
+  if (f.methods?.length) out.push({ key: "methods", label: f.methods.join(" + ") });
+  const provs = [...(f.province ? [f.province] : []), ...(f.provinces ?? [])];
+  if (provs.length) out.push({ key: "provinces", label: provs.join(", ") });
+  if (f.buyer) out.push({ key: "buyer", label: f.buyer.length > 36 ? `${f.buyer.slice(0, 34)}…` : f.buyer });
+  if (f.winner) out.push({ key: "winner", label: `Ganó ${f.winner.length > 28 ? `${f.winner.slice(0, 26)}…` : f.winner}` });
+  if (f.minAmount || f.maxAmount) out.push({ key: "amount", label: f.minAmount && f.maxAmount ? `${money(f.minAmount)} a ${money(f.maxAmount)}` : f.minAmount ? `Desde ${money(f.minAmount)}` : `Hasta ${money(f.maxAmount as number)}` });
+  if (f.minTenderers || f.maxTenderers) out.push({ key: "tenderers", label: f.minTenderers && f.maxTenderers ? `${f.minTenderers} a ${f.maxTenderers} oferentes` : f.minTenderers ? `${f.minTenderers} o más oferentes` : `Hasta ${f.maxTenderers} oferentes` });
+  if (f.awarded) out.push({ key: "awarded", label: f.awarded === "si" ? "Adjudicados" : "Sin adjudicar" });
+  if (f.from || f.to) out.push({ key: "period", label: `${f.from ?? "…"} a ${f.to ?? "…"}` });
+  if (f.query?.trim()) out.push({ key: "query", label: `«${f.query.trim()}»` });
+  if (f.onlyOurs) out.push({ key: "onlyOurs", label: "Donde ofertó Volia" });
+  return out;
+}
+
+/** Quita del filtro el grupo que corresponde a una etiqueta activa. */
+export function clearFilterKey(f: MarketFilter, key: string): MarketFilter {
+  const n: MarketFilter = { ...f };
+  if (key === "category") n.category = "todas";
+  if (key === "methods") n.methods = undefined;
+  if (key === "provinces") { n.province = undefined; n.provinces = undefined; }
+  if (key === "buyer") n.buyer = undefined;
+  if (key === "winner") n.winner = undefined;
+  if (key === "amount") { n.minAmount = undefined; n.maxAmount = undefined; }
+  if (key === "tenderers") { n.minTenderers = undefined; n.maxTenderers = undefined; }
+  if (key === "awarded") n.awarded = undefined;
+  if (key === "period") { n.from = undefined; n.to = undefined; }
+  if (key === "query") n.query = "";
+  if (key === "onlyOurs") n.onlyOurs = false;
+  return n;
 }
