@@ -195,3 +195,28 @@ test("las entidades sin provincia publicada se ubican por su nombre", async () =
   assert.equal(provinceOf({ ...base, b: "CENTRO CLINICO HOSPITAL DEL DIA SAMBORONDON" }), "Guayas");
   assert.equal(provinceOf({ ...base, b: "GAD MUNICIPAL DEL CANTON LA CONCORDIA" }), "Santo Domingo de los Tsáchilas");
 });
+
+test("freshOpportunities cuenta solo lo reciente que encaja con lo que Volia suele ofertar", async () => {
+  const { freshOpportunities } = await import("../lib/market.ts");
+  const mk = (id, d, extra = {}) => ({ id, d, b: "HOSPITAL X", m: "SIE", c: "insumos", t: "", p: null, o: 4, w: "", a: 50000, vb: false, vw: false, r: "Pichincha", ...extra });
+  const all = [
+    mk("a", "2026-01-10", { vb: true }), mk("b", "2026-01-12", { vb: true }), mk("c", "2026-01-15", { vb: true }),
+    mk("d", "2026-10-20"), mk("e", "2026-11-01"), mk("f", "2026-11-02", { r: "Galápagos", m: "LIC", a: 900 }), mk("g", "2026-08-01"),
+  ];
+  const r = freshOpportunities(all, 21);
+  assert.ok(r);
+  assert.equal(r.since, "2026-10-12");
+  assert.equal(r.total, 3);
+  assert.equal(r.count, 2);
+  assert.equal(freshOpportunities([], 21), null);
+  assert.equal(freshOpportunities([mk("z", "2026-11-01")], 21), null);
+});
+
+test("el filtro since deja solo lo publicado desde ese día y se puede quitar", async () => {
+  const { filterProcesses, activeFilters, clearFilterKey } = await import("../lib/market.ts");
+  const mk = (id, d) => ({ id, d, b: "H", m: "SIE", c: "insumos", t: "", p: null, o: 3, w: "", a: 1000, vb: false, vw: false });
+  const all = [mk("a", "2026-09-30"), mk("b", "2026-10-01"), mk("c", "2026-10-05")];
+  assert.equal(filterProcesses(all, { since: "2026-10-01" }).length, 2);
+  assert.ok(activeFilters({ since: "2026-10-01" }).some((c) => c.key === "since"));
+  assert.equal(filterProcesses(all, clearFilterKey({ since: "2026-10-01" }, "since")).length, 3);
+});

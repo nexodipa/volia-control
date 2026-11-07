@@ -32,6 +32,7 @@ export type MarketFilter = {
   methods?: MarketProcess["m"][];
   provinces?: string[]; // varias provincias a la vez (se suma a `province`)
   awarded?: "si" | "no"; // con o sin monto adjudicado
+  since?: string; // AAAA-MM-DD, solo procesos publicados desde ese día
   from?: string; // AAAA-MM, mes de publicación
   to?: string;
 };
@@ -87,6 +88,7 @@ export function filterProcesses(list: MarketProcess[], f: MarketFilter = {}) {
     (!f.maxTenderers || (p.o > 0 && p.o <= f.maxTenderers)) &&
     (!f.methods?.length || f.methods.includes(p.m)) &&
     (!f.awarded || (f.awarded === "si") === (p.a != null && p.a > 0)) &&
+    (!f.since || p.d >= f.since) &&
     (!f.from || p.d.slice(0, 7) >= f.from) &&
     (!f.to || p.d.slice(0, 7) <= f.to) &&
     (!f.buyer || p.b === f.buyer) &&
@@ -332,6 +334,7 @@ export function activeFilters(f: MarketFilter): { key: string; label: string }[]
   if (f.minAmount || f.maxAmount) out.push({ key: "amount", label: f.minAmount && f.maxAmount ? `${money(f.minAmount)} a ${money(f.maxAmount)}` : f.minAmount ? `Desde ${money(f.minAmount)}` : `Hasta ${money(f.maxAmount as number)}` });
   if (f.minTenderers || f.maxTenderers) out.push({ key: "tenderers", label: f.minTenderers && f.maxTenderers ? `${f.minTenderers} a ${f.maxTenderers} oferentes` : f.minTenderers ? `${f.minTenderers} o más oferentes` : `Hasta ${f.maxTenderers} oferentes` });
   if (f.awarded) out.push({ key: "awarded", label: f.awarded === "si" ? "Adjudicados" : "Sin adjudicar" });
+  if (f.since) out.push({ key: "since", label: `desde el ${f.since}` });
   if (f.from || f.to) out.push({ key: "period", label: `${f.from ?? "…"} a ${f.to ?? "…"}` });
   if (f.query?.trim()) out.push({ key: "query", label: `«${f.query.trim()}»` });
   if (f.onlyOurs) out.push({ key: "onlyOurs", label: "Donde ofertó Volia" });
@@ -350,6 +353,7 @@ export function clearFilterKey(f: MarketFilter, key: string): MarketFilter {
   if (key === "tenderers") { n.minTenderers = undefined; n.maxTenderers = undefined; }
   if (key === "awarded") n.awarded = undefined;
   if (key === "period") { n.from = undefined; n.to = undefined; }
+  if (key === "since") n.since = undefined;
   if (key === "query") n.query = "";
   if (key === "onlyOurs") n.onlyOurs = false;
   return n;
@@ -376,4 +380,19 @@ export function toggleIn<T>(list: T[] | undefined, value: T): T[] | undefined {
 export function fixMonthRange(from: string | undefined, to: string | undefined, moved: "from" | "to") {
   if (from && to && from > to) return moved === "from" ? { from, to: from } : { from: to, to };
   return { from, to };
+}
+
+export type FreshOpportunities = { count: number; total: number; since: string; top: MarketProcess[] };
+
+/** Procesos publicados en los últimos `days` días de los datos que encajan con lo que Volia suele ofertar. */
+export function freshOpportunities(all: MarketProcess[], days = 21): FreshOpportunities | null {
+  const profile = voliaProfile(all);
+  if (!profile || !all.length) return null;
+  const latest = all.reduce((m, p) => (p.d > m ? p.d : m), "");
+  const limit = new Date(`${latest}T00:00:00Z`);
+  limit.setUTCDate(limit.getUTCDate() - days);
+  const since = limit.toISOString().slice(0, 10);
+  const recent = all.filter((p) => p.d >= since);
+  const fits = filterProcesses(recent, { ...usualSegment(profile), query: "", onlyOurs: false });
+  return { count: fits.length, total: recent.length, since, top: sortProcesses(fits, "monto").slice(0, 3) };
 }
