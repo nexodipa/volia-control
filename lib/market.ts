@@ -33,6 +33,8 @@ export type MarketFilter = {
   provinces?: string[]; // varias provincias a la vez (se suma a `province`)
   awarded?: "si" | "no"; // con o sin monto adjudicado
   since?: string; // AAAA-MM-DD, solo procesos publicados desde ese día
+  fit?: "alta" | "encaja"; // encaje con los productos de Volia: solo alta, o alta y media
+  terms?: string[]; // palabras extra (del catálogo) para medir el encaje
   from?: string; // AAAA-MM, mes de publicación
   to?: string;
 };
@@ -89,6 +91,7 @@ export function filterProcesses(list: MarketProcess[], f: MarketFilter = {}) {
     (!f.methods?.length || f.methods.includes(p.m)) &&
     (!f.awarded || (f.awarded === "si") === (p.a != null && p.a > 0)) &&
     (!f.since || p.d >= f.since) &&
+    (!f.fit || fitRank(fitOf(p, f.terms).level) >= (f.fit === "alta" ? 2 : 1)) &&
     (!f.from || p.d.slice(0, 7) >= f.from) &&
     (!f.to || p.d.slice(0, 7) <= f.to) &&
     (!f.buyer || p.b === f.buyer) &&
@@ -312,6 +315,43 @@ export function usualSegment(profile: VoliaProfile): MarketFilter {
   };
 }
 
+
+// ── Encaje con los productos de Volia ──────────────────────────────────────────
+// Las líneas se afinaron contra los procesos reales: traumatología/osteosíntesis, insumos médicos de uso general y odontología.
+export type FitLevel = "alta" | "media" | "fuera";
+const FIT_LINES: { name: string; strong: boolean; words: string[] }[] = [
+  { name: "Traumatología", strong: true, words: ["osteosint", "traumatolog", "ortoped", "placa", "tornillo", "clavo", "broca", "protesis", "cadera", "rodilla", "fijacion", "fractura", "columna vertebral", "miembro superior", "miembro inferior", "cemento oseo", "injerto oseo", "artroscop", "osteotom", "fijador externo", "implante"] },
+  { name: "Insumos generales", strong: false, words: ["uso general", "jeringa", "guante", "gasa", "algodon", "sutura", "venoclisis", "microgotero", "cateter", "sonda", "mascarilla", "aposito", "esparadrapo", "electrodo", "indicador biologico", "indicador quimico", "esterilizacion", "bisturi", "aguja", "cinta adhesiva", "equipo de infusion", "llave de tres vias", "bolsa recolectora"] },
+  { name: "Odontología", strong: false, words: ["odontolog", "dental", "resina", "ionomero", "endodon", "ortodon"] },
+];
+const FIT_STOP = new Set(["adquisicion", "contratacion", "servicio", "servicios", "dispositivos", "medicos", "medico", "hospital", "insumos", "suministro", "provision", "general", "varios", "materiales", "material", "equipo", "equipos", "funcionamiento", "instalacion", "puesta", "correctivo", "basico", "accesorio", "incluya", "descartable", "descartables", "producto", "productos"]);
+const fitRank = (l: FitLevel) => (l === "alta" ? 2 : l === "media" ? 1 : 0);
+
+/** Palabras distintivas de las descripciones del catálogo propio (≥6 letras, sin palabras genéricas ni plurales repetidos). */
+export function catalogTerms(descriptions: string[]): string[] {
+  const out = new Set<string>();
+  for (const d of descriptions) for (const w of norm(d).split(/[^a-z0-9]+/)) {
+    const t = w.length > 6 && w.endsWith("s") ? w.slice(0, -1) : w;
+    if (t.length >= 6 && !FIT_STOP.has(t) && !/^\d/.test(t)) out.add(t);
+  }
+  return [...out];
+}
+
+/** Qué tanto encaja un proceso con lo que Volia vende: alta (traumatología, o varias coincidencias), media (una) o fuera. */
+export function fitOf(p: MarketProcess, terms: string[] = []): { level: FitLevel; lines: string[] } {
+  const t = ` ${norm(p.t)}`;
+  const has = (w: string) => t.includes(` ${w}`);
+  const lines: string[] = [];
+  let hits = 0, strong = false;
+  for (const l of FIT_LINES) {
+    const n = l.words.filter(has).length;
+    if (n) { lines.push(l.name); hits += n; if (l.strong) strong = true; }
+  }
+  const own = terms.filter(has).length;
+  if (own) { lines.push("Catálogo propio"); hits += own; }
+  return { level: strong || hits >= 2 ? "alta" : hits === 1 ? "media" : "fuera", lines };
+}
+
 export type SortKey = "monto" | "fecha" | "oferentes";
 
 export function sortProcesses(list: MarketProcess[], by: SortKey) {
@@ -325,6 +365,7 @@ export function sortProcesses(list: MarketProcess[], by: SortKey) {
 export function activeFilters(f: MarketFilter): { key: string; label: string }[] {
   const money = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)} M` : n >= 1000 ? `$${Math.round(n / 1000)} mil` : `$${n}`);
   const out: { key: string; label: string }[] = [];
+  if (f.fit) out.push({ key: "fit", label: f.fit === "alta" ? "encaje alto con nuestros productos" : "encaja con nuestros productos" });
   if (f.category && f.category !== "todas") out.push({ key: "category", label: f.category === "trauma" ? "Traumatología" : "Insumos y dispositivos" });
   if (f.methods?.length) out.push({ key: "methods", label: f.methods.join(" + ") });
   const provs = [...(f.province ? [f.province] : []), ...(f.provinces ?? [])];
@@ -354,6 +395,7 @@ export function clearFilterKey(f: MarketFilter, key: string): MarketFilter {
   if (key === "awarded") n.awarded = undefined;
   if (key === "period") { n.from = undefined; n.to = undefined; }
   if (key === "since") n.since = undefined;
+  if (key === "fit") { n.fit = undefined; }
   if (key === "query") n.query = "";
   if (key === "onlyOurs") n.onlyOurs = false;
   return n;
@@ -385,14 +427,13 @@ export function fixMonthRange(from: string | undefined, to: string | undefined, 
 export type FreshOpportunities = { count: number; total: number; since: string; top: MarketProcess[] };
 
 /** Procesos publicados en los últimos `days` días de los datos que encajan con lo que Volia suele ofertar. */
-export function freshOpportunities(all: MarketProcess[], days = 21): FreshOpportunities | null {
-  const profile = voliaProfile(all);
-  if (!profile || !all.length) return null;
+export function freshOpportunities(all: MarketProcess[], days = 21, terms: string[] = []): FreshOpportunities | null {
+  if (!voliaProfile(all) || !all.length) return null;
   const latest = all.reduce((m, p) => (p.d > m ? p.d : m), "");
   const limit = new Date(`${latest}T00:00:00Z`);
   limit.setUTCDate(limit.getUTCDate() - days);
   const since = limit.toISOString().slice(0, 10);
   const recent = all.filter((p) => p.d >= since);
-  const fits = filterProcesses(recent, { ...usualSegment(profile), query: "", onlyOurs: false });
+  const fits = filterProcesses(recent, { fit: "encaja", terms, query: "", onlyOurs: false });
   return { count: fits.length, total: recent.length, since, top: sortProcesses(fits, "monto").slice(0, 3) };
 }

@@ -196,12 +196,12 @@ test("las entidades sin provincia publicada se ubican por su nombre", async () =
   assert.equal(provinceOf({ ...base, b: "GAD MUNICIPAL DEL CANTON LA CONCORDIA" }), "Santo Domingo de los Tsáchilas");
 });
 
-test("freshOpportunities cuenta solo lo reciente que encaja con lo que Volia suele ofertar", async () => {
+test("freshOpportunities cuenta solo lo reciente que encaja con los productos de Volia", async () => {
   const { freshOpportunities } = await import("../lib/market.ts");
   const mk = (id, d, extra = {}) => ({ id, d, b: "HOSPITAL X", m: "SIE", c: "insumos", t: "", p: null, o: 4, w: "", a: 50000, vb: false, vw: false, r: "Pichincha", ...extra });
   const all = [
     mk("a", "2026-01-10", { vb: true }), mk("b", "2026-01-12", { vb: true }), mk("c", "2026-01-15", { vb: true }),
-    mk("d", "2026-10-20"), mk("e", "2026-11-01"), mk("f", "2026-11-02", { r: "Galápagos", m: "LIC", a: 900 }), mk("g", "2026-08-01"),
+    mk("d", "2026-10-20", { t: "PLACAS DE OSTEOSÍNTESIS" }), mk("e", "2026-11-01", { t: "JERINGAS" }), mk("f", "2026-11-02", { t: "MANTENIMIENTO DE ASCENSORES" }), mk("g", "2026-08-01", { t: "PLACAS" }),
   ];
   const r = freshOpportunities(all, 21);
   assert.ok(r);
@@ -219,4 +219,24 @@ test("el filtro since deja solo lo publicado desde ese día y se puede quitar", 
   assert.equal(filterProcesses(all, { since: "2026-10-01" }).length, 2);
   assert.ok(activeFilters({ since: "2026-10-01" }).some((c) => c.key === "since"));
   assert.equal(filterProcesses(all, clearFilterKey({ since: "2026-10-01" }, "since")).length, 3);
+});
+
+test("fitOf: traumatología es alta, un insumo general es media y servicios quedan fuera", async () => {
+  const { fitOf, catalogTerms } = await import("../lib/market.ts");
+  const mk = (t) => ({ id: "x", d: "2026-10-01", b: "H", m: "SIE", s: "", c: "insumos", t, p: 1000, o: 1, w: "", a: null, vb: false, vw: false });
+  assert.equal(fitOf(mk("ADQUISICIÓN DE PLACAS Y TORNILLOS DE OSTEOSÍNTESIS")).level, "alta");
+  assert.equal(fitOf(mk("ADQUISICIÓN DE JERINGAS")).level, "media");
+  assert.equal(fitOf(mk("JERINGAS Y GUANTES DE EXAMEN")).level, "alta");
+  assert.equal(fitOf(mk("MANTENIMIENTO DE ASCENSORES DEL HOSPITAL")).level, "fuera");
+  assert.deepEqual(catalogTerms(["TORNILLO LCP", "Adquisición de hospital"]).sort(), ["tornillo"]);
+  assert.equal(fitOf(mk("COMPRA DE TORNILLERIA ESPECIAL")).level, "fuera");
+  assert.equal(fitOf(mk("PINZAS LAPAROSCÓPICAS"), ["pinzas"]).level, "media");
+});
+
+test("filtro fit: encaja deja alta y media; alta solo la alta", async () => {
+  const { filterProcesses } = await import("../lib/market.ts");
+  const mk = (id, t) => ({ id, d: "2026-10-01", b: "H", m: "SIE", s: "", c: "insumos", t, p: 1000, o: 1, w: "", a: null, vb: false, vw: false });
+  const list = [mk("a", "PLACAS DE OSTEOSÍNTESIS"), mk("b", "JERINGAS"), mk("c", "ASCENSORES")];
+  assert.deepEqual(filterProcesses(list, { fit: "encaja" }).map((p) => p.id), ["a", "b"]);
+  assert.deepEqual(filterProcesses(list, { fit: "alta" }).map((p) => p.id), ["a"]);
 });

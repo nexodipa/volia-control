@@ -7,7 +7,8 @@ import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
 import { BarList, ColumnChart, Donut } from "./charts";
-import { activeFilters, buyerRanking, clearFilterKey, compareWithAward, competitionBuckets, facetOptions, filterProcesses, fixMonthRange, freshOpportunities, monthlyTotals, ourRecord, parseAmount, provinceOf, provinceTotals, sortProcesses, toggleIn, usualSegment, voliaProfile, winnerRanking, type MarketFilter, type MarketProcess, type SortKey } from "../lib/market";
+import { getCatalog } from "../lib/product-catalog";
+import { activeFilters, buyerRanking, catalogTerms, clearFilterKey, compareWithAward, competitionBuckets, facetOptions, filterProcesses, fitOf, fixMonthRange, freshOpportunities, monthlyTotals, ourRecord, parseAmount, provinceOf, provinceTotals, sortProcesses, toggleIn, usualSegment, voliaProfile, winnerRanking, type MarketFilter, type MarketProcess, type SortKey } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
 const money = (v: number | null) => v === null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -17,6 +18,7 @@ const toCents = (s: string) => Math.round((Number(s.replace(",", ".")) || 0) * 1
 export default function MarketCenter() {
   const [data, setData] = useState<{ source: string; generatedAt?: string; processes: MarketProcess[] } | null>(null);
   const [error, setError] = useState("");
+  const [terms, setTerms] = useState<string[]>([]);
   const [filter, setFilter] = useState<MarketFilter>({ category: "todas", query: "", onlyOurs: false });
   const [cmp, setCmp] = useState({ processId: "SIE-MDMQ-2026-2503-41357", cost: "10219.34", price: "19779.24" });
 
@@ -39,19 +41,22 @@ export default function MarketCenter() {
       .then((d) => {
         if (cancelled) return;
         setData(d);
+        let own: string[] = [];
+        try { own = catalogTerms(getCatalog().filter((c) => c.active).map((c) => c.description)); } catch { /* sin catálogo local */ }
+        setTerms(own);
         // Viene de Inicio: entra directo a lo que solemos ofertar, lo más reciente primero.
         let preset = false;
         try { preset = sessionStorage.getItem("volia-market-preset") === "usual"; if (preset) sessionStorage.removeItem("volia-market-preset"); } catch { /* sin almacenamiento */ }
         const prof = preset ? voliaProfile(d.processes ?? []) : null;
-        const fresh = prof ? freshOpportunities(d.processes ?? []) : null;
-        if (prof) { setFilter({ ...usualSegment(prof), query: "", onlyOurs: false, since: fresh?.since }); setSort("fecha"); }
+        const fresh = prof ? freshOpportunities(d.processes ?? [], 21, own) : null;
+        if (prof) { setFilter({ category: "todas", fit: "encaja", query: "", onlyOurs: false, since: fresh?.since }); setSort("fecha"); }
       })
       .catch((e) => { if (!cancelled) setError(`No se pudieron cargar los datos de mercado (${e.message}).`); });
     return () => { cancelled = true; };
   }, []);
 
   const all = useMemo(() => data?.processes ?? [], [data]);
-  const visible = useMemo(() => filterProcesses(all, filter), [all, filter]);
+  const visible = useMemo(() => filterProcesses(all, { ...filter, terms }), [all, filter, terms]);
   const record = useMemo(() => ourRecord(all), [all]);
   const winners = useMemo(() => winnerRanking(visible, 10), [visible]);
   const provinceOpts = useMemo(() => facetOptions(all, filter, "province"), [all, filter]);
@@ -99,7 +104,8 @@ export default function MarketCenter() {
     <section className="business-card mk-panel" aria-label="Filtros del mercado">
       <div className="mk-panel-top">
         <input className="module-search" placeholder="Buscar comprador, producto, proveedor o código" value={filter.query} onChange={(e) => change({ query: e.target.value })} />
-        {profile && usual && <button type="button" className="primary-button mk-usual" onClick={() => { setFilter({ ...usual, query: "", onlyOurs: false }); setShown(30); }}>Solo lo que solemos ofertar</button>}
+        <button type="button" className="primary-button mk-usual" onClick={() => { setFilter({ category: "todas", fit: "encaja", query: "", onlyOurs: false }); setShown(30); }}>Solo lo que encaja con nuestros productos</button>
+        {profile && usual && <button type="button" className="secondary-button mk-usual" onClick={() => { setFilter({ ...usual, query: "", onlyOurs: false }); setShown(30); }}>Solo lo que solemos ofertar</button>}
       </div>
       {profile && <p className="mk-profile">Volia ha ofertado en {profile.bids} procesos: {profile.methods.map((m) => METHOD[m].toLowerCase()).join(" y ")}, sobre todo en {profile.provinces.slice(0, 2).map((x) => x.name).join(" y ")}, con montos centrales de {money(profile.amountLow)} a {money(profile.amountHigh)}{profile.medianTenderers ? ` y unos ${profile.medianTenderers} oferentes` : ""}. El botón aplica esos criterios y puedes ajustarlos abajo.</p>}
       <div className="mk-grid">
@@ -112,6 +118,7 @@ export default function MarketCenter() {
             </div>
           </details>
         </div>
+        <label><span>Encaje con productos</span><select value={filter.fit ?? ""} onChange={(e) => change({ fit: (e.target.value || undefined) as MarketFilter["fit"] })}><option value="">Todos</option><option value="encaja">Encaja (alto y medio)</option><option value="alta">Solo encaje alto</option></select></label>
         <label><span>Hospital o entidad</span><select value={filter.buyer ?? ""} onChange={(e) => change({ buyer: e.target.value || undefined })}><option value="">Todas ({buyerOpts.length})</option>{buyerOpts.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.count})</option>)}</select></label>
         <label><span>Monto desde (USD)</span><input inputMode="numeric" placeholder="Sin mínimo" value={filter.minAmount ?? ""} onChange={(e) => change({ minAmount: num(e.target.value) })} /></label>
         <label><span>Monto hasta (USD)</span><input inputMode="numeric" placeholder="Sin máximo" value={filter.maxAmount ?? ""} onChange={(e) => change({ maxAmount: num(e.target.value) })} /></label>
@@ -148,7 +155,7 @@ export default function MarketCenter() {
       <div className="mk-list">
         {sorted.slice(0, shown).map((p) => <article className="mk-row" key={p.id}>
           <div className="mk-row-main"><small>{p.id} · {METHOD[p.m]}{provinceOf(p) ? ` · ${provinceOf(p)}` : ""} · {p.d.slice(0, 10)}</small><strong>{p.b}</strong><span>{p.t}</span></div>
-          <div className="mk-row-side"><strong>{money(p.a ?? p.p)}</strong><small>{p.o ? `${p.o} oferentes` : "sin oferentes informados"}</small><small>{p.w ? `Ganó ${p.w}` : "Sin adjudicar"}</small>{p.vb && <em className={`mk-tag ${p.vw ? "won" : ""}`}>{p.vw ? "Volia ganó" : "Volia ofertó"}</em>}</div>
+          <div className="mk-row-side"><strong>{money(p.a ?? p.p)}</strong><small>{p.o ? `${p.o} oferentes` : "sin oferentes informados"}</small><small>{p.w ? `Ganó ${p.w}` : "Sin adjudicar"}</small>{(() => { const f = fitOf(p, terms); return f.level === "fuera" ? null : <em className={`mk-tag fit-${f.level}`} title={f.lines.join(", ")}>{f.level === "alta" ? "Encaje alto" : "Encaje medio"}</em>; })()}{p.vb && <em className={`mk-tag ${p.vw ? "won" : ""}`}>{p.vw ? "Volia ganó" : "Volia ofertó"}</em>}</div>
         </article>)}
         {!visible.length && <div className="module-empty">Ningún proceso cumple estos filtros. Quita alguno de los chips de arriba.</div>}
       </div>
