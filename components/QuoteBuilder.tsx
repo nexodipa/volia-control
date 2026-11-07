@@ -210,13 +210,13 @@ export default function QuoteBuilder() {
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   useEffect(() => {
     let alive = true;
-    fetch("/data/precios-mercado-items.json", { cache: "force-cache" }).then((res) => res.ok ? res.json() : null).then((d) => { if (alive && d?.items) setMarketItems(d.items); }).catch(() => { /* sin datos de mercado: la cotización funciona igual */ });
+    fetch("/data/precios-mercado-items.json", { cache: "no-cache" }).then((res) => res.ok ? res.json() : null).then((d) => { if (alive && d?.items) setMarketItems(d.items); }).catch(() => { /* sin datos de mercado: la cotización funciona igual */ });
     return () => { alive = false; };
   }, []);
   const [hecamItems, setHecamItems] = useState<HecamItem[]>([]);
   useEffect(() => {
     let alive = true;
-    fetch("/data/hecam-2026.json", { cache: "force-cache" }).then((res) => res.ok ? res.json() : null).then((d) => { if (alive && d?.items) setHecamItems(d.items); }).catch(() => { /* opcional */ });
+    fetch("/data/hecam-2026.json", { cache: "no-cache" }).then((res) => res.ok ? res.json() : null).then((d) => { if (alive && d?.items) setHecamItems(d.items); }).catch(() => { /* opcional */ });
     return () => { alive = false; };
   }, []);
   const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);

@@ -16,7 +16,7 @@ export default function UpcomingPurchases() {
   const today = businessIsoDate();
   useEffect(() => {
     let alive = true;
-    fetch("/data/proximas-compras.json", { cache: "force-cache" }).then((r) => (r.ok ? r.json() : { items: [] })).then((d) => { if (alive) setItems(d.items ?? []); }).catch(() => { if (alive) setItems([]); });
+    fetch("/data/proximas-compras.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : { items: [] })).then((d) => { if (alive) setItems(d.items ?? []); }).catch(() => { if (alive) setItems([]); });
     return () => { alive = false; };
   }, []);
   const list = useMemo(() => (items ?? [])

@@ -47,7 +47,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const [marketDate, setMarketDate] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    fetch("/data/mercado-meta.json").then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d?.generatedAt) setMarketDate(String(d.generatedAt)); }).catch(() => {});
+    fetch("/data/mercado-meta.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d?.generatedAt) setMarketDate(String(d.generatedAt)); }).catch(() => {});
     return () => { alive = false; };
   }, []);
   useEffect(() => {

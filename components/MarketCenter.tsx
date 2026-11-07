@@ -34,7 +34,7 @@ export default function MarketCenter() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(DATA_URL, { cache: "force-cache" })
+    fetch(DATA_URL, { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Error ${r.status}`))))
       .then((d) => { if (!cancelled) setData(d); })
       .catch((e) => { if (!cancelled) setError(`No se pudieron cargar los datos de mercado (${e.message}).`); });

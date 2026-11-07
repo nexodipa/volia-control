@@ -1,4 +1,4 @@
-const CACHE = "volia-control-v4";
+const CACHE = "volia-control-v5";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -70,6 +70,19 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
+    );
+    return;
+  }
+
+  // Los datos (mercado, etc.) cambian sin cambiar de nombre: primero la red y, sin conexión, la última copia.
+  if (url.pathname.startsWith("/data/")) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-cache" })
+        .then((response) => {
+          if (response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || new Response("Sin conexión", { status: 503 }))),
     );
     return;
   }
