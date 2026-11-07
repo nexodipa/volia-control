@@ -7,7 +7,7 @@ import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
 import { BarList, ColumnChart, Donut } from "./charts";
-import { activeFilters, buyerRanking, clearFilterKey, compareWithAward, competitionBuckets, facetOptions, filterProcesses, fixMonthRange, monthlyTotals, ourRecord, parseAmount, provinceOf, provinceTotals, sortProcesses, toggleIn, usualSegment, voliaProfile, winnerRanking, type MarketFilter, type MarketProcess, type SortKey } from "../lib/market";
+import { activeFilters, buyerRanking, clearFilterKey, compareWithAward, competitionBuckets, facetOptions, filterProcesses, fixMonthRange, freshOpportunities, monthlyTotals, ourRecord, parseAmount, provinceOf, provinceTotals, sortProcesses, toggleIn, usualSegment, voliaProfile, winnerRanking, type MarketFilter, type MarketProcess, type SortKey } from "../lib/market";
 
 const DATA_URL = "/data/mercado-sercop-2026.json";
 const money = (v: number | null) => v === null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
@@ -36,7 +36,16 @@ export default function MarketCenter() {
     let cancelled = false;
     fetch(DATA_URL, { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Error ${r.status}`))))
-      .then((d) => { if (!cancelled) setData(d); })
+      .then((d) => {
+        if (cancelled) return;
+        setData(d);
+        // Viene de Inicio: entra directo a lo que solemos ofertar, lo más reciente primero.
+        let preset = false;
+        try { preset = sessionStorage.getItem("volia-market-preset") === "usual"; if (preset) sessionStorage.removeItem("volia-market-preset"); } catch { /* sin almacenamiento */ }
+        const prof = preset ? voliaProfile(d.processes ?? []) : null;
+        const fresh = prof ? freshOpportunities(d.processes ?? []) : null;
+        if (prof) { setFilter({ ...usualSegment(prof), query: "", onlyOurs: false, since: fresh?.since }); setSort("fecha"); }
+      })
       .catch((e) => { if (!cancelled) setError(`No se pudieron cargar los datos de mercado (${e.message}).`); });
     return () => { cancelled = true; };
   }, []);

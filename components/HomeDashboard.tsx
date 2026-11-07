@@ -7,6 +7,7 @@ import { businessIsoDate } from "../lib/date-utils";
 import { type StockItem } from "../lib/inventory-data";
 import { REGULATORY_SEED, type RegulatoryRecord } from "../lib/regulatory-data";
 import { getCloudState } from "../lib/cloud-sync";
+import { freshOpportunities, type FreshOpportunities, type MarketProcess } from "../lib/market";
 import { costAboveMarket, loadPriceData, marketReference } from "../lib/price-intel";
 import { getMemorySummary, type MemorySummary } from "../lib/volia-memory";
 import { readStoredArray, STORAGE_KEYS } from "../lib/storage";
@@ -45,9 +46,12 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
   const [costAlerts, setCostAlerts] = useState<string[]>([]);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [marketDate, setMarketDate] = useState<string | null>(null);
+  const [fresh, setFresh] = useState<FreshOpportunities | null>(null);
   useEffect(() => {
     let alive = true;
     fetch("/data/mercado-meta.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d?.generatedAt) setMarketDate(String(d.generatedAt)); }).catch(() => {});
+    fetch("/data/mercado-sercop-2026.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d?.processes) setFresh(freshOpportunities(d.processes as MarketProcess[])); }).catch(() => {});
     return () => { alive = false; };
   }, []);
   useEffect(() => {
@@ -111,9 +115,10 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
     ...(soonDocs.length ? [{ tone: "soon" as const, title: `${soonDocs[0].reference} vence en ${daysUntil(soonDocs[0].expiresAt!, today)} días`, detail: soonDocs.length > 1 ? `Y ${plural(soonDocs.length - 1, "documento más", "documentos más")} en los próximos 90 días.` : soonDocs[0].subject, target: "regulatory", action: "Ver vigencias" }] : []),
     ...(lowStock.length ? [{ tone: "soon" as const, title: `${plural(lowStock.length, "producto con stock bajo", "productos con stock bajo")}`, detail: "Confirme existencias y prepare la reposición.", target: "inventory", action: "Ver inventario" }] : []),
     ...(expiringLots.length ? [{ tone: "soon" as const, title: `${plural(expiringLots.length, "lote por caducar", "lotes por caducar")}`, detail: "Úselos primero o gestione la devolución.", target: "inventory", action: "Ver inventario" }] : []),
+    ...(fresh && fresh.count > 0 ? [{ tone: "info" as const, title: `${plural(fresh.count, "proceso nuevo encaja", "procesos nuevos encajan")} con lo que solemos ofertar`, detail: `Publicados desde el ${fresh.since}, de ${fresh.total} nuevos en total. El mayor: ${fresh.top[0].b.toLowerCase().replace(/(^|\s)(\S)/g, (_m, sp: string, c: string) => sp + c.toUpperCase())}${fresh.top[0].a ? ` (${Math.round(fresh.top[0].a).toLocaleString("es-EC")} USD)` : ""}.`, target: "market", action: "Ver oportunidades", event: "volia-market-usual" }] : []),
     ...(costAlerts.length ? [{ tone: "soon" as const, title: `${plural(costAlerts.length, "producto cuesta", "productos cuestan")} más que el precio de mercado`, detail: `Con ese costo no se puede ganar sin perder dinero. Empiece por: ${costAlerts.slice(0, 2).join("; ")}.`, target: "catalog", action: "Ver catálogo" }] : []),
     ...(undatedDocs.length ? [{ tone: "info" as const, title: `${plural(undatedDocs.length, "registro sanitario sin fecha", "registros sanitarios sin fecha")} de vencimiento`, detail: "Consulte la vigencia en ARCSA y regístrela: sin fecha, el sistema no puede avisar antes de que venzan.", target: "regulatory", action: "Ver vigencias" }] : []),
-    ...(marketStale ? [{ tone: "info" as const, title: "Actualizar el mercado SERCOP", detail: `Los datos son del ${marketDate}. Descargue el archivo del mes en data.open-contracting.org y haga doble clic en «actualizar-mercado» en la carpeta de Volia Control.`, target: "market", action: "Ver mercado" }] : []),
+    ...(marketStale ? [{ tone: "info" as const, title: "Actualizar el mercado SERCOP", detail: `Los datos son del ${marketDate}. El día 14 de cada mes se prepara solo un PR «Datos de mercado SERCOP» en GitHub: haga el merge y vuelva a publicar.`, target: "market", action: "Ver mercado" }] : []),
     ...(hasBackup && backupAge !== null && backupAge > 7 ? [{ tone: "soon" as const, title: `Hace ${backupAge} días que no guarda el respaldo`, detail: "Guárdelo ahora: toma menos de un minuto y protege todo lo que cargó desde entonces.", target: "home", action: "Guardar respaldo", event: "volia-open-cloud-sync" }] : []),
     ...(!hasBackup ? [{ tone: "info" as const, title: "Aún no hay una copia de respaldo", detail: "Elija una frase secreta de 12 caracteres o más. Solo quien la conozca podrá abrir la copia.", target: "home", action: "Crear respaldo", event: "volia-open-cloud-sync" }] : []),
   ];
@@ -142,7 +147,7 @@ export default function HomeDashboard({ onNavigate }: { onNavigate: (module: str
     <li key={task.title} className={`task ${task.tone}`}>
       <span className="task-mark" aria-hidden="true" />
       <div><strong>{task.title}</strong><small>{task.detail}</small></div>
-      <button type="button" className="text-button" onClick={() => (task.event ? window.dispatchEvent(new Event(task.event)) : onNavigate(task.target))}>{task.action}</button>
+      <button type="button" className="text-button" onClick={() => { if (task.event === "volia-market-usual") { try { sessionStorage.setItem("volia-market-preset", "usual"); } catch { /* sin almacenamiento: se abre el mercado sin filtro */ } onNavigate(task.target); } else if (task.event) window.dispatchEvent(new Event(task.event)); else onNavigate(task.target); }}>{task.action}</button>
     </li>
   );
 
