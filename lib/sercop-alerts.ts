@@ -4,6 +4,7 @@
 import { alertsConfigured, APP_URL, type AlertConfig, type AlertDb } from "./alert-sender.ts";
 import { ecuadorToday } from "./alert-digest.ts";
 import { followLink } from "./tenders.ts";
+import { fitOfText, type FitLevel } from "./market.ts";
 
 export const SERCOP_API = "https://datosabiertos.compraspublicas.gob.ec/PLATAFORMA/api/search_ocds";
 export const SEARCH_TERMS = [
@@ -78,6 +79,17 @@ export async function collectCandidates(fetcher: Fetcher, year: number, today: s
   return { rows: [...found.values()].sort((a, b) => b.id - a.id), used, truncated, failures };
 }
 
+
+export type LiveRow = SercopRow & { fit: FitLevel; lines: string[] };
+const FIT_ORDER: Record<FitLevel, number> = { alta: 0, media: 1, fuera: 2 };
+const FIT_TAG: Record<FitLevel, string> = { alta: "Encaje alto · ", media: "Encaje medio · ", fuera: "" };
+
+/** Marca cada proceso según qué tanto encaja con los productos de Volia y pone primero los que más. */
+export function rankByFit(rows: SercopRow[]): LiveRow[] {
+  return rows.map((r): LiveRow => { const f = fitOfText(`${r.title ?? ""} ${r.description ?? ""}`); return { ...r, fit: f.level, lines: f.lines }; })
+    .sort((a, b) => FIT_ORDER[a.fit] - FIT_ORDER[b.fit] || b.id - a.id);
+}
+
 const money = (v: string | null) => { const n = Number(v); return n > 0 ? `USD ${n.toLocaleString("es-EC", { maximumFractionDigits: 2 })}` : "monto no publicado"; };
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const short = (s: string | null, n = 220) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -85,12 +97,13 @@ const short = (s: string | null, n = 220) => (s ?? "").replace(/\s+/g, " ").trim
 export function buildSercopDigest(rows: SercopRow[], today: string, first: boolean, truncated: boolean) {
   const shown = rows.slice(0, MAX_IN_EMAIL);
   const follow = (r: SercopRow) => followLink(APP_URL, { ref: r.title || r.ocid, title: short(r.description, 160), buyer: short(r.buyer, 100), amount: r.budget ?? r.amount, province: r.region });
-  const line = (r: SercopRow) => `${r.title || r.ocid} · ${short(r.buyer, 80)} (${r.region ?? "—"}) · ${r.internal_type ?? "proceso"} · ${money(r.amount ?? r.budget)}\n   ${short(r.description)}\n   Dar seguimiento: ${follow(r)}`;
+  const tag = (r: SercopRow) => FIT_TAG[(r as Partial<LiveRow>).fit ?? "fuera"];
+  const line = (r: SercopRow) => `${tag(r)}${r.title || r.ocid} · ${short(r.buyer, 80)} (${r.region ?? "—"}) · ${r.internal_type ?? "proceso"} · ${money(r.amount ?? r.budget)}\n   ${short(r.description)}\n   Dar seguimiento: ${follow(r)}`;
   const head = first ? `Primera revisión: ${rows.length} proceso(s) médico(s) publicados este mes o el anterior` : `${rows.length} proceso(s) nuevo(s) en el SERCOP`;
   const notes = [rows.length > shown.length ? `Se muestran ${shown.length} de ${rows.length}; los ${rows.length - shown.length} restantes llegan en el próximo aviso.` : "", truncated ? "La búsqueda se cortó por límite de consultas: puede haber más procesos que no se revisaron." : "", "Verifique cada proceso en el portal oficial del SERCOP antes de ofertar."].filter(Boolean);
   const subject = `Volia Control · SERCOP: ${rows.length} proceso(s) ${first ? "para revisar" : "nuevo(s)"} (${today})`;
   const text = [head, "", ...shown.map((r, i) => `${i + 1}. ${line(r)}`), "", ...notes, `Abrir el sistema: ${APP_URL}`].join("\n");
-  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2933"><h2 style="margin:0 0 12px">${esc(head)}</h2><ol style="padding-left:20px">${shown.map((r) => `<li style="margin-bottom:10px"><strong>${esc(r.title || r.ocid)}</strong><br>${esc(short(r.buyer, 80))} · ${esc(r.region ?? "—")} · ${esc(r.internal_type ?? "proceso")} · ${esc(money(r.amount ?? r.budget))}<br><span style="color:#44564c">${esc(short(r.description))}</span><br><a href="${esc(follow(r))}">Dar seguimiento en Volia</a></li>`).join("")}</ol>${notes.map((n) => `<p style="color:#44564c">${esc(n)}</p>`).join("")}<p><a href="${esc(APP_URL)}">Abrir el sistema</a></p></div>`;
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2933"><h2 style="margin:0 0 12px">${esc(head)}</h2><ol style="padding-left:20px">${shown.map((r) => `<li style="margin-bottom:10px"><strong>${esc(tag(r) + (r.title || r.ocid))}</strong><br>${esc(short(r.buyer, 80))} · ${esc(r.region ?? "—")} · ${esc(r.internal_type ?? "proceso")} · ${esc(money(r.amount ?? r.budget))}<br><span style="color:#44564c">${esc(short(r.description))}</span><br><a href="${esc(follow(r))}">Dar seguimiento en Volia</a></li>`).join("")}</ol>${notes.map((n) => `<p style="color:#44564c">${esc(n)}</p>`).join("")}<p><a href="${esc(APP_URL)}">Abrir el sistema</a></p></div>`;
   return { subject, text, html };
 }
 
@@ -98,6 +111,33 @@ export type SercopResult = { ok: boolean; sent: boolean; message: string; found?
 
 type SeenDb = AlertDb & { batch(statements: unknown[]): Promise<unknown> };
 const COLLECTION = "sercop_seen";
+
+
+const LIVE = "sercop_live";
+const LIVE_KEEP = 150;
+
+/** Guarda lo que encontró la revisión (aunque el correo no esté configurado) para mostrarlo dentro del sistema. */
+async function saveLive(db: SeenDb, rows: LiveRow[]) {
+  try {
+    const at = new Date().toISOString();
+    const stmt = db.prepare("INSERT OR REPLACE INTO shared_records (collection, record_id, data, updated_at, deleted, updated_by) VALUES (?, ?, ?, ?, 0, 'sercop-live')") as unknown as { bind(...v: unknown[]): unknown };
+    const old = db.prepare("DELETE FROM shared_records WHERE collection = ? AND updated_at < ?") as unknown as { bind(...v: unknown[]): unknown };
+    const cut = new Date(Date.now() - 45 * 86_400_000).toISOString();
+    const keep = rows.filter((r) => r.fit !== "fuera").concat(rows.filter((r) => r.fit === "fuera")).slice(0, LIVE_KEEP);
+    const stmts = [old.bind(LIVE, cut), ...keep.map((r) => stmt.bind(LIVE, r.ocid, JSON.stringify(r), at))];
+    for (let i = 0; i < stmts.length; i += 40) await db.batch(stmts.slice(i, i + 40));
+  } catch { /* guardar para la pantalla es opcional */ }
+}
+
+/** Procesos que halló la última revisión del SERCOP, con su encaje, para la pantalla de oportunidades. */
+export async function readLiveSercop(db: AlertDb): Promise<LiveRow[]> {
+  try {
+    const rows = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'sercop_live' AND deleted = 0").all<{ data: string }>()).results;
+    const out: LiveRow[] = [];
+    for (const r of rows) { try { const v = JSON.parse(r.data) as LiveRow; if (v && typeof v.ocid === "string") out.push(v); } catch { /* fila ilegible */ } }
+    return out.sort((a, b) => FIT_ORDER[a.fit] - FIT_ORDER[b.fit] || b.id - a.id);
+  } catch { return []; }
+}
 
 export type SercopLast = { at: string; ok: boolean; sent: boolean; message: string };
 
@@ -126,7 +166,8 @@ export async function runSercopCheck(db: SeenDb, cfg: AlertConfig | undefined, o
   if (!rows.length && failures >= used) return { ok: false, sent: false, message: "No se pudo consultar el SERCOP (la interfaz no respondió). Se reintenta en la próxima ejecución." };
   const seen = new Set((await db.prepare("SELECT record_id FROM shared_records WHERE collection = 'sercop_seen'").all<{ record_id: string }>()).results.map((r) => r.record_id));
   const first = seen.size === 0;
-  const fresh = rows.filter((r) => !seen.has(r.ocid));
+  const fresh = rankByFit(rows.filter((r) => !seen.has(r.ocid)));
+  if (!opts.dryRun) await saveLive(db, rankByFit(rows));
   if (opts.dryRun) return { ok: true, sent: false, message: `Prueba sin enviar: ${rows.length} médicos del mes, ${fresh.length} nuevos${truncated ? " (búsqueda incompleta)" : ""}.`, found: rows.length, fresh: fresh.length, truncated };
   if (!fresh.length) return { ok: true, sent: false, message: `Sin procesos nuevos (${rows.length} revisados).`, found: rows.length, fresh: 0, truncated };
   if (!alertsConfigured(cfg)) return { ok: false, sent: false, message: "Las alertas por correo no están configuradas.", found: rows.length, fresh: fresh.length, truncated };

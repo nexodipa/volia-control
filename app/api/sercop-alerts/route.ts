@@ -1,4 +1,4 @@
-import { readLastSercop, runAndRecordSercop } from "../../../lib/sercop-alerts";
+import { readLastSercop, readLiveSercop, runAndRecordSercop } from "../../../lib/sercop-alerts";
 import { apiJson, requireBusinessAccess, requireEditorAccess } from "../../../lib/server-auth";
 
 export const dynamic = "force-dynamic";
@@ -6,10 +6,11 @@ export const dynamic = "force-dynamic";
 const config = () => (globalThis as typeof globalThis & { __VOLIA_ALERTS__?: { url?: string; secret?: string } }).__VOLIA_ALERTS__;
 
 // Último resultado de la revisión del SERCOP (para mostrarlo en Inicio).
-export async function GET() {
+export async function GET(request: Request) {
   const access = await requireBusinessAccess();
   if (access instanceof Response) return access;
-  return apiJson({ last: await readLastSercop(access.db as never) });
+  const wantRows = new URL(request.url).searchParams.get("rows") === "1";
+  return apiJson({ last: await readLastSercop(access.db as never), ...(wantRows ? { rows: await readLiveSercop(access.db as never) } : {}) });
 }
 
 // Revisa el SERCOP ahora. La consulta tarda 1-2 minutos (el SERCOP responde lento). En Workers, lo que queda en

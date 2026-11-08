@@ -34,7 +34,7 @@ function fakeWorld(pagesByTerm) {
 }
 function fakeDb() {
   const seen = new Set(); let batches = 0;
-  return { seen, get batches() { return batches; }, prepare(q) { const st = { q, args: [], bind(...a) { st.args = a; return st; }, async all() { return { results: [...seen].map((record_id) => ({ record_id })) }; } }; return st; }, async batch(sts) { batches += 1; for (const s of sts) seen.add(s.args[1]); } };
+  return { seen, get batches() { return batches; }, prepare(q) { const st = { q, args: [], bind(...a) { st.args = a; return st; }, async all() { return { results: [...seen].map((record_id) => ({ record_id })) }; } }; return st; }, async batch(sts) { batches += 1; for (const s of sts) if (s.args[0] === "sercop_seen") seen.add(s.args[1]); } };
 }
 const cfg = { url: "https://script.google.com/macros/s/ABC123/exec", secret: "s" };
 
@@ -100,4 +100,13 @@ test("una ráfaga de más de 40 no pierde los que no caben: llegan en el siguien
   assert.equal(r2.sent, true); assert.equal(r2.fresh, 5); assert.equal(db.seen.size, 45);
   const r3 = await runSercopCheck(db, cfg, { fetcher: world.fetcher, now });
   assert.equal(r3.sent, false); assert.equal(sent.length, 2);
+});
+
+test("rankByFit pone primero lo que encaja y el correo lo etiqueta", async () => {
+  const { rankByFit, buildSercopDigest } = await import("../lib/sercop-alerts.ts");
+  const ranked = rankByFit([row({ id: 1, title: "SIE-1", description: "ADQUISICION DE UNIFORMES HOSPITALARIOS" }), row({ id: 2, title: "SIE-2", description: "PLACAS Y TORNILLOS DE OSTEOSINTESIS" })]);
+  assert.deepEqual(ranked.map((r) => r.id), [2, 1]);
+  assert.equal(ranked[0].fit, "alta");
+  const mail = buildSercopDigest(ranked, "2026-10-27", false, false);
+  assert.match(mail.text, /Encaje alto · SIE-2/);
 });
