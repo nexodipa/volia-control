@@ -274,9 +274,12 @@ export default function CloudSyncModal() {
               <div className={`${styles.notice} ${styles[notice.kind]}`} role="status">
                 <strong>{notice.text}</strong>
                 {notice.authRequired && (
+                  <>
+                  {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- recarga completa a propósito: Cloudflare Access debe pedir de nuevo el correo */}
                   <a href="/" target="_top">
                     Su sesión venció: recargue para volver a ingresar con su correo
                   </a>
+                  </>
                 )}
                 {notice.conflict && (
                   <span>

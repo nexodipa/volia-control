@@ -47,7 +47,7 @@ export default function TranslatorCenter() {
 
   useEffect(() => {
     const api = chromeApi();
-    if (!api) { setChromeState("no disponible"); setEngine("gemini"); }
+    if (!api) Promise.resolve().then(() => { setChromeState("no disponible"); setEngine("gemini"); });
     else api.availability({ sourceLanguage: "en", targetLanguage: "es" }).then((s) => { setChromeState(s); if (s === "unavailable") setEngine("gemini"); }).catch(() => { setChromeState("no disponible"); setEngine("gemini"); });
     fetch("/api/ai").then((r) => r.json()).then((j) => setGeminiOk(!!j.configured)).catch(() => setGeminiOk(false));
   }, []);

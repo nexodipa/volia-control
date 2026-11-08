@@ -127,6 +127,21 @@ Es una traducción automática: siempre debe revisarla una persona. Si el archiv
 
 Nunca envíe el respaldo por un canal público ni lo suba a GitHub.
 
+## 11 bis. Mercado SERCOP: qué procesos conviene ofertar
+
+1. Abra **Mercado SERCOP** (menú «Vender»).
+2. Pulse **Solo lo que encaja con nuestros productos**. El sistema lee la descripción de cada proceso y lo marca con **Encaje alto** (traumatología, osteosíntesis o varias coincidencias) o **Encaje medio** (por ejemplo jeringas, guantes o material dental). Los servicios, el mantenimiento y los equipos quedan fuera.
+3. Ajuste con **Provincia**, **Hospital o entidad**, **Monto** y los filtros de «Más filtros». Cada filtro activo aparece como una etiqueta que se quita con un clic.
+4. El botón **Solo lo que solemos ofertar** usa otro criterio: provincia, método y rango de monto de las ofertas pasadas de Volia.
+5. Si un producto suyo no se reconoce, agréguelo con una descripción clara en **Catálogo maestro**: el sistema aprende de él.
+
+Los datos se actualizan el día 14 de cada mes: llega un cambio llamado «Datos de mercado SERCOP» en GitHub. Hay que aprobarlo (*merge*) y volver a publicar. Inicio avisa cuando los datos tienen más de un mes.
+
+## 11 ter. Responsables institucionales y exportaciones
+
+- En **Cirugías**, cada hospital guarda su responsable por período; el sistema usa el vigente en la fecha de cada trámite.
+- Los módulos de Finanzas, Inventario, Cirugías y Análisis tienen un menú **Exportar** con PDF, Word y CSV.
+
 ## 12. Lista antes de cerrar
 
 - [ ] Revisé nombres, fechas, códigos y valores.
