@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { downloadCsv } from "../lib/csv";
 import HecamCenter from "./HecamCenter";
+import MarketOpportunities from "./MarketOpportunities";
 import UpcomingPurchases from "./UpcomingPurchases";
 import { getSavedQuotes, type StoredQuote } from "../lib/volia-memory";
 import { linkQuotesToProcesses } from "../lib/quote-market";
@@ -26,6 +27,7 @@ export default function MarketCenter() {
   const [shown, setShown] = useState(30);
 
   const [view, setView] = useState<"sercop" | "hecam" | "demanda">("sercop");
+  const [mode, setMode] = useState<"oportunidades" | "explorar">("oportunidades");
   const [quotes, setQuotes] = useState<StoredQuote[]>([]);
   useEffect(() => {
     const load = () => setQuotes(getSavedQuotes());
@@ -49,7 +51,7 @@ export default function MarketCenter() {
         try { preset = sessionStorage.getItem("volia-market-preset") === "usual"; if (preset) sessionStorage.removeItem("volia-market-preset"); } catch { /* sin almacenamiento */ }
         const prof = preset ? voliaProfile(d.processes ?? []) : null;
         const fresh = prof ? freshOpportunities(d.processes ?? [], 21, own) : null;
-        if (prof) { setFilter({ category: "todas", fit: "encaja", query: "", onlyOurs: false, since: fresh?.since }); setSort("fecha"); }
+        if (prof) { setFilter({ category: "todas", fit: "encaja", query: "", onlyOurs: false, since: fresh?.since }); setSort("fecha"); setMode("oportunidades"); }
       })
       .catch((e) => { if (!cancelled) setError(`No se pudieron cargar los datos de mercado (${e.message}).`); });
     return () => { cancelled = true; };
@@ -96,8 +98,13 @@ export default function MarketCenter() {
   const tabs = <div className="finance-nav market-tabs" role="tablist"><button role="tab" aria-selected={view === "sercop"} className={view === "sercop" ? "active" : ""} onClick={() => setView("sercop")}>Procesos SERCOP</button><button role="tab" aria-selected={view === "hecam"} className={view === "hecam" ? "active" : ""} onClick={() => setView("hecam")}>HECAM 2026</button><button role="tab" aria-selected={view === "demanda"} className={view === "demanda" ? "active" : ""} onClick={() => setView("demanda")}>Próximas compras</button></div>;
   if (view === "demanda") return <section className="business-module"><div className="module-hero"><div><p className="eyebrow">Inteligencia de mercado</p><h2>Próximas compras de los clientes</h2><p>Cuándo se quedará sin cada producto cada unidad de salud, para preparar la proforma antes que la competencia.</p></div></div>{tabs}<UpcomingPurchases /></section>;
   if (view === "hecam") return <section className="business-module"><div className="module-hero"><div><p className="eyebrow">Inteligencia de mercado</p><h2>Programación de compras del HECAM 2026</h2><p>Qué va a comprar el Hospital Carlos Andrade Marín, en qué cantidad, a qué precio referencial y quién ganó lo ya contratado.</p></div></div>{tabs}<HecamCenter /></section>;
+  if (mode === "oportunidades") return <section className="business-module">
+    <div className="module-hero"><div><h2>Qué conviene ofertar ahora</h2><p>Procesos recientes del SERCOP que encajan con lo que Volia vende, ordenados por conveniencia y con la razón de cada uno.</p></div><div className="hero-actions"><button className="secondary-button" onClick={() => setMode("explorar")}>Explorar todo el mercado</button></div></div>
+    {tabs}
+    <MarketOpportunities all={all} terms={terms} onExplore={() => setMode("explorar")} />
+  </section>;
   return <section className="business-module">
-    <div className="module-hero"><div><h2>Mercado público de insumos y dispositivos médicos</h2><p>Quién compra, quién gana y por cuánto en 2026. Filtra por lo que Volia suele ofertar y mira cómo le fue.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
+    <div className="module-hero"><div><h2>Mercado público de insumos y dispositivos médicos</h2><p>Quién compra, quién gana y por cuánto en 2026. Filtra por lo que Volia suele ofertar y mira cómo le fue.</p></div><div className="hero-actions export-actions"><button className="secondary-button" onClick={() => setMode("oportunidades")}>Volver a oportunidades</button><button className="secondary-button" onClick={exportCsv}>Excel/CSV</button></div></div>
 
     {tabs}
 

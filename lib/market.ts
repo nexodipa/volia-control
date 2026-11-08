@@ -324,6 +324,8 @@ const FIT_LINES: { name: string; strong: boolean; words: string[] }[] = [
   { name: "Insumos generales", strong: false, words: ["uso general", "jeringa", "guante", "gasa", "algodon", "sutura", "venoclisis", "microgotero", "cateter", "sonda", "mascarilla", "aposito", "esparadrapo", "electrodo", "indicador biologico", "indicador quimico", "esterilizacion", "bisturi", "aguja", "cinta adhesiva", "equipo de infusion", "llave de tres vias", "bolsa recolectora"] },
   { name: "Odontología", strong: false, words: ["odontolog", "dental", "resina", "ionomero", "endodon", "ortodon"] },
 ];
+// Implantes y dispositivos de otras especialidades: la palabra «implante» sola no basta.
+const FIT_EXCLUDE = ["coclear", "mamari", "intraocular", "cristalino", "marcapaso", "stent", "valvula cardiaca", "lente"];
 const FIT_STOP = new Set(["adquisicion", "contratacion", "servicio", "servicios", "dispositivos", "medicos", "medico", "hospital", "insumos", "suministro", "provision", "general", "varios", "materiales", "material", "equipo", "equipos", "funcionamiento", "instalacion", "puesta", "correctivo", "basico", "accesorio", "incluya", "descartable", "descartables", "producto", "productos"]);
 const fitRank = (l: FitLevel) => (l === "alta" ? 2 : l === "media" ? 1 : 0);
 
@@ -341,6 +343,7 @@ export function catalogTerms(descriptions: string[]): string[] {
 export function fitOf(p: MarketProcess, terms: string[] = []): { level: FitLevel; lines: string[] } {
   const t = ` ${norm(p.t)}`;
   const has = (w: string) => t.includes(` ${w}`);
+  if (FIT_EXCLUDE.some(has)) return { level: "fuera", lines: [] };
   const lines: string[] = [];
   let hits = 0, strong = false;
   for (const l of FIT_LINES) {

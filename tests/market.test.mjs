@@ -240,3 +240,32 @@ test("filtro fit: encaja deja alta y media; alta solo la alta", async () => {
   assert.deepEqual(filterProcesses(list, { fit: "encaja" }).map((p) => p.id), ["a", "b"]);
   assert.deepEqual(filterProcesses(list, { fit: "alta" }).map((p) => p.id), ["a"]);
 });
+
+test("oportunidades: ordena por conveniencia, explica y respeta los ocultos", async () => {
+  const { opportunities, buyerHistory, tenderFromProcess } = await import("../lib/market-opportunities.ts");
+  const mk = (id, d, t, extra = {}) => ({ id, d, b: "HOSPITAL A", m: "SIE", s: "", c: "insumos", t, p: 5000, o: 2, w: "", a: null, vb: false, vw: false, ...extra });
+  const all = [
+    mk("old1", "2026-01-05", "PLACAS DE OSTEOSÍNTESIS", { vb: true, vw: true, w: "VOLIA S.A.S." }),
+    mk("old2", "2026-01-09", "TORNILLOS", { b: "HOSPITAL B", w: "RIVAL SA" }),
+    mk("old3", "2026-01-12", "TORNILLOS", { b: "HOSPITAL B", w: "RIVAL SA" }),
+    mk("n1", "2026-11-01", "ADQUISICIÓN DE JERINGAS", { b: "HOSPITAL B", o: 9 }),
+    mk("n2", "2026-11-02", "PLACAS DE OSTEOSÍNTESIS"),
+    mk("n3", "2026-11-03", "MANTENIMIENTO DE ASCENSORES"),
+  ];
+  const r = opportunities(all, { days: 21 });
+  assert.deepEqual(r.items.map((o) => o.p.id), ["n2", "n1"]);
+  assert.equal(r.window, 3);
+  assert.ok(r.items[0].reasons.some((x) => x.includes("Ya le vendimos")));
+  assert.ok(r.items[1].reasons.some((x) => x.includes("RIVAL SA")));
+  assert.deepEqual(opportunities(all, { days: 21, hiddenIds: new Set(["n2"]) }).items.map((o) => o.p.id), ["n1"]);
+  assert.equal(buyerHistory(all, "HOSPITAL A", "old1").processes, 2);
+  assert.deepEqual(tenderFromProcess(all[4]).ref, "n2");
+  assert.deepEqual(opportunities([], {}).items, []);
+});
+
+test("fitOf descarta implantes de otras especialidades", async () => {
+  const { fitOf } = await import("../lib/market.ts");
+  const mk = (t) => ({ id: "x", d: "2026-10-01", b: "H", m: "SIE", s: "", c: "insumos", t, p: 1, o: 1, w: "", a: null, vb: false, vw: false });
+  assert.equal(fitOf(mk("IMPLANTE COCLEAR")).level, "fuera");
+  assert.equal(fitOf(mk("IMPLANTES DE COLUMNA")).level, "alta");
+});
