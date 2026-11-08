@@ -6,6 +6,9 @@ import { opportunities, tenderFromProcess } from "../lib/market-opportunities";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { normalizeTender, TENDER_STATUS, type Tender } from "../lib/tenders";
 
+type LiveRow = { ocid: string; title: string | null; description: string | null; buyer: string | null; region: string | null; amount: string | null; budget: string | null; internal_type: string | null; fit: "alta" | "media" | "fuera" };
+type LiveState = { rows: LiveRow[]; last: { at: string; ok: boolean; message: string } | null } | null | "error";
+
 const money = (v: number) => (v > 0 ? new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v) : "Monto no publicado");
 const METHOD: Record<MarketProcess["m"], string> = { SIE: "Subasta inversa", LIC: "Licitación", CAT: "Catálogo", BSU: "Bienes únicos", OTRO: "Otro" };
 const SMALL = new Set(["de", "del", "la", "las", "los", "el", "y", "en", "e"]);
@@ -18,10 +21,19 @@ export default function MarketOpportunities({ all, terms, onExplore }: { all: Ma
   const [days, setDays] = useState(21);
   const [shown, setShown] = useState(8);
   const [open, setOpen] = useState<string | null>(null);
+  const [live, setLive] = useState<LiveState>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setTenders(readStoredArray<unknown>(STORAGE_KEYS.tenders).map(normalizeTender).filter((t): t is Tender => !!t)), 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/sercop-alerts?rows=1", { cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j) => { if (alive) setLive({ rows: Array.isArray(j.rows) ? j.rows : [], last: j.last ?? null }); })
+      .catch(() => { if (alive) setLive("error"); });
+    return () => { alive = false; };
   }, []);
 
   const byRef = useMemo(() => new Map(tenders.map((t) => [t.ref.toLowerCase(), t])), [tenders]);
@@ -30,6 +42,13 @@ export default function MarketOpportunities({ all, terms, onExplore }: { all: Ma
   const followed = tenders.filter((t) => t.status !== "dropped" && t.status !== "won" && t.status !== "lost");
   const dropped = tenders.filter((t) => t.status === "dropped");
 
+  const liveItems = useMemo(() => (live && live !== "error" ? live.rows.filter((r) => r.fit !== "fuera" && !hiddenIds.has(r.title || r.ocid)) : []), [live, hiddenIds]);
+  const addLive = (r: LiveRow, status: Tender["status"]) => {
+    const ref = r.title || r.ocid;
+    if (byRef.has(ref.toLowerCase())) return;
+    const amount = Number(r.budget ?? r.amount) || 0;
+    save([{ id: uid(), ref, title: (r.description ?? ref).replace(/\s+/g, " ").trim().slice(0, 300), buyer: (r.buyer ?? "").trim(), province: r.region ? title(r.region) : "", amount, deadline: "", status, ourPrice: 0, winnerPrice: 0, winner: "", notes: "", createdAt: new Date().toISOString() }, ...tenders]);
+  };
   const save = (next: Tender[]) => { setTenders(next); writeStoredJson(STORAGE_KEYS.tenders, next); };
   const add = (p: MarketProcess, status: Tender["status"]) => {
     if (byRef.has(p.id.toLowerCase())) return;
@@ -43,6 +62,22 @@ export default function MarketOpportunities({ all, terms, onExplore }: { all: Ma
       <div><strong>{followed.length}</strong><span>en seguimiento en Licitaciones</span></div>
       <div><strong>{dropped.length}</strong><span>descartados{dropped.length ? "" : " (nada por ahora)"}</span></div>
     </div>
+
+
+    {live && live !== "error" && <section className="op-live" aria-label="Revisión diaria del SERCOP">
+      <div className="op-live-head">
+        <h3>Nuevos en el SERCOP</h3>
+        <small>{live.last ? `Última revisión: ${new Date(live.last.at).toLocaleString("es-EC", { dateStyle: "medium", timeStyle: "short" })}. Se revisa sola de lunes a viernes a las 08:00.` : "Aún no hay revisiones · se hace sola de lunes a viernes a las 08:00"}</small>
+      </div>
+      {liveItems.length === 0 ? <p className="op-empty">No hay procesos nuevos que encajen con nuestros productos desde la última revisión.</p> : <ol className="op-list">
+        {liveItems.slice(0, 6).map((r) => <li key={r.ocid} className={`op-card fit-${r.fit}`}>
+          <div className="op-head"><small>{r.title || r.ocid} · {r.internal_type ?? "Proceso"}{r.region ? ` · ${title(r.region)}` : ""}</small><span className={`op-fit fit-${r.fit}`}>{r.fit === "alta" ? "Encaje alto" : "Encaje medio"}</span></div>
+          <h3>{sentence(r.description ?? r.title ?? "").slice(0, 220)}</h3>
+          <p className="op-buyer">{title(r.buyer ?? "")} · <strong>{money(Number(r.budget ?? r.amount) || 0)}</strong></p>
+          <div className="op-actions"><button type="button" className="primary-button" onClick={() => addLive(r, "interested")}>Dar seguimiento</button><button type="button" className="text-button" onClick={() => addLive(r, "dropped")}>No me interesa</button></div>
+        </li>)}
+      </ol>}
+    </section>}
 
     <div className="op-toolbar">
       <label>Mostrar lo publicado en los últimos

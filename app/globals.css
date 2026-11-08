@@ -5548,3 +5548,7 @@ details.setup-card[open] > summary { margin-bottom: 4px; }
 .op-actions .primary-button { width: auto; min-height: 0; padding: 8px 18px; box-shadow: none; }
 .op-reasons { list-style: none; padding-left: 0; }
 .op-reasons li::before { content: "– "; color: var(--muted); }
+.op-live { display: grid; gap: 12px; }
+.op-live-head { display: grid; gap: 2px; }
+.op-live-head h3 { margin: 0; font-size: 1.05rem; }
+.op-live-head small { color: var(--muted); line-height: 1.5; }

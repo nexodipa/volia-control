@@ -341,7 +341,12 @@ export function catalogTerms(descriptions: string[]): string[] {
 
 /** Qué tanto encaja un proceso con lo que Volia vende: alta (traumatología, o varias coincidencias), media (una) o fuera. */
 export function fitOf(p: MarketProcess, terms: string[] = []): { level: FitLevel; lines: string[] } {
-  const t = ` ${norm(p.t)}`;
+  return fitOfText(p.t, terms);
+}
+
+/** Igual que fitOf pero sobre un texto cualquiera (por ejemplo la descripción de un proceso recién publicado). */
+export function fitOfText(text: string, terms: string[] = []): { level: FitLevel; lines: string[] } {
+  const t = ` ${norm(text)}`;
   const has = (w: string) => t.includes(` ${w}`);
   if (FIT_EXCLUDE.some(has)) return { level: "fuera", lines: [] };
   const lines: string[] = [];

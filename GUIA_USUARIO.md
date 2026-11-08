@@ -135,7 +135,7 @@ Nunca envíe el respaldo por un canal público ni lo suba a GitHub.
 4. El botón **Solo lo que solemos ofertar** usa otro criterio: provincia, método y rango de monto de las ofertas pasadas de Volia.
 5. Si un producto suyo no se reconoce, agréguelo con una descripción clara en **Catálogo maestro**: el sistema aprende de él.
 
-Los datos se actualizan el día 14 de cada mes: llega un cambio llamado «Datos de mercado SERCOP» en GitHub. Hay que aprobarlo (*merge*) y volver a publicar. Inicio avisa cuando los datos tienen más de un mes.
+**Nuevos en el SERCOP.** De lunes a viernes a las 08:00 el sistema consulta solo el SERCOP, deja arriba lo que encaja con nuestros productos y envía el aviso por correo con el enlace «Dar seguimiento». El histórico y las estadísticas se actualizan el día 14 de cada mes: llega un cambio llamado «Datos de mercado SERCOP» en GitHub. Hay que aprobarlo (*merge*) y volver a publicar. Inicio avisa cuando los datos tienen más de un mes.
 
 ## 11 ter. Responsables institucionales y exportaciones
 
