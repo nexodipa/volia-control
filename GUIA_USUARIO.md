@@ -127,6 +127,8 @@ Es una traducción automática: siempre debe revisarla una persona. Si el archiv
 
 Nunca envíe el respaldo por un canal público ni lo suba a GitHub.
 
+**Menú.** Lo de uso diario (Inicio, Cirugías y cobros, Inventario, Finanzas, Cotizador, Procesos y Mercado SERCOP) está siempre a la vista. El resto (Catálogo maestro, Auditor inteligente, Vigencias, Estadísticas, Documentos, Traductor, Memoria y reglas, Historial y Guía de uso) está en **Más herramientas**, que se despliega con un clic y se abre sola si entra a uno de esos módulos.
+
 ## 11 bis. Mercado SERCOP: qué procesos conviene ofertar
 
 1. Abra **Mercado SERCOP** (menú «Vender»).

@@ -293,6 +293,7 @@ function Icon({
 
 export default function Home() {
   const [module, setModule] = useState<Module>("home");
+  const MORE_MODULES: Module[] = ["catalog", "audit", "regulatory", "analytics", "documents", "translator", "knowledge", "activity", "help"];
   // El enlace «Dar seguimiento» del correo del SERCOP abre directamente la pantalla de Procesos.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has("seguir")) return;
@@ -535,7 +536,6 @@ export default function Home() {
             <Icon name="file" />
             Cotizador
           </button>
-          <button className={`nav-item ${module === "catalog" ? "active" : ""}`} onClick={() => navigateTo("catalog")}><Icon name="catalog" />Catálogo maestro</button>
           <button
             className={`nav-item ${module === "tenders" ? "active" : ""}`}
             onClick={() => navigateTo("tenders")}
@@ -550,46 +550,49 @@ export default function Home() {
             <Icon name="analytics" />
             Mercado SERCOP
           </button>
-          <button
-            className={`nav-item ${module === "audit" ? "active" : ""}`}
-            onClick={() => navigateTo("audit")}
-          >
-            <Icon name="scan" />
-            Auditor inteligente
-          </button>
-          <div className="nav-separator">Cumplimiento y análisis</div>
-          <button
-            className={`nav-item ${module === "regulatory" ? "active" : ""}`}
-            onClick={() => navigateTo("regulatory")}
-          >
-            <Icon name="shield" />
-            Vigencias
-          </button>
-          <button
-            className={`nav-item ${module === "analytics" ? "active" : ""}`}
-            onClick={() => navigateTo("analytics")}
-          >
-            <Icon name="analytics" />
-            Estadísticas
-          </button>
-          <button
-            className={`nav-item ${module === "documents" ? "active" : ""}`}
-            onClick={() => navigateTo("documents")}
-          >
-            <Icon name="documents" />
-            Documentos
-          </button>
-          <button
-            className={`nav-item ${module === "translator" ? "active" : ""}`}
-            onClick={() => navigateTo("translator")}
-          >
-            <Icon name="documents" />
-            Traductor <span className="beta-tag">beta</span>
-          </button>
-          <div className="nav-separator">Control y ayuda</div>
-          <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y reglas</button>
-          <button className={`nav-item ${module === "activity" ? "active" : ""}`} onClick={() => navigateTo("activity")}><Icon name="activity" />Historial</button>
-          <button className={`nav-item ${module === "help" ? "active" : ""}`} onClick={() => navigateTo("help")}><Icon name="help" />Guía de uso</button>
+          <details className="nav-more" open={MORE_MODULES.includes(module)}>
+            <summary>Más herramientas</summary>
+            <button className={`nav-item ${module === "catalog" ? "active" : ""}`} onClick={() => navigateTo("catalog")}><Icon name="catalog" />Catálogo maestro</button>
+            <button
+              className={`nav-item ${module === "audit" ? "active" : ""}`}
+              onClick={() => navigateTo("audit")}
+            >
+              <Icon name="scan" />
+              Auditor inteligente
+            </button>
+            <button
+              className={`nav-item ${module === "regulatory" ? "active" : ""}`}
+              onClick={() => navigateTo("regulatory")}
+            >
+              <Icon name="shield" />
+              Vigencias
+            </button>
+            <button
+              className={`nav-item ${module === "analytics" ? "active" : ""}`}
+              onClick={() => navigateTo("analytics")}
+            >
+              <Icon name="analytics" />
+              Estadísticas
+            </button>
+            <button
+              className={`nav-item ${module === "documents" ? "active" : ""}`}
+              onClick={() => navigateTo("documents")}
+            >
+              <Icon name="documents" />
+              Documentos
+            </button>
+            <button
+              className={`nav-item ${module === "translator" ? "active" : ""}`}
+              onClick={() => navigateTo("translator")}
+            >
+              <Icon name="documents" />
+              Traductor <span className="beta-tag">beta</span>
+            </button>
+            <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y reglas</button>
+            <button className={`nav-item ${module === "activity" ? "active" : ""}`} onClick={() => navigateTo("activity")}><Icon name="activity" />Historial</button>
+            <button className={`nav-item ${module === "help" ? "active" : ""}`} onClick={() => navigateTo("help")}><Icon name="help" />Guía de uso</button>
+
+          </details>
         </nav>
         <div className="sidebar-foot">
           <div className="security-note">
