@@ -130,7 +130,7 @@ Nunca envíe el respaldo por un canal público ni lo suba a GitHub.
 ## 11 bis. Mercado SERCOP: qué procesos conviene ofertar
 
 1. Abra **Mercado SERCOP** (menú «Vender»).
-2. Pulse **Solo lo que encaja con nuestros productos**. El sistema lee la descripción de cada proceso y lo marca con **Encaje alto** (traumatología, osteosíntesis o varias coincidencias) o **Encaje medio** (por ejemplo jeringas, guantes o material dental). Los servicios, el mantenimiento y los equipos quedan fuera.
+2. Al abrir, **Qué conviene ofertar ahora** muestra los procesos recientes que encajan, del más al menos conveniente, con la razón de cada uno (por ejemplo, ya le ofertamos a ese hospital o hay pocos oferentes). Use **Dar seguimiento** para llevarlo a Licitaciones o **No me interesa** para que no vuelva a aparecer (se recupera desde «Descartados»). Para ver todo el mercado pulse **Explorar todo el mercado**, y allí **Solo lo que encaja con nuestros productos**. El sistema lee la descripción de cada proceso y lo marca con **Encaje alto** (traumatología, osteosíntesis o varias coincidencias) o **Encaje medio** (por ejemplo jeringas, guantes o material dental). Los servicios, el mantenimiento y los equipos quedan fuera.
 3. Ajuste con **Provincia**, **Hospital o entidad**, **Monto** y los filtros de «Más filtros». Cada filtro activo aparece como una etiqueta que se quita con un clic.
 4. El botón **Solo lo que solemos ofertar** usa otro criterio: provincia, método y rango de monto de las ofertas pasadas de Volia.
 5. Si un producto suyo no se reconoce, agréguelo con una descripción clara en **Catálogo maestro**: el sistema aprende de él.

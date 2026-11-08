@@ -5517,3 +5517,34 @@ details.setup-card[open] > summary { margin-bottom: 4px; }
 .mk-multi-list small { color: var(--muted); }
 .mk-tag.fit-alta { border-color: var(--green, #1b7a66); background: color-mix(in srgb, var(--green, #1b7a66) 10%, transparent); }
 .mk-tag.fit-media { color: var(--muted, #5b6b7a); }
+
+/* Mercado: vista de oportunidades. Poco contraste entre bloques, texto cómodo y un solo acento para no cansar la vista. */
+.op-wrap { display: grid; gap: 18px; max-width: 880px; }
+.op-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.op-summary > div { background: color-mix(in srgb, var(--line) 35%, transparent); border-radius: 14px; padding: 14px 16px; display: grid; gap: 2px; }
+.op-summary strong { font-size: 1.7rem; font-weight: 600; line-height: 1.1; }
+.op-summary span { color: var(--muted); font-size: 0.9rem; line-height: 1.4; }
+.op-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 0.92rem; }
+.op-toolbar select { margin-left: 8px; }
+.op-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.op-card { background: color-mix(in srgb, var(--line) 18%, transparent); border-radius: 16px; padding: 18px 20px; display: grid; gap: 8px; border-left: 3px solid transparent; }
+.op-card.fit-alta { border-left-color: var(--green, #1b7a66); }
+.op-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.op-head small { color: var(--muted); }
+.op-fit { font-size: 0.8rem; color: var(--muted); }
+.op-fit.fit-alta { color: var(--green, #1b7a66); font-weight: 600; }
+.op-card h3 { margin: 0; font-size: 1.02rem; font-weight: 600; line-height: 1.5; max-width: 68ch; }
+.op-buyer { margin: 0; color: var(--muted); line-height: 1.5; }
+.op-buyer strong { color: inherit; font-weight: 600; }
+.op-reasons { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.92rem; line-height: 1.6; max-width: 68ch; }
+.op-full { margin: 0; line-height: 1.6; max-width: 68ch; font-size: 0.93rem; }
+.op-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 4px; }
+.op-more { justify-self: start; }
+.op-empty, .op-note { color: var(--muted); line-height: 1.6; max-width: 68ch; margin: 0; }
+.op-dropped summary { cursor: pointer; color: var(--muted); }
+.op-dropped ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
+.op-dropped li { display: flex; justify-content: space-between; gap: 12px; font-size: 0.9rem; color: var(--muted); }
+@media (max-width: 640px) { .op-summary { grid-template-columns: 1fr; } .op-card { padding: 16px; } }
+.op-actions .primary-button { width: auto; min-height: 0; padding: 8px 18px; box-shadow: none; }
+.op-reasons { list-style: none; padding-left: 0; }
+.op-reasons li::before { content: "– "; color: var(--muted); }
