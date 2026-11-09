@@ -5552,3 +5552,9 @@ details.setup-card[open] > summary { margin-bottom: 4px; }
 .op-live-head { display: grid; gap: 2px; }
 .op-live-head h3 { margin: 0; font-size: 1.05rem; }
 .op-live-head small { color: var(--muted); line-height: 1.5; }
+.nav-more { margin-top: 10px; }
+.nav-more > summary { cursor: pointer; list-style: none; padding: 8px 14px; color: var(--muted); font-size: 0.86rem; border-radius: 10px; }
+.nav-more > summary::-webkit-details-marker { display: none; }
+.nav-more > summary::before { content: "▸ "; }
+.nav-more[open] > summary::before { content: "▾ "; }
+.nav-more > summary:hover { background: color-mix(in srgb, var(--line) 40%, transparent); }
