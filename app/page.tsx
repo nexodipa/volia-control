@@ -12,6 +12,7 @@ import RegulatoryCenter from "../components/RegulatoryCenter";
 import MovementAnalytics from "../components/MovementAnalytics";
 import FinanceCenter from "../components/FinanceCenter";
 import DocumentGenerator from "../components/DocumentGenerator";
+import FichasTecnicas from "../components/FichasTecnicas";
 import TranslatorCenter from "../components/TranslatorCenter";
 import OfferPackage from "../components/OfferPackage";
 import InstallManager from "../components/InstallManager";
@@ -1162,7 +1163,7 @@ export default function Home() {
           ) : module === "tenders" ? (
             <TenderTracker />
           ) : module === "documents" ? (
-            <><OfferPackage /><DocumentGenerator /></>
+            <><OfferPackage /><FichasTecnicas /><DocumentGenerator /></>
           ) : module === "translator" ? (
             <TranslatorCenter />
           ) : module === "knowledge" ? (
