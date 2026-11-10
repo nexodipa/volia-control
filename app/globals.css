@@ -5558,3 +5558,23 @@ details.setup-card[open] > summary { margin-bottom: 4px; }
 .nav-more > summary::before { content: "▸ "; }
 .nav-more[open] > summary::before { content: "▾ "; }
 .nav-more > summary:hover { background: color-mix(in srgb, var(--line) 40%, transparent); }
+
+.fichas-module { margin-bottom: 24px; display: grid; gap: 16px; }
+.fichas-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 20px; align-items: start; }
+.fichas-list { display: grid; gap: 6px; position: sticky; top: 12px; }
+.fichas-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line, #d6e2df); border-radius: 10px; padding: 6px 8px; }
+.fichas-item.active { border-color: #0e5069; background: #eef6f8; }
+.fichas-item button { flex: 1; text-align: left; background: none; border: 0; padding: 4px; cursor: pointer; display: grid; gap: 2px; font: inherit; color: inherit; }
+.fichas-item button span { font-weight: 600; font-size: .88rem; line-height: 1.25; }
+.fichas-item button small { color: var(--muted, #5b6f6b); font-size: .76rem; }
+.fichas-list-actions { display: grid; gap: 6px; margin-top: 6px; }
+.fichas-editor { display: grid; gap: 14px; min-width: 0; }
+.fichas-table, .fichas-fotos { border: 1px solid var(--line, #d6e2df); border-radius: 12px; padding: 10px 14px; margin: 0; display: grid; gap: 10px; }
+.fichas-table legend, .fichas-fotos legend { font-weight: 600; padding: 0 6px; }
+.fichas-foto-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.fichas-foto { width: 96px; height: 76px; border: 2px solid var(--line, #d6e2df); border-radius: 10px; background: #fff; padding: 4px; cursor: pointer; display: grid; place-items: center; font-size: .75rem; }
+.fichas-foto.active { border-color: #0e5069; }
+.fichas-foto img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fichas-upload { cursor: pointer; display: inline-flex; align-items: center; }
+.fichas-avisos { margin: 0; padding-left: 20px; }
+@media (max-width: 860px) { .fichas-layout { grid-template-columns: 1fr; } .fichas-list { position: static; } }

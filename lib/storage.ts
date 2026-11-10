@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   tenders: "volia-tenders-v1",
   docIssuers: "volia-doc-issuers-v1",
   institutionContacts: "volia-institution-contacts-v1",
+  fichas: "volia-fichas-tecnicas-v1",
 } as const;
 
 export const BACKUP_KEYS = new Set<string>(Object.values(STORAGE_KEYS));

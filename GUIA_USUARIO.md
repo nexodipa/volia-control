@@ -104,6 +104,16 @@ Una lectura OCR puede equivocarse por sombras, inclinación, baja resolución o 
 6. El documento quedará en el archivo local para volver a abrirlo.
 7. Revise y firme antes de emitirlo.
 
+## 10 ter. Fichas técnicas de dispositivos médicos
+
+1. Abra **Documentos** y baje hasta **Fichas técnicas**.
+2. Marque a la izquierda los productos que quiere en el Word (vienen las ocho de cadera del pliego) y pulse uno para editarlo.
+3. Ajuste nombre, composición, color, descripción, indicaciones y la tabla de medidas. En **Datos fijos del encabezado** están país, fabricante, importador, registro sanitario y riesgo; valen para todas las fichas.
+4. Elija la foto: las incluidas son del catálogo del fabricante y las más parecidas disponibles; si tiene la foto real, use **Subir otra foto**.
+5. Pulse **Descargar … en Word**. El documento sale en el formato rojo de Osteotech, con el logo y las tablas de la plantilla, una ficha por cada tres páginas.
+
+Los avisos en rojo (falta un dato, tabla vacía, sin foto) no impiden descargar. Antes de enviar, compare el registro sanitario y las medidas con el pliego y con el certificado del producto: la app no los verifica. **Nueva ficha** crea una copia de la ficha abierta para otro producto, y **Restaurar datos originales** devuelve una ficha base a como vino.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
