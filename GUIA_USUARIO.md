@@ -112,6 +112,8 @@ Una lectura OCR puede equivocarse por sombras, inclinación, baja resolución o 
 4. Elija la foto: las incluidas son del catálogo del fabricante y las más parecidas disponibles; si tiene la foto real, use **Subir otra foto**.
 5. Pulse **Descargar … en Word**. El documento sale en el formato rojo de Osteotech, con el logo y las tablas de la plantilla, una ficha por cada tres páginas.
 
+**Armar desde un pliego.** En **Armar desde un pliego o requerimiento** cargue el PDF del pliego (o pegue una línea por producto) y pulse **Buscar fichas**. Para cada línea la app sugiere una ficha de la biblioteca, o un borrador nuevo si no hay ninguna parecida. Si las medidas del nombre no coinciden (por ejemplo un tornillo de 4.5 mm frente a la ficha de 6.5 mm), no sugiere esa ficha. Elija en cada línea y pulse **Marcar estas fichas**: los borradores nuevos salen sin tabla de medidas, información ni foto, y hay que completarlos.
+
 Los avisos en rojo (falta un dato, tabla vacía, sin foto) no impiden descargar. Antes de enviar, compare el registro sanitario y las medidas con el pliego y con el certificado del producto: la app no los verifica. **Nueva ficha** crea una copia de la ficha abierta para otro producto, y **Restaurar datos originales** devuelve una ficha base a como vino.
 
 ## 10 bis. Traducir un documento del inglés

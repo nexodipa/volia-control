@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FICHAS_BASE } from "../lib/fichas-data";
 import { FICHA_FIJOS, fichaAvisos, MAX_FILAS, mergeFichas, normalizeFicha, slugId, type FichaFijos, type FichaProducto, type FichasState } from "../lib/fichas";
 import { downloadFichasDocx } from "../lib/fichas-docx";
+import FichasDesdePliego, { type FichasElegidas } from "./FichasDesdePliego";
 import { readStoredObject, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
 
@@ -86,6 +87,17 @@ export default function FichasTecnicas() {
     if (!base || !window.confirm(`¿Volver «${current.nombre}» a sus datos originales? Se pierden sus cambios.`)) return;
     patch(base);
   };
+  const applyPliego = ({ ids, nuevas }: FichasElegidas) => {
+    const used = state.fichas.map((f) => f.id);
+    const created = nuevas.map((draft) => {
+      const id = slugId(draft.nombre || "ficha", used);
+      used.push(id);
+      return normalizeFicha({ ...draft, id, columnas: ["REFERENCIA", "DATO", "OBSERVACIÓN"], filas: [["", "", ""]], foto: "" }, id);
+    });
+    setState((s) => ({ ...s, fichas: [...s.fichas, ...created], seleccion: [...ids, ...created.map((c) => c.id)] }));
+    const first = created[0]?.id ?? ids[0];
+    if (first) setCurrentId(first);
+  };
   const uploadPhoto = async (file: File | undefined) => {
     if (!file) return;
     try {
@@ -121,6 +133,8 @@ export default function FichasTecnicas() {
           <p className="offer-lead">Elija los productos, ajuste los datos y descargue las fichas en Word con el formato rojo de Osteotech: logo, líneas y tablas salen de la plantilla real. Los cinco datos fijos del encabezado se aplican a todas.</p>
         </div>
       </div>
+
+      <FichasDesdePliego fichas={state.fichas} onApply={applyPliego} />
 
       <div className="fichas-layout">
         <aside className="fichas-list" aria-label="Productos">
