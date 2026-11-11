@@ -320,12 +320,25 @@ export function usualSegment(profile: VoliaProfile): MarketFilter {
 // Las líneas se afinaron contra los procesos reales: traumatología/osteosíntesis, insumos médicos de uso general y odontología.
 export type FitLevel = "alta" | "media" | "fuera";
 const FIT_LINES: { name: string; strong: boolean; words: string[] }[] = [
-  { name: "Traumatología", strong: true, words: ["osteosint", "traumatolog", "ortoped", "placa", "tornillo", "clavo", "broca", "protesis", "cadera", "rodilla", "fijacion", "fractura", "columna vertebral", "miembro superior", "miembro inferior", "cemento oseo", "injerto oseo", "artroscop", "osteotom", "fijador externo", "implante"] },
+  { name: "Traumatología", strong: true, words: ["osteosint", "traumatolog", "ortoped", "tornillo", "clavo", "protesis", "cadera", "rodilla", "fractura", "columna vertebral", "cemento oseo", "injerto oseo", "artroscop", "osteotom", "fijador externo", "fijacion osea", "fijacion interna", "fijacion costal"] },
+  // Palabras que por sí solas pueden ser de otra cosa (placa de rayos, fijación de una vía): suman, pero no alcanzan solas.
+  { name: "Traumatología (apoyo)", strong: false, words: ["placa", "broca", "fijacion", "implante", "columna", "miembro superior", "miembro inferior"] },
   { name: "Insumos generales", strong: false, words: ["uso general", "jeringa", "guante", "gasa", "algodon", "sutura", "venoclisis", "microgotero", "cateter", "sonda", "mascarilla", "aposito", "esparadrapo", "electrodo", "indicador biologico", "indicador quimico", "esterilizacion", "bisturi", "aguja", "cinta adhesiva", "equipo de infusion", "llave de tres vias", "bolsa recolectora"] },
   { name: "Odontología", strong: false, words: ["odontolog", "dental", "resina", "ionomero", "endodon", "ortodon"] },
 ];
-// Implantes y dispositivos de otras especialidades: la palabra «implante» sola no basta.
-const FIT_EXCLUDE = ["coclear", "mamari", "intraocular", "cristalino", "marcapaso", "stent", "valvula cardiaca", "lente"];
+// Implantes y dispositivos de otras especialidades (cardiología intervencionista, oído, ojo, vascular, urología, mama…),
+// y cosas que no son un producto que Volia venda: la palabra «implante» o «prótesis» sola no basta.
+const FIT_EXCLUDE = [
+  "coclear", "mamari", "intraocular", "cristalino", "marcapaso", "stent", "valvula cardiaca", "lente", "oftalmolog",
+  "auditivo", "testicular", "biliar", "protesis vascular", "aort", "mitral", "ptfe", "oclusion percutanea", "coronari", "ablacion", "emboliz", "embolect",
+  "hemodialisis", "papilotomo", "esfinterotomo", "angioplast", "intercambio rapido", "pigtail", "vacuna", "inmunoquimica", "reactivo",
+  // prótesis externas de rehabilitación y su laboratorio
+  "amputacion", "terapia fisica", "fabricacion de protesis", "laboratorio de ortesis",
+  // equipos, obras y servicios: se compran con instalación o mantenimiento, no son insumos ni implantes
+  "mesa quirurgica", "mesas quirurgicas", "radioquirurgico", "fluoroscop", "radiograf", "arco en c", "puesta en funcionamiento", "puesta en marcha", "pruebas de funcionamiento", "mantenimiento", "repuestos", "construccion",
+];
+// Frases que traen una palabra de traumatología pero hablan de otra cosa: se tachan antes de medir el encaje.
+const FIT_BLANK: RegExp[] = [/protesis (?=dental)/g, /placas? (?:descartables?|conductora)/g, /fijacion de vias/g, /marco de fijacion/g];
 const FIT_STOP = new Set(["adquisicion", "contratacion", "servicio", "servicios", "dispositivos", "medicos", "medico", "hospital", "insumos", "suministro", "provision", "general", "varios", "materiales", "material", "equipo", "equipos", "funcionamiento", "instalacion", "puesta", "correctivo", "basico", "accesorio", "incluya", "descartable", "descartables", "producto", "productos"]);
 const fitRank = (l: FitLevel) => (l === "alta" ? 2 : l === "media" ? 1 : 0);
 
@@ -346,7 +359,8 @@ export function fitOf(p: MarketProcess, terms: string[] = []): { level: FitLevel
 
 /** Igual que fitOf pero sobre un texto cualquiera (por ejemplo la descripción de un proceso recién publicado). */
 export function fitOfText(text: string, terms: string[] = []): { level: FitLevel; lines: string[] } {
-  const t = ` ${norm(text)}`;
+  let t = ` ${norm(text).replace(/[^a-z0-9]+/g, " ")} `;
+  for (const re of FIT_BLANK) t = t.replace(re, " ");
   const has = (w: string) => t.includes(` ${w}`);
   if (FIT_EXCLUDE.some(has)) return { level: "fuera", lines: [] };
   const lines: string[] = [];
