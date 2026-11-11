@@ -269,3 +269,51 @@ test("fitOf descarta implantes de otras especialidades", async () => {
   assert.equal(fitOf(mk("IMPLANTE COCLEAR")).level, "fuera");
   assert.equal(fitOf(mk("IMPLANTES DE COLUMNA")).level, "alta");
 });
+
+test("fitOf: falsos positivos reales del Mercado quedan fuera o bajan, y lo propio sigue en alta", async () => {
+  const { fitOf, fitOfText } = await import("../lib/market.ts");
+  const mk = (t) => ({ id: "x", d: "2026-10-01", b: "H", m: "SIE", s: "", c: "insumos", t, p: 1, o: 1, w: "", a: null, vb: false, vw: false });
+  const fuera = [
+    "ADQUISICIÓN, INSTALACIÓN Y PUESTA EN FUNCIONAMIENTO DE CINCO (5) MESAS QUIRÚRGICAS - CIRUGÍA GENERAL Y TRAUMATOLOGÍA",
+    "ADQUISICIÓN DE SISTEMA RADIOGRÁFICO / FLUOROSCÓPICO - MÓVIL CON INTENSIFICADOR DE IMAGEN PARA EL ÁREA DE TRAUMATOLOGÍA",
+    "ADQUISICIÓN DE REPUESTOS Y ACCESORIOS PARA LA TORRE DE LAPAROSCOPIA",
+    "ADQUISICIÓN DE DISPOSITIVOS MÉDICOS PRÓTESIS BILIAR DE 8 CM X 10 MM, TOTALMENTE CUBIERTA METÁLICA",
+    "ADQUISICIÓN DEL DISPOSITIVO MÉDICO: PRÓTESIS VASCULAR AORTO BIFEMORAL, DOBLE VELOUR, 18 MM X 9 MM",
+    "ADQUISICIÓN DE PRÓTESIS DE PTFE DE VARIAS MEDIDAS",
+    "Adquisición del dispositivo médico: Implante testicular",
+    "ADQUISICIÓN DE IMPLANTE AUDITIVO OSTEOINTEGRADO PARA EL HOSPITAL PEDIÁTRICO",
+    "ADQUISICIÓN DE PRÓTESIS DE OFTALMOLOGÍA DEL HOSPITAL GENERAL MANTA",
+    "Adquisición del Dispositivo Médico: “PROTESIS PARA AMPUTACION DE MIEMBRO INFERIOR”, PARA MEDICINA FISICA",
+    "Adquisición del dispositivo médico: Placas descartables para electrobisturí Adulto",
+    "Adquisición de los dispositivos médicos: Catéteres balón de intercambio rápido varias medidas",
+    "ADQUISICIÓN DE DISPOSITIVOS MÉDICOS: CATÉTER DE ABLACIÓN, DE 4 MM DE 5 FR",
+    "CONSTRUCCION DE CANCHAS DEPORTIVAS EN EL SECTOR DE DOS ACEQUIAS, COMUNIDAD DE MASCARILLA",
+    "VACUNA ANTINEUMOCOCO LÍQUIDO PARENTERAL, CAJA X JERINGA",
+  ];
+  for (const t of fuera) assert.equal(fitOf(mk(t)).level, "fuera", t);
+  // La prótesis dental es odontología (media), no traumatología (alta).
+  const dental = fitOf(mk("ADQUISICIÓN DE PRÓTESIS DENTALES, PARA LA ESPECIALIDAD DE REHABILITACIÓN ORAL"));
+  assert.equal(dental.level, "media");
+  assert.deepEqual(dental.lines, ["Odontología"]);
+  // Una palabra de apoyo sola no basta, pero dos sí.
+  assert.equal(fitOf(mk("ADQUISICIÓN DE APÓSITO TRANSPARENTE CON MARCO DE FIJACIÓN")).level, "media");
+  assert.equal(fitOf(mk("ADQUISICIÓN DE INSUMOS PARA FIJACIÓN DE VÍAS INTRAVENOSAS")).level, "fuera");
+  assert.equal(fitOf(mk("ADQUISICIÓN DE IMPLANTES Y/O PROTESIS")).level, "alta");
+  assert.equal(fitOf(mk("IMPLANTES CIRUGÍA DE COLUMNA")).level, "alta");
+  assert.equal(fitOf(mk("PLACAS")).level, "media");
+  // Lo que sí vendemos sigue en alta, también con comillas o paréntesis pegados a la palabra.
+  for (const t of [
+    "ADQUISICIÓN DE MATERIAL DE OSTEOSÍNTESIS PARA EL SERVICIO DE TRAUMATOLOGÍA",
+    "ADQUISICION DE SET DE (PRÓTESIS DE CADERA) BIPOLAR CEMENTADA",
+    "“OSTEOSINTESIS PARA EL HGSVP”",
+    "ADQUISICIÓN DE TORNILLOS Y PLACAS DE OSTEOSÍNTESIS",
+    "ADQUISICIÓN DE PLACAS Y CLAVOS PARA TRAUMATOLOGÍA",
+    "ADQUISICIÓN DE FIJADORES EXTERNOS PARA OSTEOSÍNTESIS",
+    "ADQUISICIÓN DE LOS DISPOSITIVOS MÉDICOS: SISTEMA DE FIJACION DE COLUMNA VERTEBRAL – FRACTURAS",
+    "ADQUISICIÓN DEL DISPOSITIVO MÉDICO “CLIPS PARA FIJACIÓN COSTAL",
+    "ADQUISICIÓN DE DISPOSITIVOS MÉDICOS DE ARTROSCOPIA CON APOYO TECNOLÓGICO",
+  ]) assert.equal(fitOfText(t).level, "alta", t);
+  // Insumos de uso general siguen contando.
+  assert.equal(fitOf(mk("ADQUISICIÓN DE CATÉTERES INTRAVENOSOS, GUANTES Y JERINGAS")).level, "alta");
+  assert.equal(fitOf(mk("Adquisición del dispositivo médico catéter intravenoso 18 G con aletas, válvula de control de flujo")).level, "media");
+});
