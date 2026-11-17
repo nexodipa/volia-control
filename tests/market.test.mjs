@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { amountOf, buyerOptions, buyerRanking, compareWithAward, filterProcesses, ourRecord, provinceCounts, provinceOf, winnerRanking } from "../lib/market.ts";
+import { mergeMarketProcesses, amountOf, buyerOptions, buyerRanking, compareWithAward, filterProcesses, ourRecord, provinceCounts, provinceOf, winnerRanking } from "../lib/market.ts";
 
 const P = (o) => ({ id: "x", d: "2026-01-01", b: "H1", m: "SIE", s: "active", c: "insumos", t: "", p: null, o: 0, w: "", a: null, vb: false, vw: false, ...o });
 const list = [
@@ -316,4 +316,20 @@ test("fitOf: falsos positivos reales del Mercado quedan fuera o bajan, y lo prop
   // Insumos de uso general siguen contando.
   assert.equal(fitOf(mk("ADQUISICIÓN DE CATÉTERES INTRAVENOSOS, GUANTES Y JERINGAS")).level, "alta");
   assert.equal(fitOf(mk("Adquisición del dispositivo médico catéter intravenoso 18 G con aletas, válvula de control de flujo")).level, "media");
+});
+
+test("merge keeps processes the source stopped returning and prefers the newest version", () => {
+  const prev = [P({ id: "A", d: "2026-01-10", s: "active" }), P({ id: "B", d: "2026-02-01", s: "active" }), P({ id: "C", d: "2026-03-01", s: "complete" })];
+  const next = [P({ id: "B", d: "2026-02-20", s: "complete" }), P({ id: "C", d: "2026-02-01", s: "active" }), P({ id: "D", d: "2026-11-02" })];
+  const m = mergeMarketProcesses(prev, next);
+  assert.deepEqual(m.processes.map((p) => p.id), ["D", "C", "B", "A"]); // por fecha, más reciente primero
+  assert.equal(m.processes.find((p) => p.id === "A").s, "active"); // se conserva aunque la fuente ya no lo traiga
+  assert.equal(m.processes.find((p) => p.id === "B").s, "complete"); // la versión nueva, más reciente
+  assert.equal(m.processes.find((p) => p.id === "C").s, "complete"); // la anterior es más reciente que la nueva: no se pisa
+  assert.deepEqual([m.kept, m.updated, m.added], [1, 1, 1]);
+});
+
+test("merge with no previous file is just the new list", () => {
+  const m = mergeMarketProcesses([], [P({ id: "Z" })]);
+  assert.deepEqual([m.processes.length, m.kept, m.added], [1, 0, 1]);
 });

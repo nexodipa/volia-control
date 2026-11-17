@@ -10,6 +10,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   mercado:
@@ -28,13 +29,14 @@ jobs:
           ls -lh "$RUNNER_TEMP/sercop.jsonl.gz"
           gzip -t "$RUNNER_TEMP/sercop.jsonl.gz"
           echo "YEAR=$YEAR" >> "$GITHUB_ENV"
-      - name: Regenerar los datos
-        run: node --experimental-strip-types --no-warnings scripts/build-market.mjs "$RUNNER_TEMP/sercop.jsonl.gz" | tee "$RUNNER_TEMP/build.log"
-      - name: Comprobar que el resultado es razonable
+      - name: Regenerar los datos (fusionando con lo anterior)
+        # El SERCOP republica sus archivos y a veces retira procesos: lo que ya teníamos no se borra por eso.
         run: |
           F="public/data/mercado-sercop-${YEAR}.json"
           git show "HEAD:$F" > "$RUNNER_TEMP/anterior.json" 2>/dev/null || echo '{"processes":[]}' > "$RUNNER_TEMP/anterior.json"
-          node scripts/comparar-mercado.mjs "$RUNNER_TEMP/anterior.json" "$F"
+          MARKET_PREV="$RUNNER_TEMP/anterior.json" node --experimental-strip-types --no-warnings scripts/build-market.mjs "$RUNNER_TEMP/sercop.jsonl.gz" | tee "$RUNNER_TEMP/build.log"
+      - name: Comprobar que el resultado es razonable
+        run: node scripts/comparar-mercado.mjs "$RUNNER_TEMP/anterior.json" "public/data/mercado-sercop-${YEAR}.json"
       - name: Abrir PR con los datos nuevos
         env:
           GH_TOKEN: ${{ github.token }}
@@ -51,3 +53,12 @@ jobs:
             --title "Datos de mercado SERCOP $(date +%Y-%m-%d)" \
             --body "$(printf 'Actualización mensual automática desde Contrataciones Abiertas (SERCOP).\n\n```\n%s\n```\n\nAl hacer merge y publicar, Mercado SERCOP e Inicio usan estos datos.' "$(cat "$RUNNER_TEMP/build.log")")" \
             || echo "No se pudo abrir el PR automáticamente; la rama $BRANCH quedó subida."
+      - name: Avisar si la actualización falló
+        # Sin esto el fallo del 14 de nov. pasó en silencio y los datos se quedaron en el 6 de nov.
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Falló la actualización mensual del Mercado SERCOP ($(date +%Y-%m-%d))" \
+            --body "El flujo no pudo regenerar los datos de mercado, así que Mercado SERCOP sigue con el archivo anterior. Revise la corrida: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            || echo "No se pudo crear el aviso."
