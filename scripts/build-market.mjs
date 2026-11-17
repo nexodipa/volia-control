@@ -6,6 +6,7 @@ import { createReadStream, existsSync, readFileSync, writeFileSync } from "node:
 import { createGunzip } from "node:zlib";
 import { createInterface } from "node:readline";
 import { isRelevantProcess, summarizeProcess } from "../lib/ocds.ts";
+import { mergeMarketProcesses } from "../lib/market.ts";
 
 const [input, output, ourName = "VOLIA"] = process.argv.slice(2);
 // Si el archivo trae varios años ("todos los años"), solo se guarda el año en curso (o MARKET_YEAR=2025).
@@ -64,8 +65,16 @@ for await (const line of createInterface({ input: stream, crlfDelay: Infinity })
   });
 }
 if (STATE) writeFileSync(STATE, JSON.stringify({ read, entries: [...byId.values()] }));
-const processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
+let processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
 const out = output || `public/data/mercado-sercop-${WANT_YEAR}.json`;
+// MARKET_PREV=ruta.json: conserva lo que ya teníamos y la fuente dejó de traer (ver mergeMarketProcesses).
+let mergeNote = "";
+if (process.env.MARKET_PREV && existsSync(process.env.MARKET_PREV)) {
+  const prev = JSON.parse(readFileSync(process.env.MARKET_PREV, "utf8")).processes ?? [];
+  const m = mergeMarketProcesses(prev, processes);
+  mergeNote = ` Fusión con el archivo anterior: ${processes.length} en la fuente, ${m.kept} conservados del anterior, ${m.updated} actualizados, ${m.added} nuevos.`;
+  processes = m.processes;
+}
 writeFileSync(out, JSON.stringify({
   source: "SERCOP, Contrataciones Abiertas OCDS (data.open-contracting.org/en/publication/110), licencia CC BY 3.0 EC",
   generatedAt: new Date().toISOString().slice(0, 10),
@@ -75,4 +84,4 @@ writeFileSync(out, JSON.stringify({
 writeFileSync(out.replace(/mercado-sercop-\d+\.json$/, "mercado-meta.json"), JSON.stringify({ generatedAt: new Date().toISOString().slice(0, 10), processes: processes.length }));
 const ours = processes.filter((p) => p.vb).length;
 const withRegion = processes.filter((p) => p.r).length;
-console.log(`Listo: ${read} registros leídos, ${processes.length} procesos de mercado (${ours} con oferta de ${ourName}). Guardado en ${out}. Con provincia en la fuente: ${withRegion}.`);
+console.log(`Listo: ${read} registros leídos, ${processes.length} procesos de mercado (${ours} con oferta de ${ourName}). Guardado en ${out}. Con provincia en la fuente: ${withRegion}.${mergeNote}`);

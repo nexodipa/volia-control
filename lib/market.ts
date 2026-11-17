@@ -18,6 +18,28 @@ export type MarketProcess = {
   r?: string; // provincia del comprador, tal como la publica la fuente (si la trae)
 };
 
+/**
+ * Une el archivo de mercado anterior con el recién construido. El SERCOP republica sus archivos anuales y a veces
+ * retira o reorganiza procesos (en noviembre de 2026 desaparecieron unos 300 de la versión de 2026), así que
+ * un proceso que ya teníamos no se borra solo porque la fuente dejó de traerlo. Por cada código se queda la
+ * versión con la fecha más reciente; si empatan, la nueva.
+ */
+export function mergeMarketProcesses(previous: MarketProcess[], next: MarketProcess[]) {
+  const byId = new Map<string, MarketProcess>();
+  for (const p of previous) byId.set(p.id, p);
+  let updated = 0, added = 0;
+  const nextIds = new Set<string>();
+  for (const p of next) {
+    nextIds.add(p.id);
+    const prev = byId.get(p.id);
+    if (!prev) { byId.set(p.id, p); added++; continue; }
+    if (p.d >= prev.d) { byId.set(p.id, p); updated++; }
+  }
+  const kept = previous.filter((p) => !nextIds.has(p.id)).length; // solo estaban en el archivo anterior
+  const processes = [...byId.values()].sort((a, b) => b.d.localeCompare(a.d) || a.id.localeCompare(b.id));
+  return { processes, kept, updated, added };
+}
+
 export type MarketFilter = {
   category?: "todas" | "trauma" | "insumos";
   query?: string;
