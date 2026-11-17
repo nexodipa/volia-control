@@ -116,6 +116,19 @@ Una lectura OCR puede equivocarse por sombras, inclinación, baja resolución o 
 
 Los avisos en rojo (falta un dato, tabla vacía, sin foto) no impiden descargar. Antes de enviar, compare el registro sanitario y las medidas con el pliego y con el certificado del producto: la app no los verifica. **Nueva ficha** crea una copia de la ficha abierta para otro producto, y **Restaurar datos originales** devuelve una ficha base a como vino.
 
+## 10 quater. Importaciones: costo puesto en bodega
+
+Sirve para decidir si conviene importar un producto en lugar de comprarlo a un distribuidor local. Se abre desde **Más herramientas, Importaciones**.
+
+1. Escriba la referencia del embarque y los costos totales: flete, seguro, agente de aduana, almacenaje, transporte a bodega y otros.
+2. Por cada producto, indique cantidad, precio FOB por unidad y el porcentaje de ad valorem de su subpartida arancelaria. Opcionalmente, el costo local actual y el precio de venta.
+3. El sistema calcula el CIF, los tributos (ad valorem, FODINFA, ISD), el costo unitario en bodega, el ahorro frente a la compra local y el margen.
+4. Pulse **Guardar embarque** para conservarlo y **Descargar CSV** para llevarlo a una hoja de cálculo.
+
+Las tasas por defecto (FODINFA 0,5 %, IVA 15 %, ISD 5 %) se pueden cambiar en **Tasas y criterios de cálculo**. Antes de decidir, confirme con su agente de aduana el ad valorem de la subpartida, si el ISD tiene tarifa diferenciada y si el flete entra en la base de cálculo. Si vende con IVA 0 %, desmarque «IVA recuperable», porque entonces el IVA de la importación pasa a ser costo.
+
+La columna **Mercado** solo muestra un precio cuando el producto de referencia es el mismo; si el más parecido es otro producto, lo avisa en lugar de compararlo.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.

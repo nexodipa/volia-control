@@ -6,6 +6,7 @@ import { auditFilesLocally, type AuditResult } from "../lib/local-audit";
 import QuoteBuilder from "../components/QuoteBuilder";
 import CaseTracker from "../components/CaseTracker";
 import InventoryTracker from "../components/InventoryTracker";
+import ImportCosts from "../components/ImportCosts";
 import MarketCenter from "../components/MarketCenter";
 import TenderTracker from "../components/TenderTracker";
 import RegulatoryCenter from "../components/RegulatoryCenter";
@@ -46,6 +47,7 @@ type Module =
   | "analytics"
   | "market"
   | "tenders"
+  | "imports"
   | "documents"
   | "translator"
   | "activity"
@@ -64,6 +66,7 @@ const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
   analytics: { eyebrow: "ANÁLISIS OPERATIVO", title: "Movimientos y estadísticas" },
   market: { eyebrow: "INTELIGENCIA DE MERCADO", title: "Mercado público SERCOP" },
   tenders: { eyebrow: "LICITACIONES", title: "Procesos en seguimiento" },
+  imports: { eyebrow: "COMPRAS AL EXTERIOR", title: "Importaciones y costo en bodega" },
   documents: { eyebrow: "GESTIÓN ADMINISTRATIVA", title: "Generador de documentos" },
   translator: { eyebrow: "IDIOMAS · BETA", title: "Traductor de documentos (beta)" },
   activity: { eyebrow: "CONTROL INTERNO", title: "Historial de actividad" },
@@ -294,7 +297,7 @@ function Icon({
 
 export default function Home() {
   const [module, setModule] = useState<Module>("home");
-  const MORE_MODULES: Module[] = ["catalog", "audit", "regulatory", "analytics", "documents", "translator", "knowledge", "activity", "help"];
+  const MORE_MODULES: Module[] = ["imports", "catalog", "audit", "regulatory", "analytics", "documents", "translator", "knowledge", "activity", "help"];
   // El enlace «Dar seguimiento» del correo del SERCOP abre directamente la pantalla de Procesos.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has("seguir")) return;
@@ -553,6 +556,7 @@ export default function Home() {
           </button>
           <details className="nav-more" open={MORE_MODULES.includes(module)}>
             <summary>Más herramientas</summary>
+            <button className={`nav-item ${module === "imports" ? "active" : ""}`} onClick={() => navigateTo("imports")}><Icon name="inventory" />Importaciones</button>
             <button className={`nav-item ${module === "catalog" ? "active" : ""}`} onClick={() => navigateTo("catalog")}><Icon name="catalog" />Catálogo maestro</button>
             <button
               className={`nav-item ${module === "audit" ? "active" : ""}`}
@@ -701,6 +705,7 @@ export default function Home() {
               Documentos
             </button>
             <button className={`module-tab ${module === "tenders" ? "active" : ""}`} onClick={() => setModule("tenders")} role="tab" aria-selected={module === "tenders"}><Icon name="file" />Procesos</button>
+            <button className={`module-tab ${module === "imports" ? "active" : ""}`} onClick={() => setModule("imports")} role="tab" aria-selected={module === "imports"}><Icon name="inventory" />Importaciones</button>
             <button className={`module-tab ${module === "translator" ? "active" : ""}`} onClick={() => setModule("translator")} role="tab" aria-selected={module === "translator"}><Icon name="documents" />Traductor <span className="beta-tag">beta</span></button>
             <button className={`module-tab ${module === "knowledge" ? "active" : ""}`} onClick={() => setModule("knowledge")} role="tab" aria-selected={module === "knowledge"}><Icon name="knowledge" />Memoria</button>
             <button className={`module-tab ${module === "activity" ? "active" : ""}`} onClick={() => setModule("activity")} role="tab" aria-selected={module === "activity"}><Icon name="activity" />Historial</button>
@@ -1162,6 +1167,8 @@ export default function Home() {
             <MarketCenter />
           ) : module === "tenders" ? (
             <TenderTracker />
+          ) : module === "imports" ? (
+            <ImportCosts />
           ) : module === "documents" ? (
             <><OfferPackage /><FichasTecnicas /><DocumentGenerator /></>
           ) : module === "translator" ? (
