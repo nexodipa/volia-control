@@ -1175,7 +1175,7 @@ export default function Home() {
           ) : module === "imports" ? (
             <ImportCosts />
           ) : module === "mail" ? (
-            <MailInbox />
+            <MailInbox onOpenQuote={() => setModule("quote")} />
           ) : module === "documents" ? (
             <><OfferPackage /><FichasTecnicas /><DocumentGenerator /></>
           ) : module === "translator" ? (

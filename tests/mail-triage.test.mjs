@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
-import { classifyMail, cleanBody, extractFields, parseAmount, parseSender, redact } from "../lib/mail-triage.ts";
+import { classifyMail, cleanBody, extractRequestedItems, extractFields, parseAmount, parseSender, redact } from "../lib/mail-triage.ts";
 
 const M = (o) => ({ from: "x@y.com", subject: "", body: "", ...o });
 
@@ -85,4 +85,20 @@ test("attachments help to decide, and the excerpt is redacted and short", () => 
   assert.equal(t.category, "proveedor");
   assert.ok(t.excerpt.length <= 600);
   assert.ok(!t.excerpt.includes("Xyz9999"));
+});
+
+test("items: inline, bulleted and trailing-quantity lines; dates, plazos and sizes are not items", () => {
+  assert.deepEqual(extractRequestedItems("Necesitamos cotizar 200 hojas de bisturí y 50 cajas de guantes. Gracias."), [{ text: "hojas de bisturí", quantity: 200 }, { text: "guantes", quantity: 50 }]);
+  assert.deepEqual(extractRequestedItems("Favor cotizar:\n- 10 jeringas 10 ml\n- Guantes de examen talla M x 50\n3) Catéter de succión 08 CH - 20 unidades"), [{ text: "jeringas 10 ml", quantity: 10 }, { text: "Guantes de examen talla M", quantity: 50 }, { text: "Catéter de succión 08 CH", quantity: 20 }]);
+  assert.deepEqual(extractRequestedItems("5 de noviembre es el cierre\nEl plazo es de 10 días\n15 días de plazo"), []);
+  assert.deepEqual(extractRequestedItems("Aguja hipodérmica 21-23"), []);
+  assert.deepEqual(extractRequestedItems("Solicito 25 unidades de sutura vicryl 2-0, 12 cajas de gasas estériles y 3 trocares 12mm").map((i) => i.quantity), [25, 12, 3]);
+});
+
+test("items: only quotations and orders carry them", () => {
+  const q = classifyMail(M({ subject: "Solicitud de cotización", body: "Favor cotizar:\n- 10 jeringas 10 ml\n- 5 equipos de venoclisis" }));
+  assert.equal(q.category, "cotizacion");
+  assert.equal(q.items.length, 2);
+  const other = classifyMail(M({ from: "no-reply@compraspublicas.gob.ec", subject: "Invitación SIE-HEEE-2026-049-52558", body: "- 10 jeringas 10 ml" }));
+  assert.deepEqual(other.items, []);
 });

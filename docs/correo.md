@@ -26,6 +26,11 @@ Volia Control puede leer el correo de cada persona que lo autorice, separarlo po
 
 Después se lee solo cada día hábil a las 08:00 (hasta 5 buzones, 40 correos por lectura).
 
+## Qué pasa solo y qué decide usted
+
+- **Procesos del SERCOP:** si un correo del SERCOP trae un código de proceso, el proceso queda en **Procesos** como «Por revisar», con la fecha límite si el correo la menciona. Es una vez por código: si ya existe (aunque lo haya descartado) no se toca. Nada se ofertó ni se presentó: es solo un aviso para revisar el pliego.
+- **Cotizaciones y pedidos:** el sistema extrae los renglones pedidos («200 hojas de bisturí», «Guantes talla M x 50»). El botón **Armar cotización** abre el cotizador con el importador de requerimientos ya lleno, el cliente puesto y los precios del mercado y de sus proveedores a la vista. Usted revisa y presiona Analizar; no se crea ninguna cotización sin su revisión.
+
 ## Temas y reglas
 
 Contratación pública, Cotizaciones, Pedidos, Cobros y pagos, Regulatorio, Proveedores y Otros. La clasificación es por reglas legibles (palabras del asunto pesan el doble, el remitente `compraspublicas.gob.ec`, `controlsanitario.gob.ec` o `sri.gob.ec` suma, y los nombres de adjuntos ayudan), no por inteligencia artificial: nada del correo se envía a terceros. Cada tarjeta muestra "por qué este tema" para poder corregir las reglas en `lib/mail-triage.ts`. Los códigos de proceso se probaron contra los 1.229 reales del SERCOP 2026.
