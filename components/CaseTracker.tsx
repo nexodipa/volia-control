@@ -10,6 +10,7 @@ import InstitutionContacts from "./InstitutionContacts";
 import { findResponsible, normalizeContact, responsibleSummary, type InstitutionContact } from "../lib/institution-contacts";
 import { getInsightsForEntity, learnFromCase } from "../lib/knowledge-memory";
 import { ExportMenu } from "./ExportMenu";
+import { caseDraft, caseSteps, KIND_LABEL, type CaseDraft } from "../lib/case-plan";
 
 type WorkflowStatus = "surgery" | "documents" | "ready" | "submitted" | "review" | "observed" | "approved" | "paid";
 
@@ -70,6 +71,7 @@ export default function CaseTracker() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | WorkflowStatus | "overdue">("all");
+  const [stepId, setStepId] = useState(""); const [message, setMessage] = useState<CaseDraft | null>(null); const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -96,6 +98,7 @@ export default function CaseTracker() {
     const status = automaticStatus(record);
     return { ...record, status, responsible: responsibleOf(record.hospital, record.surgeryDate), pending: Math.max(0, record.amount - record.paidAmount), overdue: !!record.dueDate && status !== "paid" && new Date(`${record.dueDate}T23:59:59`) < new Date() };
   }), [records, responsibleOf]);
+  const steps = useMemo(() => caseSteps(enriched, today()), [enriched]);
   const visible = enriched.filter((record) => {
     const query = search.trim().toLowerCase();
     const matchesSearch = !query || [record.patient, record.hospital, record.contract, record.invoice, record.responsible.name].some((value) => value.toLowerCase().includes(query));
@@ -161,6 +164,32 @@ export default function CaseTracker() {
       <article className={kpis.incomplete ? "warn" : ""}><span>Expedientes incompletos</span><strong>{kpis.incomplete}</strong><small>Requieren documentos</small></article>
       <article className={kpis.overdue ? "danger" : ""}><span>Cobros vencidos</span><strong>{kpis.overdue}</strong><small>Necesitan seguimiento</small></article>
     </div>
+
+    {steps.length > 0 && <section className="case-table-card" aria-label="Qué gestionar">
+      <div className="case-toolbar"><div><p className="eyebrow">Seguimiento</p><h3>Qué gestionar ({steps.length})</h3></div></div>
+      <div className="case-list">{steps.map((step) => {
+        const record = enriched.find((r) => r.id === step.id);
+        if (!record) return null;
+        const open = stepId === step.id && message;
+        return <div key={step.id}>
+          <article className="case-row">
+            <div className="case-main"><div className="case-name"><span className={`status-dot ${step.kind === "observada" || step.kind === "vencida" ? "red" : "yellow"}`}></span><div><strong>{record.hospital || "Sin hospital"} · {record.invoice || "sin factura"}</strong><small>{record.patient} · {KIND_LABEL[step.kind]}{step.days ? ` · ${step.days} día(s)` : ""}</small></div></div></div>
+            <div className="case-details"><div><span>Qué hacer</span><strong>{step.action}</strong></div></div>
+            {step.drafts && <div className="record-actions"><button className="secondary-button" onClick={() => { if (open) { setStepId(""); setMessage(null); } else { setStepId(step.id); setMessage(caseDraft(record, step, today(), contacts)); setCopied(false); } }}>{open ? "Cerrar borrador" : "Redactar mensaje"}</button></div>}
+          </article>
+          {open && message && <div className="case-draft" role="group" aria-label="Borrador de mensaje a la institución" style={{ display: "grid", gap: 8, padding: "12px 0" }}>
+            <small>{message.to ? `Para ${message.contactName || message.to} (${message.to})` : message.contactName ? `Para ${message.contactName} (sin correo registrado)` : "Sin responsable registrado para esta institución; agréguelo abajo para que el borrador salga a su nombre."} El mensaje no incluye el nombre del paciente. Revíselo y envíelo desde su correo: el sistema no envía nada.</small>
+            <input value={message.subject} onChange={(e) => setMessage({ ...message, subject: e.target.value })} aria-label="Asunto" />
+            <textarea rows={10} value={message.body} onChange={(e) => setMessage({ ...message, body: e.target.value })} aria-label="Cuerpo del correo" />
+            <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={async () => { try { await navigator.clipboard.writeText(`Asunto: ${message.subject}\n\n${message.body}`); setCopied(true); recordActivity("Cirugías", "Mensaje de seguimiento copiado", `${record.hospital} · ${record.invoice || "sin factura"}`, "export"); } catch { setCopied(false); } }}>{copied ? "Copiado" : "Copiar"}</button>
+              <a href={`mailto:${encodeURIComponent(message.to).replace(/%40/g, "@")}?subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(message.body)}`}>Abrir en mi correo</a>
+            </span>
+          </div>}
+        </div>;
+      })}</div>
+      <small>Los plazos son criterios internos de Volia, no plazos de la institución: documentos tras 5 días de la cirugía, factura tras 3, y preguntar a los 15, insistir a los 30 y pedir respuesta por escrito a los 45 días de presentada.</small>
+    </section>}
 
     <InstitutionContacts contacts={contacts} onChange={saveContacts} institutions={[...new Set(records.map((r) => r.hospital).filter(Boolean))]} />
 
