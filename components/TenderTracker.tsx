@@ -13,7 +13,7 @@ import { BarList, Donut } from "./charts";
 const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value || 0);
 const dateLabel = (value: string) => (value ? new Intl.DateTimeFormat("es-EC", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`)) : "Sin fecha");
 const uid = () => `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-const blank = (): Tender => ({ id: "", ref: "", title: "", buyer: "", province: "", amount: 0, deadline: "", status: "interested", ourPrice: 0, winnerPrice: 0, winner: "", notes: "", createdAt: "", offeredAt: "" });
+const blank = (): Tender => ({ id: "", ref: "", title: "", buyer: "", province: "", amount: 0, deadline: "", status: "interested", ourPrice: 0, winnerPrice: 0, winner: "", notes: "", createdAt: "", offeredAt: "", resultAt: "" });
 
 function deadlineText(t: Tender, today: string) {
   if (!t.deadline) return { text: "Sin fecha límite", tone: "gray" };
@@ -65,7 +65,7 @@ export default function TenderTracker() {
 
   const save = () => {
     if (!draft.ref.trim() || duplicate) return;
-    const next = normalizeTender({ ...draft, id: draft.id || uid(), ref: draft.ref.trim(), createdAt: draft.createdAt || new Date().toISOString(), offeredAt: draft.offeredAt || (draft.status === "offered" ? today : "") });
+    const next = normalizeTender({ ...draft, id: draft.id || uid(), ref: draft.ref.trim(), createdAt: draft.createdAt || new Date().toISOString(), offeredAt: draft.offeredAt || (draft.status === "offered" ? today : ""), resultAt: draft.resultAt || (draft.status === "won" || draft.status === "lost" ? today : "") });
     if (!next) return;
     setItems((cur) => (draft.id ? cur.map((t) => (t.id === draft.id ? next : t)) : [next, ...cur]));
     recordActivity("Procesos", draft.id ? "Proceso actualizado" : "Proceso en seguimiento", `${next.ref} · ${next.buyer || "sin entidad"}`);
@@ -127,7 +127,7 @@ export default function TenderTracker() {
         const follow = since !== null && stage ? { days: since, action: FOLLOW_ACTION[stage] } : null;
         return <article className="case-row" key={t.id}>
           <div className="case-main"><div className="case-name"><span className={`status-dot ${TENDER_STATUS[t.status].tone}`}></span><div><strong>{t.ref}</strong><small>{t.buyer || "Entidad no indicada"}{t.province ? ` · ${t.province}` : ""}</small></div></div><span className={`status-pill ${when.tone}`}>{since !== null ? `Ofertado hace ${since} día(s)` : when.text}</span></div>
-          <div className="case-details"><div><span>Qué se contrata</span><strong>{t.title ? (t.title.length > 90 ? `${t.title.slice(0, 90)}…` : t.title) : "—"}</strong></div><div><span>Presupuesto</span><strong>{t.amount ? money(t.amount) : "No indicado"}</strong></div><div><span>Estado</span><select aria-label={`Estado de ${t.ref}`} value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as TenderStatus, ...(e.target.value === "offered" && !t.offeredAt ? { offeredAt: today } : {}) }, `Estado: ${TENDER_STATUS[e.target.value as TenderStatus].label}`)}>{TENDER_ORDER.map((s) => <option key={s} value={s}>{TENDER_STATUS[s].label}</option>)}</select></div></div>
+          <div className="case-details"><div><span>Qué se contrata</span><strong>{t.title ? (t.title.length > 90 ? `${t.title.slice(0, 90)}…` : t.title) : "—"}</strong></div><div><span>Presupuesto</span><strong>{t.amount ? money(t.amount) : "No indicado"}</strong></div><div><span>Estado</span><select aria-label={`Estado de ${t.ref}`} value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as TenderStatus, ...(e.target.value === "offered" && !t.offeredAt ? { offeredAt: today } : {}), ...((e.target.value === "won" || e.target.value === "lost") && !t.resultAt ? { resultAt: today } : {}) }, `Estado: ${TENDER_STATUS[e.target.value as TenderStatus].label}`)}>{TENDER_ORDER.map((s) => <option key={s} value={s}>{TENDER_STATUS[s].label}</option>)}</select></div></div>
           <details className="case-expand"><summary>{closing ? "Resultado y notas" : "Detalle y notas"}</summary><div className="case-management">
             {closing && <div className="business-form">
               <label><span>Lo que ofertó Volia (USD)</span><input type="number" min="0" step="0.01" value={t.ourPrice || ""} onChange={(e) => patch(t.id, { ourPrice: Math.max(0, Number(e.target.value) || 0) }, "Precio ofertado registrado")} /></label>

@@ -152,6 +152,10 @@ En **Finanzas, CxC y CxP**, cada cobro vencido tiene el botón **Redactar record
 
 Cuando un proceso pasa a **Oferta presentada**, el sistema guarda ese día (se puede corregir en «Detalle y notas») y cuenta los días desde entonces. El resumen de las 08:00 indica qué toca: revisar el portal, ver el estado, consultar a la entidad o registrar el resultado. En «Detalle y notas», el botón **Consultar estado a la entidad** arma un borrador para el responsable de compras de esa entidad (el de Cirugías, Responsables). El borrador solo pregunta por el estado y recuerda que las comunicaciones oficiales van por el portal; revise primero el portal, y envíelo usted desde su correo: el sistema no envía nada. Registrar siempre el resultado y el precio de cierre mejora la tasa de éxito y el descuento típico que ve en Procesos.
 
+## 10 nonies. Resumen del lunes: la semana pasada
+
+El resumen del lunes cierra con una sección **La semana pasada**: procesos nuevos, ofertas presentadas, resultados (adjudicados o perdidos), la tasa de éxito acumulada y lo cobrado y pagado. Para que cuente, registre los resultados en Procesos y marque los cobros y pagos en Finanzas cuando ocurran: el sistema guarda ese día. Si un proceso se perdió y falta el precio de cierre, el resumen se lo recuerda.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.

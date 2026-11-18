@@ -4,6 +4,7 @@ import { daysUntil, expiryStatus } from "./business-alerts.ts";
 import { deadlineReminders, type Tender } from "./tenders.ts";
 import type { MailRecord } from "./mail-sync.ts";
 import { MAIL_CATEGORIES } from "./mail-triage.ts";
+import { weeklyRecap } from "./weekly-recap.ts";
 import { FOLLOW_ACTION, offerFollowUps } from "./offer-followup.ts";
 import { collectionStage, STAGE_ACTION } from "./collection-plan.ts";
 import { earlyRenewals, holderOf, renewalLine } from "./renewal-plan.ts";
@@ -20,8 +21,10 @@ export type DigestFinance = {
   subtotal: number;
   iva: number;
   withholding: number;
+  /** Día en que se marcó cobrado o pagado (AAAA-MM-DD); lo usa el resumen semanal. */
+  paidAt?: string;
 };
-export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number } };
+export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number } };
 
 /** Fecha de hoy en Ecuador (UTC-5, sin horario de verano). */
 export function ecuadorToday(now = new Date()): string {
@@ -88,8 +91,9 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   const correo = mailDigest(mail, today, full);
   const renovar = earlyRenewals(docs, today, full);
   const ofertas = offerFollowUps(tenders, today, full);
+  const semana = full ? weeklyRecap(tenders, records, today) : { total: 0, lines: [] as string[] };
 
-  if (!vencidosShown.length && !porVencer.length && !renovar.length && !ofertas.length && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
+  if (!vencidosShown.length && !porVencer.length && !renovar.length && !ofertas.length && !semana.total && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
 
   const sections: { title: string; lines: string[] }[] = [];
   if (cobros.length) sections.push({ title: `Cobros vencidos (${cobros.length}, ${money(cobros.reduce((s, r) => s + total(r), 0))})`, lines: cobros.map((r) => `${r.counterparty || "Sin cliente"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.overdue} día(s) de atraso${stageNote(r.overdue)}`) });
@@ -102,7 +106,8 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (renovar.length) sections.push({ title: `Renovaciones por iniciar (${renovar.length})`, lines: [...renovar.map(renewalLine), "En Vigencias, el botón «Pedir renovación» arma el borrador del correo."] });
   if (full && sinFecha) sections.push({ title: "Control pendiente", lines: [`${sinFecha} documento(s) regulatorios sin fecha de vencimiento.`] });
 
-  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length };
+  if (semana.total) sections.push({ title: "La semana pasada", lines: semana.lines });
+  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total };
   const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`].filter(Boolean).join(", ");
   const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${head}`;
   const text = [`Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})`, "", ...sections.flatMap((s) => [s.title, ...s.lines.map((l) => `- ${l}`), ""]), `Abrir el sistema: ${appUrl}`].join("\n");
