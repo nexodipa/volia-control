@@ -22,6 +22,8 @@ export type Tender = {
   winner: string;
   notes: string;
   createdAt: string;
+  /** Día en que se presentó la oferta (AAAA-MM-DD); vacío si no se registró. */
+  offeredAt?: string;
 };
 
 export const TENDER_STATUS: Record<TenderStatus, { label: string; tone: "blue" | "yellow" | "green" | "red" | "gray"; open: boolean }> = {
@@ -51,7 +53,7 @@ export function normalizeTender(raw: unknown): Tender | null {
   return {
     id, ref: text(r.ref, 80), title: text(r.title, 400), buyer: text(r.buyer, 160), province: text(r.province, 60),
     amount: money(r.amount), deadline: isoDate(r.deadline), status: isTenderStatus(r.status) ? r.status : "interested",
-    ourPrice: money(r.ourPrice), winnerPrice: money(r.winnerPrice), winner: text(r.winner, 160), notes: text(r.notes, 1000), createdAt: text(r.createdAt, 40),
+    ourPrice: money(r.ourPrice), winnerPrice: money(r.winnerPrice), winner: text(r.winner, 160), notes: text(r.notes, 1000), createdAt: text(r.createdAt, 40), offeredAt: isoDate(r.offeredAt),
   };
 }
 
