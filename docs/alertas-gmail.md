@@ -4,6 +4,8 @@ El servidor arma un resumen cada día hábil a las 08:00 (hora de Ecuador) y lo 
 
 - **Lunes:** informe completo (cobros vencidos, pagos de los próximos 7 días, documentos regulatorios vencidos o por vencer en 90 días, registros sin fecha).
 - **Martes a viernes:** solo novedades: documentos que cruzan 90, 60, 30, 15, 7, 3 o 0 días; cobros que cumplen 1, 7, 15, 30, 60 o 90 días de atraso; pagos que vencen en 7, 3 o 0 días.
+- **Renovaciones por iniciar:** los documentos regulatorios entran en plazo de gestión antes de los 90 días, según su tipo: registro sanitario 180 días, notificación sanitaria 150, ISO 120 (la autorización de distribuidor y los demás se avisan en la sección de 90 días). Son plazos internos de Volia, no legales: el titular o el fabricante tarda semanas en renovar. Se pueden ajustar en `LEAD_DAYS` de `lib/renewal-plan.ts`. Lunes: todos los que están en ese plazo; martes a viernes, solo el día en que cruzan 180/150, 120 o 100. Cada línea dice a quién pedírselo (el nombre entre paréntesis del producto o el emisor de la autorización).
+- **Correo:** si hay un buzón conectado, el resumen suma una sección con lo pendiente por tema y los plazos cercanos (ver `docs/correo.md`).
 - Si no hay nada que avisar, no se envía correo.
 
 ## Pasos (una sola vez, con la cuenta que enviará los correos)

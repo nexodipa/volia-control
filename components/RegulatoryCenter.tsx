@@ -9,6 +9,7 @@ import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import { recordActivity } from "../lib/activity-log";
 import { pullRegulatory, pushRegulatory } from "../lib/regulatory-sync";
 import { mergeRegulatory } from "../lib/regulatory-api";
+import { renewalDraft, renewalsDue } from "../lib/renewal-plan";
 import { applyArcsa, arcsaSuggestions, findArcsa, loadArcsa, type ArcsaCatastro } from "../lib/arcsa";
 
 const LABEL: Record<ExpiryStatus | "sin-fecha", string> = { vencido: "Vencido", critico: "Menos de 30 días", proximo: "Menos de 90 días", vigente: "Vigente", "sin-fecha": "Sin fecha" };
@@ -18,6 +19,9 @@ export default function RegulatoryCenter() {
   const [records, setRecords] = useState<RegulatoryRecord[]>([]);
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ holder: string; subject: string; body: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [server, setServer] = useState<{ mode: "local" | "server"; message: string; pending: string[] }>({ mode: "local", message: "Conectando con el servidor…", pending: [] });
   const today = businessIsoDate();
   const [arcsa, setArcsa] = useState<ArcsaCatastro | null>(null);
@@ -54,6 +58,16 @@ export default function RegulatoryCenter() {
     })
     .sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999)), [records, today]);
 
+  const dueIds = useMemo(() => new Set(renewalsDue(records, today).map((r) => r.doc.id)), [records, today]);
+  const openDraft = (row: RegulatoryRecord) => {
+    if (!row.expiresAt) return;
+    setDraftId(row.id); setCopied(false);
+    setDraft(renewalDraft({ ...row, expiresAt: row.expiresAt }, today));
+  };
+  const copyDraft = async () => {
+    if (!draft) return;
+    try { await navigator.clipboard.writeText(`Asunto: ${draft.subject}\n\n${draft.body}`); setCopied(true); recordActivity("Documentos regulatorios", "Borrador de renovación copiado", draftId ?? "", "export"); } catch { setCopied(false); }
+  };
   const visible = rows.filter((row) => [row.reference, row.subject, row.items, row.kind].some((v) => v.toLowerCase().includes(query.toLowerCase())));
   const count = (s: string) => rows.filter((row) => row.status === s).length;
   const sendToServer = async (changed: RegulatoryRecord[]) => {
@@ -99,7 +113,17 @@ export default function RegulatoryCenter() {
       <div className="inventory-list">{visible.map((row) => <article className="inventory-row" key={row.id}>
         <div className="inventory-name"><span className={`status-dot ${DOT[row.status]}`}></span><div><strong>{row.reference}</strong><small>{row.kind} · {row.subject} · Ítems {row.items}</small>{row.note && <small>{row.note}</small>}{(() => { if (!arcsa || (row.kind !== "Registro sanitario" && row.kind !== "Notificación sanitaria")) return null; const hit = findArcsa(row.reference, arcsa); return hit ? <small className="arcsa-line">ARCSA: vigente hasta {hit.entry[1]} · {hit.entry[2]}</small> : <small className="arcsa-line missing">No figura en el catastro de ARCSA al {arcsa.corte}: verifique el número.</small>; })()}</div></div>
         <div className="inventory-metrics"><div><span>Estado</span><strong>{LABEL[row.status]}</strong><small>{row.days === null ? "Sin fecha" : row.days < 0 ? `Venció hace ${-row.days} días` : `${row.days} días`}</small></div>
-          <div><span>Vence</span><input type="date" value={row.expiresAt ?? ""} onChange={(e) => setDate(row.id, e.target.value)} aria-label={`Fecha de vencimiento de ${row.reference}`} /></div></div>
+          <div><span>Vence</span><input type="date" value={row.expiresAt ?? ""} onChange={(e) => setDate(row.id, e.target.value)} aria-label={`Fecha de vencimiento de ${row.reference}`} /></div>
+          {dueIds.has(row.id) && <div><span>Renovación</span><button className="secondary-button" onClick={() => (draftId === row.id ? setDraftId(null) : openDraft(row))}>{draftId === row.id ? "Cerrar borrador" : "Pedir renovación"}</button></div>}</div>
+        {draftId === row.id && draft && <div className="renewal-draft" role="group" aria-label={`Borrador de renovación de ${row.reference}`} style={{ gridColumn: "1 / -1", display: "grid", gap: 8, padding: "12px 0" }}>
+          <small>Borrador para {draft.holder || "el titular (complete el nombre)"}. Revíselo y envíelo desde su correo: el sistema no envía nada.</small>
+          <input value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} aria-label="Asunto" />
+          <textarea rows={12} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} aria-label="Cuerpo del correo" />
+          <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="primary-button" onClick={copyDraft}>{copied ? "Copiado" : "Copiar"}</button>
+            <a className="secondary-button" href={`mailto:?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`}>Abrir en mi correo</a>
+          </span>
+        </div>}
       </article>)}{!visible.length && <div className="module-empty">No hay documentos que coincidan.</div>}</div>
     </section>
   </section>;
