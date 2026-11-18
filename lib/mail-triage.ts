@@ -25,6 +25,8 @@ export type MailFields = {
   rucs: string[];
 };
 
+export type RequestedItem = { text: string; quantity: number };
+
 export type MailTriage = {
   category: MailCategory;
   confidence: number; // 0 a 1
@@ -32,6 +34,7 @@ export type MailTriage = {
   sender: { name: string; email: string; domain: string };
   fields: MailFields;
   excerpt: string; // inicio del mensaje, sin citas ni datos sensibles
+  items: RequestedItem[]; // renglones pedidos (solo en cotizaciones y pedidos); alimentan al importador del cotizador
 };
 
 const fold = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -160,6 +163,49 @@ export function extractFields(text: string): MailFields {
   };
 }
 
+
+// ---------------------------------------------------------------- renglones pedidos
+
+const UNIT = "unidades|unidad|unid|uds|ud|cajas|caja|paquetes|paquete|fundas|funda|frascos|frasco|rollos|rollo|pares|par|juegos|juego|sets|set|piezas|pieza|pzas|kits|kit";
+const NOT_AN_ITEM = /^(?:de\s+)?(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|dias?|dia|horas?|semanas?|meses|mes|anos?|%|por ciento|usd|dolares)\b/;
+const REQUEST_WORDS = /cotiz|necesit|requer|solicit|enviar|favor|pedid|adquir|comprar/;
+
+const TAIL = new RegExp(`^(.{3,120}?)\\s*(?:\\bx\\b|×|\\bpor\\b|cant\\.?|cantidad:?|(?<=\\s)-(?=\\s))\\s*(\\d{1,6})(?:\\s*(?:${UNIT}))?\\s*\\.?$`, "i");
+
+function cleanItem(raw: string): string {
+  return raw
+    .replace(new RegExp(`^(?:${UNIT})\\.?\\s+(?:de\\s+)?`, "i"), "") // «cajas de guantes» -> «guantes»
+    .replace(/\s+(?:y|e)\s*$/i, "")
+    .replace(/[\s.,;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function pushItem(out: RequestedItem[], text: string, qty: number) {
+  const t = cleanItem(text);
+  if (t.length < 4 || t.length > 120 || !/[a-záéíóúñ]{3,}/i.test(t) || qty < 1 || qty > 100_000) return;
+  if (NOT_AN_ITEM.test(fold(t))) return;
+  if (!out.some((i) => i.text.toLowerCase() === t.toLowerCase())) out.push({ text: t, quantity: Math.round(qty) });
+}
+
+/** Renglones «10 jeringas», «Guantes talla M x 50» o inline («necesitamos cotizar 200 hojas de bisturí y 50 cajas de guantes»). */
+export function extractRequestedItems(body: string): RequestedItem[] {
+  const out: RequestedItem[] = [];
+  for (const raw of body.split(/\r?\n/)) {
+    const line = raw.replace(/^\s*(?:[-*•·]|\d{1,2}[.)])\s+/, "").trim();
+    if (!line) continue;
+    const lead = line.match(/^(\d{1,6})\s+(?!de\s)(.{3,120})$/);
+    const tail = line.match(TAIL);
+    if (lead && line.length <= 140 && !/[.!?]\s+\S/.test(line)) pushItem(out, lead[2], Number(lead[1]));
+    else if (tail && line.length <= 140) pushItem(out, tail[1], Number(tail[2]));
+    else if (REQUEST_WORDS.test(fold(line))) {
+      for (const m of line.matchAll(new RegExp(`(\\d{1,6})\\s+((?:(?:${UNIT})\\s+de\\s+)?[a-záéíóúñA-ZÁÉÍÓÚÑ][^,;.\\n]{2,70}?)(?=\\s+(?:y|e)\\s+\\d|\\s*[,;.]|\\s*$)`, "g"))) pushItem(out, m[2], Number(m[1]));
+    }
+    if (out.length >= 30) break;
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- clasificación
 
 export function classifyMail(mail: MailInput): MailTriage {
@@ -203,5 +249,6 @@ export function classifyMail(mail: MailInput): MailTriage {
     category, confidence, sender, fields,
     reasons: category === "otro" ? [] : (reasons.get(category) ?? []).slice(0, 4),
     excerpt: body.replace(/\s+/g, " ").slice(0, 600),
+    items: category === "cotizacion" || category === "pedido" ? extractRequestedItems(body) : [],
   };
 }

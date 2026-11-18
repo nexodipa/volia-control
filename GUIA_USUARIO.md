@@ -135,7 +135,8 @@ Lee los correos que cada persona etiquetó con **Volia** en su Gmail, los separa
 
 1. Cada persona conecta su propio buzón una sola vez (pasos en `docs/correo.md`) y decide qué comparte etiquetando el correo con **Volia**. Lo que no tiene la etiqueta no se lee.
 2. El sistema lee solo cada día hábil a las 08:00; **Revisar correo ahora** lo hace al momento.
-3. Por cada correo puede **Abrir en Gmail**, **Seguir proceso** (si trae un código del SERCOP), **Marcar revisado** o **Descartar**.
+3. Por cada correo puede **Abrir en Gmail**, **Seguir proceso** (si trae un código del SERCOP), **Armar cotización** (si pide productos), **Marcar revisado** o **Descartar**.
+4. Los procesos del SERCOP que llegan por correo pasan solos a **Procesos** como «Por revisar». **Armar cotización** abre el cotizador con los renglones pedidos para que los revise; no crea nada sin su visto bueno.
 
 Privacidad: es solo lectura, no se guardan contraseñas ni números de tarjeta, no se guarda el contenido de los adjuntos y los correos se borran de Volia Control a los 90 días. Todo el equipo ve los correos compartidos: etiquete solo lo que quiera compartir.
 

@@ -12,12 +12,12 @@ export type ImportedLine = { text: string; quantity: number; product: CatalogPro
 const FREE = "__libre__";
 
 /** Pegar un requerimiento y convertirlo en líneas de la cotización usando la memoria de equivalencias. */
-export default function RequirementImporter({ catalog, customer, onAdd, onPliego }: { catalog: CatalogProduct[]; customer: string; onAdd: (lines: ImportedLine[]) => void; onPliego?: (p: Pliego) => void }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
+export default function RequirementImporter({ catalog, customer, onAdd, onPliego, initial }: { initial?: { text: string; note: string }; catalog: CatalogProduct[]; customer: string; onAdd: (lines: ImportedLine[]) => void; onPliego?: (p: Pliego) => void }) {
+  const [open, setOpen] = useState(!!initial);
+  const [text, setText] = useState(initial?.text ?? "");
   const [rows, setRows] = useState<(LineMatch & { choice: string; remember: boolean; ref?: number })[]>([]);
   const [reading, setReading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initial?.note ?? "");
   const [prices, setPrices] = useState<PriceData | null>(null);
   useEffect(() => { if (open && !prices) void loadPriceData().then(setPrices); }, [open, prices]);
   const hint = (text: string) => {

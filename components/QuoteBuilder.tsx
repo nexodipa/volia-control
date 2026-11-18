@@ -30,6 +30,7 @@ import {
   type VoliaSystemTemplate,
 } from "../lib/volia-system-catalog";
 import { getInsightsForEntity, learnFromQuote } from "../lib/knowledge-memory";
+import { clearQuoteHandoff, peekQuoteHandoff } from "../lib/mail-handoff";
 
 type QuoteItem = {
   id: string;
@@ -101,6 +102,8 @@ function SmallIcon({ name }: { name: "plus" | "trash" | "print" | "download" | "
 }
 
 export default function QuoteBuilder() {
+  // Renglones que llegan desde un correo de cotización (módulo Correo); se leen al abrir y se borran enseguida.
+  const [mailHandoff] = useState(() => (typeof window === "undefined" ? null : peekQuoteHandoff()));
   const [meta, setMeta] = useState<QuoteMeta>(INITIAL_META);
   const [items, setItems] = useState<QuoteItem[]>(INITIAL_ITEMS);
   const [restored, setRestored] = useState(false);
@@ -157,12 +160,14 @@ export default function QuoteBuilder() {
           if (parsed.items?.length) setItems(parsed.items.map((item) => ({ ...item, brand: item.brand ?? "", origin: item.origin ?? "" })));
         } else setMeta((current) => ({ ...current, date: today(), number: nextQuoteNumber() }));
       } catch { /* El borrador local es auxiliar; un valor dañado se ignora. */ }
+      if (mailHandoff?.customer) setMeta((current) => ({ ...current, customer: current.customer || mailHandoff.customer }));
+      clearQuoteHandoff();
       setSavedQuotes(getSavedQuotes());
       setCatalog(getCatalog());
       setRestored(true);
     }, 0);
     return () => window.clearTimeout(restoreTimer);
-  }, []);
+  }, [mailHandoff?.customer]);
 
   // El historial también llega desde otros equipos por la base compartida.
   useEffect(() => {
@@ -515,7 +520,7 @@ export default function QuoteBuilder() {
               </div>}
               {systemMessage && <p className="system-message" role="status">{systemMessage}</p>}
             </section>
-            <RequirementImporter catalog={catalog} customer={meta.customer} onAdd={addRequirementLines} onPliego={(p) => setMeta((current) => ({ ...current, contract: current.contract || p.code, customer: current.customer || p.entity, notes: current.notes || (p.object ? `Proceso ${p.code}: ${p.object}` : current.notes) }))} />
+            <RequirementImporter initial={mailHandoff ? { text: mailHandoff.text, note: `${mailHandoff.count} renglón(es) tomados del correo «${mailHandoff.subject}». Revíselos y presione Analizar.` } : undefined} catalog={catalog} customer={meta.customer} onAdd={addRequirementLines} onPliego={(p) => setMeta((current) => ({ ...current, contract: current.contract || p.code, customer: current.customer || p.entity, notes: current.notes || (p.object ? `Proceso ${p.code}: ${p.object}` : current.notes) }))} />
             <div className="quote-items">
               {items.map((item, index) => {
                 const lineSale = item.quantity * item.unitPrice;

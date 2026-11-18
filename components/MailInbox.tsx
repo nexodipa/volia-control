@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { MAIL_CATEGORIES, type MailCategory } from "../lib/mail-triage";
 import type { MailRecord, MailStatus, SyncMeta } from "../lib/mail-sync";
 import { followLink } from "../lib/tenders";
+import { setQuoteHandoff } from "../lib/mail-handoff";
 
 type Payload = { records: MailRecord[]; meta: Record<string, SyncMeta>; mailboxes: string[]; summary: { pending: number; nextDeadline: string; urgent: number } };
 
@@ -12,7 +13,7 @@ const day = (iso: string) => (iso ? new Intl.DateTimeFormat("es-EC", { day: "num
 const time = (iso: string) => new Intl.DateTimeFormat("es-EC", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Guayaquil" }).format(new Date(iso));
 const todayEc = () => new Date(Date.now() - 5 * 3_600_000).toISOString().slice(0, 10);
 
-export default function MailInbox() {
+export default function MailInbox({ onOpenQuote }: { onOpenQuote?: () => void }) {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -109,9 +110,11 @@ export default function MailInbox() {
                 {f.rucs.length > 0 && <span><strong>RUC:</strong> {f.rucs.join(", ")}. </span>}
               </p>}
               {r.attachments.length > 0 && <small>Adjuntos: {r.attachments.join(", ")}</small>}
+              {r.items && r.items.length > 0 && <details className="case-expand"><summary>{r.items.length} renglón(es) pedidos</summary><ul>{r.items.map((i) => <li key={i.text}>{i.quantity} × {i.text}</li>)}</ul></details>}
               {r.excerpt && <details className="case-expand"><summary>Ver extracto</summary><p>{r.excerpt}</p>{r.reasons.length > 0 && <small>Por qué este tema: {r.reasons.join("; ")}.</small>}</details>}
               <div>
                 {r.link && <a className="secondary-button" href={r.link} target="_blank" rel="noopener noreferrer">Abrir en Gmail</a>}{" "}
+                {r.items && r.items.length > 0 && onOpenQuote && <button className="primary-button" onClick={() => { setQuoteHandoff(r.from.name || r.from.email, r.subject, r.items ?? []); onOpenQuote(); }}>Armar cotización</button>}{" "}
                 {f.processCodes[0] && <a className="secondary-button" href={followLink(typeof window === "undefined" ? "" : window.location.origin, { ref: f.processCodes[0], title: r.subject, buyer: r.from.name })}>Seguir proceso</a>}{" "}
                 {r.status === "nuevo" && <button className="secondary-button" onClick={() => setStatus(r, "revisado")}>Marcar revisado</button>}{" "}
                 {r.status !== "descartado" ? <button className="secondary-button" onClick={() => setStatus(r, "descartado")}>Descartar</button> : <button className="secondary-button" onClick={() => setStatus(r, "nuevo")}>Restaurar</button>}

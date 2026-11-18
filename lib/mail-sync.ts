@@ -1,7 +1,8 @@
 // Sincronización del correo: el Worker consulta (pull) al Apps Script que cada persona instaló en SU cuenta de Gmail,
 // clasifica lo recibido y lo guarda en D1 (shared_records, colección "mail"). Solo se leen los correos que la persona
 // etiquetó con «Volia»; el script nunca borra, envía ni modifica mensajes (solo marca como procesados con una etiqueta).
-import { classifyMail, type MailCategory, type MailFields, type MailInput } from "./mail-triage.ts";
+import { classifyMail, type MailCategory, type MailFields, type MailInput, type RequestedItem } from "./mail-triage.ts";
+import { normalizeTender, type Tender } from "./tenders.ts";
 
 export const MAIL_COLLECTION = "mail";
 export const MAIL_META_COLLECTION = "mail_meta";
@@ -22,6 +23,7 @@ export type MailRecord = {
   reasons: string[];
   fields: MailFields;
   excerpt: string;
+  items?: RequestedItem[]; // renglones pedidos (cotizaciones y pedidos); los correos anteriores no lo traen
   attachments: string[];
   link: string;
   status: MailStatus;
@@ -95,6 +97,7 @@ export function buildMailRecord(source: string, raw: RawMail, now: Date): MailRe
     reasons: t.reasons,
     fields: t.fields,
     excerpt: t.excerpt,
+    items: t.items,
     attachments: (input.attachments ?? []).map((a) => a.name),
     link: input.link,
     status: "nuevo",
@@ -132,6 +135,29 @@ async function saveMeta(db: MailDb, name: string, meta: SyncMeta) {
   try { await db.batch([bind(db.prepare(META), MAIL_META_COLLECTION, name, JSON.stringify(meta), meta.at)]); } catch { /* anotar es opcional */ }
 }
 
+const TENDERS = "tenders";
+
+/** Un correo del SERCOP con código de proceso deja el proceso en «Por revisar» en Procesos (una vez por código; si ya existe, aunque esté descartado, no se toca). */
+export async function addTendersFromMail(db: MailDb, records: MailRecord[], now: Date = new Date()): Promise<number> {
+  const wanted = new Map<string, MailRecord>();
+  for (const r of records) if (r.category === "sercop") for (const code of r.fields.processCodes) if (!wanted.has(code)) wanted.set(code, r);
+  if (!wanted.size) return 0;
+  const known = new Set<string>();
+  for (const row of (await (db.prepare("SELECT data FROM shared_records WHERE collection = ?").bind(TENDERS) as unknown as { all<T>(): Promise<{ results: T[] }> }).all<{ data: string }>()).results) {
+    try { const t = normalizeTender(JSON.parse(row.data)); if (t?.ref) known.add(t.ref.toUpperCase()); } catch { /* registro ilegible */ }
+  }
+  const stmt = db.prepare("INSERT OR IGNORE INTO shared_records (collection, record_id, data, updated_at, deleted, updated_by) VALUES (?, ?, ?, ?, 0, 'correo')");
+  const at = now.toISOString();
+  const rows: unknown[] = [];
+  for (const [code, r] of wanted) {
+    if (known.has(code.toUpperCase())) continue;
+    const tender: Tender = { id: `correo-${code}`, ref: code, title: r.subject || code, buyer: "", province: "", amount: 0, deadline: r.fields.deadline, status: "interested", ourPrice: 0, winnerPrice: 0, winner: "", notes: `Agregado desde el correo de ${r.source} (${r.receivedAt.slice(0, 10)}). Revise el pliego y la fecha límite en el portal.`, createdAt: at };
+    rows.push(bind(stmt, TENDERS, tender.id, JSON.stringify(tender), at));
+  }
+  if (!rows.length) return 0;
+  return changesOf(await db.batch(rows));
+}
+
 export async function syncMailbox(db: MailDb, source: MailSource, opts: { fetchImpl?: typeof fetch; now?: Date } = {}): Promise<SyncResult> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const now = opts.now ?? new Date();
@@ -147,6 +173,7 @@ export async function syncMailbox(db: MailDb, source: MailSource, opts: { fetchI
   }
   const records = mails.slice(0, MAX_PER_PULL).map((m) => buildMailRecord(source.name, m, now)).filter((r): r is MailRecord => !!r);
   let added = 0;
+  let tendersAdded = 0;
   if (records.length) {
     try {
       const stmt = db.prepare(INSERT);
@@ -154,11 +181,14 @@ export async function syncMailbox(db: MailDb, source: MailSource, opts: { fetchI
     } catch (e) {
       return finish({ ok: false, fetched: records.length, added: 0, message: `No se pudieron guardar los correos: ${e instanceof Error ? e.message : "error desconocido"}.` });
     }
+    // Los procesos del SERCOP pasan solos a seguimiento; si esto falla no se pierde el correo ni se detiene la lectura.
+    try { tendersAdded = await addTendersFromMail(db, records, now); } catch { /* el correo ya está guardado */ }
     // Solo se marcan como procesados después de guardarlos; si esto falla, el próximo pull los repite y no se duplican.
     try { await callScript(source, { action: "ack", ids: records.map((r) => r.id.slice(source.name.length + 1)) }, fetchImpl); }
-    catch (e) { return finish({ ok: true, fetched: records.length, added, message: `Se guardaron ${added} correos nuevos, pero no se pudieron marcar como leídos (${e instanceof Error ? e.message : "error"}). No se duplicarán.` }); }
+    catch (e) { return finish({ ok: true, fetched: records.length, added, message: `Se guardaron ${added} correos nuevos${tendersAdded ? ` y ${tendersAdded} proceso(s) pasaron a Procesos` : ""}, pero no se pudieron marcar como leídos (${e instanceof Error ? e.message : "error"}). No se duplicarán.` }); }
   }
-  return finish({ ok: true, fetched: records.length, added, message: records.length ? `${added} correos nuevos de ${records.length} leídos.` : "Sin correos nuevos con la etiqueta Volia." });
+  const followed = tendersAdded ? ` ${tendersAdded} proceso(s) del SERCOP pasaron a Procesos para revisar.` : "";
+  return finish({ ok: true, fetched: records.length, added, message: records.length ? `${added} correos nuevos de ${records.length} leídos.${followed}` : "Sin correos nuevos con la etiqueta Volia." });
 }
 
 export async function syncAll(db: MailDb, sources: MailSource[], opts: { fetchImpl?: typeof fetch; now?: Date } = {}): Promise<SyncResult[]> {

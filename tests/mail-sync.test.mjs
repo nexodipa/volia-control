@@ -126,3 +126,33 @@ test("summary: counts pending mail and the nearest deadline", async () => {
   assert.equal(s.nextDeadline, "2026-11-20");
   assert.equal(s.urgent, 1);
 });
+
+const tenders = (db) => db.sql.prepare("SELECT record_id, data, updated_by FROM shared_records WHERE collection = 'tenders'").all().map((r) => ({ id: r.record_id, by: r.updated_by, ...JSON.parse(r.data) }));
+
+test("tenders: a SERCOP mail leaves the process in Por revisar once, with its deadline", async () => {
+  const db = fakeD1();
+  const { fetchImpl } = fakeScript([mail("18f0a1b2c3"), mail("18f0a1b2c4", { subject: "Recordatorio SIE-HEEE-2026-049-52558", body: "Plazo hasta el 20/11/2026" })]);
+  const r = await syncMailbox(db, SRC, { fetchImpl, now: NOW });
+  assert.match(r.message, /1 proceso\(s\) del SERCOP/);
+  const t = tenders(db);
+  assert.equal(t.length, 1);
+  assert.deepEqual([t[0].ref, t[0].status, t[0].deadline, t[0].by], ["SIE-HEEE-2026-049-52558", "interested", "2026-11-20", "correo"]);
+  await syncMailbox(db, SRC, { fetchImpl, now: NOW });
+  assert.equal(tenders(db).length, 1);
+});
+
+test("tenders: existing or discarded processes are never re-added, and other categories add nothing", async () => {
+  const db = fakeD1();
+  const put = (id, ref, deleted) => db.sql.prepare("INSERT INTO shared_records (collection, record_id, data, updated_at, deleted) VALUES ('tenders', ?, ?, '2026-11-01T00:00:00Z', ?)").run(id, JSON.stringify({ id, ref, title: "x", status: "dropped" }), deleted);
+  put("manual-1", "sie-heee-2026-049-52558", 1); // borrado por el usuario, y en minúsculas
+  const { fetchImpl } = fakeScript([mail("18f0a1b2c3"), mail("18f0a1b2c4", { from: "x@hospital.com", subject: "Cotización SIE-HEEE-2026-077-11111", body: "Necesitamos cotizar 10 guantes. Precio unitario y disponibilidad." })]);
+  await syncMailbox(db, SRC, { fetchImpl, now: NOW });
+  assert.deepEqual(tenders(db).map((t) => t.id), ["manual-1"]);
+});
+
+test("items: quotation mail stores the requested lines for the quote importer", async () => {
+  const db = fakeD1();
+  const { fetchImpl } = fakeScript([mail("18f0a1b2c4", { from: "compras@clinicaxyz.com", subject: "Solicitud de cotización", body: "Favor cotizar:\n- 10 jeringas 10 ml\n- 5 equipos de venoclisis", attachments: [] })]);
+  await syncMailbox(db, SRC, { fetchImpl, now: NOW });
+  assert.deepEqual((await listMail(db))[0].items, [{ text: "jeringas 10 ml", quantity: 10 }, { text: "equipos de venoclisis", quantity: 5 }]);
+});
