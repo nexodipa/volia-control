@@ -5,6 +5,7 @@ import { daysUntil } from "../lib/business-alerts";
 import { recordActivity } from "../lib/activity-log";
 import { businessIsoDate } from "../lib/date-utils";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
+import { AWARD_ADVICE, awardStage } from "../lib/award-followup";
 import { FOLLOW_ACTION, followStage, offerDate, statusDraft, type StatusDraft } from "../lib/offer-followup";
 import { normalizeContact, type InstitutionContact } from "../lib/institution-contacts";
 import { normalizeTender, sortTenders, TENDER_ORDER, TENDER_STATUS, tenderFromParams, tenderStats, type Tender, type TenderStatus } from "../lib/tenders";
@@ -125,6 +126,8 @@ export default function TenderTracker() {
         const since = t.status === "offered" && offerDate(t) ? -daysUntil(offerDate(t), today) : null;
         const stage = since === null ? null : followStage(since);
         const follow = since !== null && stage ? { days: since, action: FOLLOW_ACTION[stage] } : null;
+        const wonDays = t.status === "won" && t.resultAt ? -daysUntil(t.resultAt, today) : null;
+        const wonStage = wonDays === null ? null : awardStage(wonDays);
         return <article className="case-row" key={t.id}>
           <div className="case-main"><div className="case-name"><span className={`status-dot ${TENDER_STATUS[t.status].tone}`}></span><div><strong>{t.ref}</strong><small>{t.buyer || "Entidad no indicada"}{t.province ? ` · ${t.province}` : ""}</small></div></div><span className={`status-pill ${when.tone}`}>{since !== null ? `Ofertado hace ${since} día(s)` : when.text}</span></div>
           <div className="case-details"><div><span>Qué se contrata</span><strong>{t.title ? (t.title.length > 90 ? `${t.title.slice(0, 90)}…` : t.title) : "—"}</strong></div><div><span>Presupuesto</span><strong>{t.amount ? money(t.amount) : "No indicado"}</strong></div><div><span>Estado</span><select aria-label={`Estado de ${t.ref}`} value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as TenderStatus, ...(e.target.value === "offered" && !t.offeredAt ? { offeredAt: today } : {}), ...((e.target.value === "won" || e.target.value === "lost") && !t.resultAt ? { resultAt: today } : {}) }, `Estado: ${TENDER_STATUS[e.target.value as TenderStatus].label}`)}>{TENDER_ORDER.map((s) => <option key={s} value={s}>{TENDER_STATUS[s].label}</option>)}</select></div></div>
@@ -134,6 +137,7 @@ export default function TenderTracker() {
               <label><span>Con cuánto se cerró (USD)</span><input type="number" min="0" step="0.01" value={t.winnerPrice || ""} onChange={(e) => patch(t.id, { winnerPrice: Math.max(0, Number(e.target.value) || 0) }, "Precio de cierre registrado")} /></label>
               <label><span>Ganador</span><input value={t.winner} onChange={(e) => patch(t.id, { winner: e.target.value }, "Ganador registrado")} /></label>
             </div>}
+            {wonStage && wonDays !== null && <div className="business-form"><div><span>Qué sigue ({wonDays} días desde la adjudicación)</span><small>{AWARD_ADVICE[wonStage]}. Los plazos del contrato los fija el pliego y el portal del SERCOP.</small></div></div>}
             {t.status === "offered" && <div className="business-form">
               <label><span>Día en que se presentó la oferta</span><input type="date" value={t.offeredAt || ""} onChange={(e) => patch(t.id, { offeredAt: e.target.value }, "Fecha de la oferta registrada")} /></label>
               {follow && <div><span>Siguiente gestión ({follow.days} días desde la oferta)</span><small>{follow.action}</small></div>}
