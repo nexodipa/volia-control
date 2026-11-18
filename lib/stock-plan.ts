@@ -146,7 +146,7 @@ export function expiryLine(e: ExpiryItem): string {
   return `${lot} · ${qty} · ${when} · ${flow}`;
 }
 
-export type StockDigest = { expiry: { total: number; value: number; lines: string[] }; reorder: { total: number; lines: string[] } };
+export type StockDigest = { expiry: { total: number; value: number; lines: string[] }; reorder: { total: number; lines: string[]; agotados: number } };
 
 const cap = (lines: string[]) => (lines.length > MAX_LINES ? [...lines.slice(0, MAX_LINES), `y ${lines.length - MAX_LINES} más: están en Inventario`] : lines);
 
@@ -160,6 +160,6 @@ export function stockDigest(items: PlanItem[], moves: PlanMove[], today: string,
   const plan = reorderPlan(items, moves, today).filter((r) => full || (wednesday && r.stage === "agotado" && r.rate > 0));
   return {
     expiry: { total: lots.length, value: lots.reduce((s, e) => s + e.value, 0), lines: cap(lots.map(expiryLine)) },
-    reorder: { total: plan.length, lines: cap(plan.map(reorderLine)) },
+    reorder: { total: plan.length, lines: cap(plan.map(reorderLine)), agotados: plan.filter((r) => r.stage === "agotado" && r.rate > 0).length },
   };
 }

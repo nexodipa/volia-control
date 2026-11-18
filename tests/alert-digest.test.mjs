@@ -89,3 +89,32 @@ test("SERCOP mail with a process code mentions it is already in Procesos", () =>
   const d = buildDigest([], [], "2026-10-26", URL, [], [mail({ category: "sercop", fields: { ...mail().fields, processCodes: ["SIE-HE-2026-001"] } })]);
   assert.match(d.text, /ya están en Procesos/);
 });
+
+test("Lo primero: urgent items on top, only when the email has enough sections", async () => {
+  const { buildDigest } = await import("../lib/alert-digest.ts");
+  const today = "2026-11-23";
+  const fin = (o) => ({ direction: "income", status: "pending", dueDate: "2026-10-01", counterparty: "H", document: "F1", subtotal: 100, iva: 15, withholding: 0, ...o });
+  const tenders = [{ id: "t1", ref: "SIE-1", title: "x", buyer: "B", deadline: "2026-11-24", status: "preparing", notes: "", budget: 0 }];
+  const records = [fin({}), fin({ direction: "expense", dueDate: "2026-11-23", document: "P1" })];
+  const d = buildDigest([], records, today, "https://x.example", tenders);
+  assert.ok(d);
+  assert.match(d.text.split("\n\n")[1].split("\n")[0], /^Lo primero/);
+  assert.match(d.text, /1 proceso\(s\) del SERCOP con fecha límite hoy o mañana: SIE-1/);
+  assert.match(d.text, /1 pago\(s\) vencen hoy o ya vencieron \(USD 115,00\)/);
+  assert.match(d.text, /1 cobro\(s\) con 30 días o más de mora/);
+  // con solo dos secciones el bloque sobra
+  const two = buildDigest([], records, today, "https://x.example");
+  assert.doesNotMatch(two.text, /Lo primero/);
+});
+
+test("the subject lists at most four topics and counts the rest", async () => {
+  const { buildDigest } = await import("../lib/alert-digest.ts");
+  const today = "2026-11-23";
+  const doc = (o) => ({ reference: "R1", kind: "registro", subject: "S (TITULAR)", expiresAt: "2026-10-01", ...o });
+  const fin = (o) => ({ direction: "income", status: "pending", dueDate: "2026-10-01", counterparty: "H", document: "F1", subtotal: 100, iva: 15, withholding: 0, ...o });
+  const tenders = [{ id: "t1", ref: "SIE-1", title: "x", buyer: "B", deadline: "2026-11-24", status: "preparing", notes: "", budget: 0 }];
+  const stock = { items: [{ id: "i", code: "C", product: "P", lot: "L", expiry: "", stock: 0, reserved: 0, minimum: 3, unitCost: 1 }], moves: [] };
+  const d = buildDigest([doc()], [fin({}), fin({ direction: "expense", dueDate: "2026-11-23" })], today, "https://x.example", tenders, [], stock);
+  assert.match(d.subject, / y 1 más$/);
+  assert.ok(d.subject.split(",").length <= 4);
+});
