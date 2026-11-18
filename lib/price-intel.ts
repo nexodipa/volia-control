@@ -9,7 +9,7 @@ export type MarketReference = { price: number; source: "mercado" | "hecam-adjudi
 
 /** Precio de referencia del mercado: mediana SOCE si existe; si no, precio adjudicado del HECAM; si no, su precio referencial. */
 export function marketReference(description: string, data: PriceData): MarketReference | null {
-  const m = bestNameMatch(description, data.market, (i) => i.item);
+  const m = bestNameMatch(description, data.market, (i) => i.item, { contain: true });
   if (m) return { price: m.value.mediana, source: "mercado", detail: `mitad del mercado en ${m.value.n} procesos`, name: m.value.item };
   const h = findHecamItem(description, data.hecam);
   if (h?.pua) return { price: h.pua, source: "hecam-adjudicado", detail: `adjudicado por el HECAM${h.g ? ` a ${h.g}` : ""}`, name: h.n };

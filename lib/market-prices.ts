@@ -19,8 +19,45 @@ export function measures(text: string): Set<string> {
 }
 const subset = (a: Set<string>, b: Set<string>) => [...a].every((x) => b.has(x));
 
+const fullWords = (text: string) => fold(text).replace(/micro\s+gotero/g, "microgotero").split(/[^a-z0-9ñ]+/).filter((w) => w.length >= 4 && !/\d/.test(w) && !STOP.has(w));
+/** Misma palabra, tolerando solo el plural: "guante"/"guantes" sí; "super"/"superfiller" y "trans"/"transferrina" no. */
+const sameWord = (a: string, b: string) => a === b || ((a.startsWith(b) || b.startsWith(a)) && Math.abs(a.length - b.length) <= 2);
+/** Palabras que siguen a "con"/"c/" y a "sin"/"s/": "con trocar" frente a "sin trocar" son productos distintos. */
+function withWithout(text: string) {
+  const tokens = fold(text).split(/[^a-z0-9ñ]+/).filter(Boolean);
+  const withW: string[] = [], withoutW: string[] = [];
+  tokens.forEach((t, i) => { const next = tokens[i + 1]; if (!next || next.length < 4) return; if (t === "con" || t === "c") withW.push(next); else if (t === "sin" || t === "s") withoutW.push(next); });
+  return { withW, withoutW };
+}
+const clash = (a: string, b: string) => {
+  const x = withWithout(a), y = withWithout(b);
+  const hit = (p: string[], q: string[]) => p.some((w) => q.some((v) => sameWord(w, v)));
+  return hit(x.withW, y.withoutW) || hit(x.withoutW, y.withW);
+};
+/**
+ * ¿Una descripción contiene a la otra, palabra por palabra, en cualquiera de los dos sentidos? Las palabras con
+ * cifras no cuentan (las medidas las revisa `measures`) y un "con X" frente a un "sin X" es una contradicción.
+ */
+export function contains(a: string, b: string): boolean {
+  if (clash(a, b)) return false;
+  const x = fullWords(a), y = fullWords(b);
+  if (!x.length || !y.length) return true; // solo medidas: no hay nada que contrastar
+  const inside = (p: string[], q: string[]) => p.every((w) => q.some((v) => sameWord(w, v)));
+  return inside(x, y) || inside(y, x);
+}
+
 /** Mejor coincidencia por nombre entre una descripción y una lista (misma regla para SOCE y HECAM). */
-export type MatchOptions = { /** Exige que ambos nombres empiecen con el mismo sustantivo y cuenta siglas de 3 letras (LCP, DHS). */ strict?: boolean; minScore?: number };
+export type MatchOptions = {
+  /** Exige que ambos nombres empiecen con el mismo sustantivo y cuenta siglas de 3 letras (LCP, DHS). */ strict?: boolean;
+  minScore?: number;
+  /**
+   * Exige que una descripción contenga a la otra (todas las palabras de una están en la otra). Sin esto basta con
+   * compartir dos palabras, y "guante de examinación talla S" terminaba comparado con un kit de Papanicolau que
+   * trae guantes, o "tubo endotraqueal" con un "tubo intercambiador". Las palabras con cifras (12CH, 8,5MM) no
+   * cuentan: las medidas ya las revisa `measures`, y cada fuente las escribe distinto (CH / Fr).
+   */
+  contain?: boolean;
+};
 export function bestNameMatch<T>(description: string, list: T[], nameOf: (x: T) => string, opts: MatchOptions = {}): { value: T; score: number } | null {
   const minLen = opts.strict ? 3 : 4;
   const words = (t: string) => wordsOf(t, minLen);
@@ -39,6 +76,7 @@ export function bestNameMatch<T>(description: string, list: T[], nameOf: (x: T) 
     let shared = 0;
     for (const s of line) if (w.has(s)) shared++;
     if (shared < Math.min(2, line.size)) continue;
+    if (opts.contain && !contains(description, name)) continue;
     const score = shared / Math.max(line.size, w.size);
     if (score < (opts.minScore ?? 0)) continue;
     if (!best || score > best.score) best = { value, score };
@@ -47,7 +85,7 @@ export function bestNameMatch<T>(description: string, list: T[], nameOf: (x: T) 
 }
 
 export function findMarketPrice(description: string, items: MarketItem[]): MarketPriceMatch | null {
-  const m = bestNameMatch(description, items, (i) => i.item);
+  const m = bestNameMatch(description, items, (i) => i.item, { contain: true });
   return m ? { item: m.value, score: m.score } : null;
 }
 
