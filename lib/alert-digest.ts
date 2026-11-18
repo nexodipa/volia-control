@@ -2,6 +2,8 @@
 // Lunes: informe completo. Martes a viernes: solo novedades (umbrales que se cruzan ese día).
 import { daysUntil, expiryStatus } from "./business-alerts.ts";
 import { deadlineReminders, type Tender } from "./tenders.ts";
+import type { MailRecord } from "./mail-sync.ts";
+import { MAIL_CATEGORIES } from "./mail-triage.ts";
 
 export type DigestDoc = { reference: string; kind: string; subject: string; expiresAt: string | null };
 export type DigestFinance = {
@@ -16,7 +18,7 @@ export type DigestFinance = {
   iva: number;
   withholding: number;
 };
-export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number } };
+export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number } };
 
 /** Fecha de hoy en Ecuador (UTC-5, sin horario de verano). */
 export function ecuadorToday(now = new Date()): string {
@@ -32,7 +34,32 @@ const money = (n: number) => `USD ${n.toLocaleString("es-EC", { minimumFractionD
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const total = (r: DigestFinance) => Math.round((r.subtotal + r.iva - r.withholding) * 100) / 100;
 
-export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: string, appUrl: string, tenders: Tender[] = []): Digest | null {
+/** Correos nuevos sin revisar. Lunes: todos con sus plazos de la semana. Martes a viernes: los llegados desde ayer y los plazos que cumplen 3, 1 o 0 días. */
+export function mailDigest(mail: MailRecord[], today: string, full: boolean): { total: number; lines: string[] } {
+  const pending = mail.filter((m) => m.status === "nuevo");
+  const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const recent = (m: MailRecord) => ecuadorToday(new Date(m.syncedAt)) >= yesterday;
+  const days = (m: MailRecord) => (m.fields.deadline ? daysUntil(m.fields.deadline, today) : null);
+  const urgent = pending.filter((m) => { const d = days(m); return d !== null && (full ? d <= 7 : d === 3 || d === 1 || d === 0); });
+  const fresh = full ? pending : pending.filter(recent);
+  const shown = new Set([...urgent, ...fresh]);
+  if (!shown.size) return { total: 0, lines: [] };
+
+  const byCat = new Map<string, number>();
+  for (const m of fresh) byCat.set(MAIL_CATEGORIES[m.category].label, (byCat.get(MAIL_CATEGORIES[m.category].label) ?? 0) + 1);
+  const lines: string[] = [];
+  if (byCat.size) lines.push(`${full ? "Por revisar" : "Llegaron"}: ${[...byCat].map(([label, n]) => `${n} de ${label}`).join(", ")}`);
+  const newProcesses = fresh.filter((m) => m.category === "sercop" && m.fields.processCodes.length).length;
+  if (newProcesses) lines.push(`${newProcesses} correo(s) del SERCOP con proceso: ya están en Procesos como «Por revisar»`);
+  const detail = [...urgent].sort((a, b) => (days(a) ?? 99) - (days(b) ?? 99)).slice(0, 8);
+  for (const m of detail) {
+    const d = days(m) ?? 0;
+    lines.push(`${m.subject || "(sin asunto)"} · ${m.from.name || m.from.email} · ${d < 0 ? `plazo vencido hace ${-d} día(s)` : d === 0 ? "plazo hoy" : `plazo en ${d} día(s) (${m.fields.deadline})`}`);
+  }
+  return { total: shown.size, lines };
+}
+
+export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: string, appUrl: string, tenders: Tender[] = [], mail: MailRecord[] = []): Digest | null {
   const full = isMonday(today);
 
   const dated = docs.filter((d): d is DigestDoc & { expiresAt: string } => !!d.expiresAt).map((d) => ({ ...d, days: daysUntil(d.expiresAt, today) }));
@@ -54,19 +81,21 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   const pagos = full ? pagosAll : pagosAll.filter((r) => r.days === 7 || r.days === 3 || r.days === 0 || r.days === -1);
 
   const procesos = deadlineReminders(tenders, today, full);
+  const correo = mailDigest(mail, today, full);
 
-  if (!vencidosShown.length && !porVencer.length && !cobros.length && !pagos.length && !procesos.length) return null;
+  if (!vencidosShown.length && !porVencer.length && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
 
   const sections: { title: string; lines: string[] }[] = [];
   if (cobros.length) sections.push({ title: `Cobros vencidos (${cobros.length}, ${money(cobros.reduce((s, r) => s + total(r), 0))})`, lines: cobros.map((r) => `${r.counterparty || "Sin cliente"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.overdue} día(s) de atraso`) });
   if (pagos.length) sections.push({ title: `Pagos por vencer o vencidos (${pagos.length}, ${money(pagos.reduce((s, r) => s + total(r), 0))})`, lines: pagos.map((r) => `${r.counterparty || "Sin proveedor"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.days < 0 ? `vencido hace ${-r.days} día(s)` : r.days === 0 ? "vence hoy" : `vence en ${r.days} día(s)`}`) });
   if (procesos.length) sections.push({ title: `Procesos del SERCOP con fecha límite cercana (${procesos.length})`, lines: procesos.map((p) => `${p.ref}${p.buyer ? ` · ${p.buyer}` : ""} · ${p.status === "preparing" ? "oferta en preparación" : "aún sin ofertar"} · ${p.days < 0 ? `la fecha límite pasó hace ${-p.days} día(s)` : p.days === 0 ? "vence hoy" : `vence en ${p.days} día(s) (${p.deadline})`}`) });
+  if (correo.total) sections.push({ title: `Correo (${correo.total})`, lines: correo.lines });
   if (vencidosShown.length) sections.push({ title: `Documentos regulatorios vencidos (${vencidosShown.length})`, lines: vencidosShown.map((d) => `${d.reference} (${d.kind}) · ${d.subject || "sin descripción"} · venció el ${d.expiresAt}`) });
   if (porVencer.length) sections.push({ title: `Documentos regulatorios por vencer (${porVencer.length})`, lines: porVencer.map((d) => `${d.reference} (${d.kind}) · ${d.subject || "sin descripción"} · vence el ${d.expiresAt} (${d.days === 0 ? "hoy" : `en ${d.days} día(s)`})`) });
   if (full && sinFecha) sections.push({ title: "Control pendiente", lines: [`${sinFecha} documento(s) regulatorios sin fecha de vencimiento.`] });
 
-  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length };
-  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`].filter(Boolean).join(", ");
+  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total };
+  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`].filter(Boolean).join(", ");
   const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${head}`;
   const text = [`Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})`, "", ...sections.flatMap((s) => [s.title, ...s.lines.map((l) => `- ${l}`), ""]), `Abrir el sistema: ${appUrl}`].join("\n");
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2933"><h2 style="margin:0 0 12px">Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})</h2>${sections.map((s) => `<h3 style="margin:16px 0 6px">${esc(s.title)}</h3><ul style="margin:0;padding-left:18px">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`).join("")}<p style="margin-top:18px"><a href="${esc(appUrl)}">Abrir el sistema</a></p></div>`;
