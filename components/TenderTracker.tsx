@@ -5,13 +5,15 @@ import { daysUntil } from "../lib/business-alerts";
 import { recordActivity } from "../lib/activity-log";
 import { businessIsoDate } from "../lib/date-utils";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
+import { FOLLOW_ACTION, followStage, offerDate, statusDraft, type StatusDraft } from "../lib/offer-followup";
+import { normalizeContact, type InstitutionContact } from "../lib/institution-contacts";
 import { normalizeTender, sortTenders, TENDER_ORDER, TENDER_STATUS, tenderFromParams, tenderStats, type Tender, type TenderStatus } from "../lib/tenders";
 import { BarList, Donut } from "./charts";
 
 const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value || 0);
 const dateLabel = (value: string) => (value ? new Intl.DateTimeFormat("es-EC", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`)) : "Sin fecha");
 const uid = () => `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-const blank = (): Tender => ({ id: "", ref: "", title: "", buyer: "", province: "", amount: 0, deadline: "", status: "interested", ourPrice: 0, winnerPrice: 0, winner: "", notes: "", createdAt: "" });
+const blank = (): Tender => ({ id: "", ref: "", title: "", buyer: "", province: "", amount: 0, deadline: "", status: "interested", ourPrice: 0, winnerPrice: 0, winner: "", notes: "", createdAt: "", offeredAt: "" });
 
 function deadlineText(t: Tender, today: string) {
   if (!t.deadline) return { text: "Sin fecha límite", tone: "gray" };
@@ -33,11 +35,16 @@ export default function TenderTracker() {
   const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState<"open" | "all" | TenderStatus>("open");
   const today = businessIsoDate();
+  const [contacts, setContacts] = useState<InstitutionContact[]>([]);
+  const [askId, setAskId] = useState<string | null>(null);
+  const [ask, setAsk] = useState<StatusDraft | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const stored = readStoredArray<unknown>(STORAGE_KEYS.tenders).map(normalizeTender).filter((t): t is Tender => !!t);
       setItems(stored);
+      setContacts(readStoredArray<unknown>(STORAGE_KEYS.institutionContacts).map(normalizeContact).filter((c): c is InstitutionContact => !!c));
       setRestored(true);
       // Enlace del correo del SERCOP: ?seguir=CÓDIGO&d=…&c=…&m=…&r=…
       const prefill = tenderFromParams(window.location.search);
@@ -58,7 +65,7 @@ export default function TenderTracker() {
 
   const save = () => {
     if (!draft.ref.trim() || duplicate) return;
-    const next = normalizeTender({ ...draft, id: draft.id || uid(), ref: draft.ref.trim(), createdAt: draft.createdAt || new Date().toISOString() });
+    const next = normalizeTender({ ...draft, id: draft.id || uid(), ref: draft.ref.trim(), createdAt: draft.createdAt || new Date().toISOString(), offeredAt: draft.offeredAt || (draft.status === "offered" ? today : "") });
     if (!next) return;
     setItems((cur) => (draft.id ? cur.map((t) => (t.id === draft.id ? next : t)) : [next, ...cur]));
     recordActivity("Procesos", draft.id ? "Proceso actualizado" : "Proceso en seguimiento", `${next.ref} · ${next.buyer || "sin entidad"}`);
@@ -115,14 +122,31 @@ export default function TenderTracker() {
       <div className="case-list">{visible.map((t) => {
         const when = deadlineText(t, today);
         const closing = t.status === "won" || t.status === "lost";
+        const since = t.status === "offered" && offerDate(t) ? -daysUntil(offerDate(t), today) : null;
+        const stage = since === null ? null : followStage(since);
+        const follow = since !== null && stage ? { days: since, action: FOLLOW_ACTION[stage] } : null;
         return <article className="case-row" key={t.id}>
-          <div className="case-main"><div className="case-name"><span className={`status-dot ${TENDER_STATUS[t.status].tone}`}></span><div><strong>{t.ref}</strong><small>{t.buyer || "Entidad no indicada"}{t.province ? ` · ${t.province}` : ""}</small></div></div><span className={`status-pill ${when.tone}`}>{when.text}</span></div>
-          <div className="case-details"><div><span>Qué se contrata</span><strong>{t.title ? (t.title.length > 90 ? `${t.title.slice(0, 90)}…` : t.title) : "—"}</strong></div><div><span>Presupuesto</span><strong>{t.amount ? money(t.amount) : "No indicado"}</strong></div><div><span>Estado</span><select aria-label={`Estado de ${t.ref}`} value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as TenderStatus }, `Estado: ${TENDER_STATUS[e.target.value as TenderStatus].label}`)}>{TENDER_ORDER.map((s) => <option key={s} value={s}>{TENDER_STATUS[s].label}</option>)}</select></div></div>
+          <div className="case-main"><div className="case-name"><span className={`status-dot ${TENDER_STATUS[t.status].tone}`}></span><div><strong>{t.ref}</strong><small>{t.buyer || "Entidad no indicada"}{t.province ? ` · ${t.province}` : ""}</small></div></div><span className={`status-pill ${when.tone}`}>{since !== null ? `Ofertado hace ${since} día(s)` : when.text}</span></div>
+          <div className="case-details"><div><span>Qué se contrata</span><strong>{t.title ? (t.title.length > 90 ? `${t.title.slice(0, 90)}…` : t.title) : "—"}</strong></div><div><span>Presupuesto</span><strong>{t.amount ? money(t.amount) : "No indicado"}</strong></div><div><span>Estado</span><select aria-label={`Estado de ${t.ref}`} value={t.status} onChange={(e) => patch(t.id, { status: e.target.value as TenderStatus, ...(e.target.value === "offered" && !t.offeredAt ? { offeredAt: today } : {}) }, `Estado: ${TENDER_STATUS[e.target.value as TenderStatus].label}`)}>{TENDER_ORDER.map((s) => <option key={s} value={s}>{TENDER_STATUS[s].label}</option>)}</select></div></div>
           <details className="case-expand"><summary>{closing ? "Resultado y notas" : "Detalle y notas"}</summary><div className="case-management">
             {closing && <div className="business-form">
               <label><span>Lo que ofertó Volia (USD)</span><input type="number" min="0" step="0.01" value={t.ourPrice || ""} onChange={(e) => patch(t.id, { ourPrice: Math.max(0, Number(e.target.value) || 0) }, "Precio ofertado registrado")} /></label>
               <label><span>Con cuánto se cerró (USD)</span><input type="number" min="0" step="0.01" value={t.winnerPrice || ""} onChange={(e) => patch(t.id, { winnerPrice: Math.max(0, Number(e.target.value) || 0) }, "Precio de cierre registrado")} /></label>
               <label><span>Ganador</span><input value={t.winner} onChange={(e) => patch(t.id, { winner: e.target.value }, "Ganador registrado")} /></label>
+            </div>}
+            {t.status === "offered" && <div className="business-form">
+              <label><span>Día en que se presentó la oferta</span><input type="date" value={t.offeredAt || ""} onChange={(e) => patch(t.id, { offeredAt: e.target.value }, "Fecha de la oferta registrada")} /></label>
+              {follow && <div><span>Siguiente gestión ({follow.days} días desde la oferta)</span><small>{follow.action}</small></div>}
+              <div><button className="secondary-button" onClick={() => { if (askId === t.id) { setAskId(null); return; } setAsk(statusDraft(t, today, contacts)); setAskId(t.id); setCopied(false); }}>{askId === t.id ? "Cerrar borrador" : "Consultar estado a la entidad"}</button></div>
+              {askId === t.id && (ask ? <div className="offer-draft" role="group" aria-label={`Consulta de estado de ${t.ref}`} style={{ display: "grid", gap: 8 }}>
+                <small>{ask.to ? `Para ${ask.contactName || ask.to} (${ask.to}).` : "Sin responsable registrado para esta entidad; agréguelo en Cirugías, Responsables."} Revise primero el estado en el portal del SERCOP, que es la fuente oficial. Revíselo y envíelo desde su correo: el sistema no envía nada.</small>
+                <input value={ask.subject} onChange={(e) => setAsk({ ...ask, subject: e.target.value })} aria-label="Asunto" />
+                <textarea rows={10} value={ask.body} onChange={(e) => setAsk({ ...ask, body: e.target.value })} aria-label="Cuerpo del correo" />
+                <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="primary-button" onClick={async () => { try { await navigator.clipboard.writeText(`Asunto: ${ask.subject}\n\n${ask.body}`); setCopied(true); recordActivity("Procesos", "Consulta de estado copiada", t.ref, "export"); } catch { setCopied(false); } }}>{copied ? "Copiado" : "Copiar"}</button>
+                  <a className="secondary-button" href={`mailto:${encodeURIComponent(ask.to).replace(/%40/g, "@")}?subject=${encodeURIComponent(ask.subject)}&body=${encodeURIComponent(ask.body)}`}>Abrir en mi correo</a>
+                </span>
+              </div> : <small>Indique el día de la oferta para armar el borrador.</small>)}
             </div>}
             <div><span>Notas</span><small>{t.notes || "Sin notas."}</small></div>
             <div className="record-actions"><button className="edit-record" onClick={() => { setDraft(t); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Editar</button><button className="delete-record" onClick={() => remove(t)}>Quitar</button></div>
