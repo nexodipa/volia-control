@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   exportBusinessPdf,
   exportBusinessWord,
@@ -14,7 +14,9 @@ import {
   isLoss,
   type StockMovement,
 } from "../lib/inventory-data";
-import { readStoredArray, readStoredObject, writeStoredJson } from "../lib/storage";
+import { readStoredArray, readStoredObject, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
+import { collectionDraft, STAGE_LABEL, type CollectionDraft } from "../lib/collection-plan";
+import { normalizeContact, type InstitutionContact } from "../lib/institution-contacts";
 import { recordActivity } from "../lib/activity-log";
 import { INVENTORY_KEY, type StockItem } from "../lib/inventory-data";
 import { agingBuckets, monthlySeries } from "../lib/monthly-report";
@@ -136,6 +138,14 @@ export default function FinanceCenter() {
   const [linkedCases, setLinkedCases] = useState<CaseLink[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [view, setView] = useState<FinanceView>("overview");
+  const [contacts, setContacts] = useState<InstitutionContact[]>([]);
+  const [reminderId, setReminderId] = useState<string | null>(null);
+  const [reminder, setReminder] = useState<CollectionDraft | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setContacts(readStoredArray<unknown>(STORAGE_KEYS.institutionContacts).map(normalizeContact).filter((c): c is InstitutionContact => !!c)), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const [draft, setDraft] = useState<FinanceRecord>(newRecord());
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
@@ -1049,7 +1059,8 @@ export default function FinanceCenter() {
                 )
                 .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
                 .map((r) => (
-                  <article className={r.overdue ? "overdue" : ""} key={r.id}>
+                  <Fragment key={r.id}>
+                  <article className={r.overdue ? "overdue" : ""}>
                     <div>
                       <strong>{r.counterparty}</strong>
                       <span>
@@ -1058,11 +1069,35 @@ export default function FinanceCenter() {
                     </div>
                     <div>
                       <b>{money(r.total)}</b>
+                      {r.overdue && (
+                        <button style={{ marginRight: 8 }} onClick={() => {
+                          if (reminderId === r.id) { setReminderId(null); return; }
+                          setReminder(collectionDraft(r, today(), contacts)); setReminderId(r.id); setCopied(false);
+                        }}>
+                          {reminderId === r.id ? "Cerrar borrador" : "Redactar recordatorio"}
+                        </button>
+                      )}
                       <button onClick={() => toggleStatus(r.id)}>
                         Marcar cobrado
                       </button>
                     </div>
                   </article>
+                  {reminderId === r.id && reminder && (
+                    <div className="collection-draft" role="group" aria-label={`Recordatorio de cobro a ${r.counterparty}`} style={{ display: "grid", gap: 8, padding: "12px 0" }}>
+                      <small>
+                        Etapa: {STAGE_LABEL[reminder.stage]} · {reminder.to ? `Para ${reminder.contactName || reminder.to} (${reminder.to})` : reminder.contactName ? `Para ${reminder.contactName} (sin correo registrado)` : "Sin responsable registrado para este cliente; agréguelo en Cirugías para que el borrador salga a su nombre."} Revíselo y envíelo desde su correo: el sistema no envía nada.
+                      </small>
+                      <input value={reminder.subject} onChange={(e) => setReminder({ ...reminder, subject: e.target.value })} aria-label="Asunto" />
+                      <textarea rows={12} value={reminder.body} onChange={(e) => setReminder({ ...reminder, body: e.target.value })} aria-label="Cuerpo del correo" />
+                      <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button onClick={async () => {
+                          try { await navigator.clipboard.writeText(`Asunto: ${reminder.subject}\n\n${reminder.body}`); setCopied(true); recordActivity("Finanzas", "Recordatorio de cobro copiado", `${r.counterparty} · ${r.document || "sin documento"}`, "export"); } catch { setCopied(false); }
+                        }}>{copied ? "Copiado" : "Copiar"}</button>
+                        <a href={`mailto:${encodeURIComponent(reminder.to).replace(/%40/g, "@")}?subject=${encodeURIComponent(reminder.subject)}&body=${encodeURIComponent(reminder.body)}`}>Abrir en mi correo</a>
+                      </span>
+                    </div>
+                  )}
+                  </Fragment>
                 ))}
               {!enriched.some(
                 (r) => r.direction === "income" && r.status === "pending",

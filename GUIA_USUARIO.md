@@ -144,6 +144,10 @@ Privacidad: es solo lectura, no se guardan contraseñas ni números de tarjeta, 
 
 El resumen de las 08:00 avisa con anticipación según el tipo de documento: 180 días antes para registros sanitarios, 150 para notificaciones sanitarias y 120 para certificados ISO, con el nombre de quien debe renovarlo. En **Vigencias**, cada documento que ya está en ese plazo (o vencido) tiene el botón **Pedir renovación**: arma un borrador de correo para el titular con la referencia, la fecha de vencimiento y los ítems que respalda. Usted lo revisa y lo copia o lo abre en su correo; el sistema no envía nada. Los plazos son internos de Volia, no legales; se ajustan en `lib/renewal-plan.ts`.
 
+## 10 septies. Cobros: recordatorio al cliente
+
+En **Finanzas, CxC y CxP**, cada cobro vencido tiene el botón **Redactar recordatorio**. El tono sube con los días de mora (recordatorio amable, seguimiento, segundo aviso y requerimiento formal) y el borrador sale dirigido al responsable vigente de ese cliente si está registrado en Cirugías, Responsables. Usted lo revisa y lo copia o lo abre en su correo; el sistema no envía nada. El resumen de las 08:00 indica, en cada cobro vencido, la gestión que toca.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
