@@ -17,9 +17,12 @@ import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "../lib/storage";
 import {
   getSavedQuotes,
   removeQuoteFromMemory,
+  setQuoteStatus,
   saveQuoteToMemory,
   type StoredQuote,
 } from "../lib/volia-memory";
+import { followStage, quoteDraft, type QuoteDraft } from "../lib/quote-followup";
+import { normalizeContact, type InstitutionContact } from "../lib/institution-contacts";
 import { VOLIA_LOGO_DATA_URL } from "../lib/volia-logo";
 import { getCatalog, type CatalogProduct } from "../lib/product-catalog";
 import { recordActivity } from "../lib/activity-log";
@@ -109,6 +112,7 @@ export default function QuoteBuilder() {
   const [restored, setRestored] = useState(false);
   const [memoryMessage, setMemoryMessage] = useState("");
   const [savedQuotes, setSavedQuotes] = useState<StoredQuote[]>([]);
+  const [followId, setFollowId] = useState(""); const [followDraft, setFollowDraft] = useState<QuoteDraft | null>(null); const [followCopied, setFollowCopied] = useState(false);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [systemSearch, setSystemSearch] = useState("");
   const [selectedSystem, setSelectedSystem] = useState<VoliaSystemTemplate | null>(null);
@@ -430,6 +434,18 @@ export default function QuoteBuilder() {
     recordActivity("Cotizador", "Oferta eliminada", `${saved.number || "Sin número"} · ${saved.customer || "Cliente"}`, "delete");
   };
 
+  const markQuote = (saved: StoredQuote, status: "sent" | "won" | "lost" | null) => {
+    setSavedQuotes(setQuoteStatus(saved.savedAt, status, today()));
+    setFollowId(""); setFollowDraft(null);
+    recordActivity("Cotizador", status ? `Oferta marcada como ${{ sent: "enviada", won: "ganada", lost: "perdida" }[status]}` : "Oferta reabierta", `${saved.number || "Sin número"} · ${saved.customer || "Cliente"}`, "update");
+  };
+  const openFollow = (saved: StoredQuote) => {
+    if (followId === saved.savedAt) { setFollowId(""); setFollowDraft(null); return; }
+    let contacts: InstitutionContact[] = [];
+    try { contacts = readStoredArray<unknown>(STORAGE_KEYS.institutionContacts).map(normalizeContact).filter((c): c is InstitutionContact => !!c); } catch { /* sin contactos */ }
+    setFollowId(saved.savedAt); setFollowDraft(quoteDraft(saved, today(), contacts)); setFollowCopied(false);
+  };
+
   const goToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -447,7 +463,7 @@ export default function QuoteBuilder() {
         <button type="button" onClick={() => goToSection("quote-terms")}><b>3</b><span><strong>Revisar y generar</strong><small>Margen, condiciones y PDF</small></span></button>
       </nav>
 
-      {savedQuotes.length > 0 && <details className="quote-memory"><summary><span>MEMORIA VOLIA</span><strong>{savedQuotes.length} oferta{savedQuotes.length === 1 ? "" : "s"} guardada{savedQuotes.length === 1 ? "" : "s"}</strong></summary><div className="quote-memory-list">{savedQuotes.slice(0, 8).map((saved) => <article key={saved.savedAt}><div><strong>{saved.number || "Oferta sin número"}</strong><span>{saved.customer || "Cliente por definir"} · {saved.date || "Sin fecha"}</span></div><b>{money(saved.total)}</b><button onClick={() => restoreQuote(saved)}>Abrir</button><button className="memory-delete" onClick={() => deleteSavedQuote(saved)}>Eliminar</button></article>)}</div></details>}
+      {savedQuotes.length > 0 && <details className="quote-memory"><summary><span>MEMORIA VOLIA</span><strong>{savedQuotes.length} oferta{savedQuotes.length === 1 ? "" : "s"} guardada{savedQuotes.length === 1 ? "" : "s"}</strong></summary><div className="quote-memory-list">{savedQuotes.slice(0, 8).map((saved) => <article key={saved.savedAt}><div><strong>{saved.number || "Oferta sin número"}</strong><span>{saved.customer || "Cliente por definir"} · {saved.date || "Sin fecha"}</span></div><b>{money(saved.total)}</b><button onClick={() => restoreQuote(saved)}>Abrir</button><button className="memory-delete" onClick={() => deleteSavedQuote(saved)}>Eliminar</button><div className="quote-follow" style={{ gridColumn: "1 / -1", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>{!saved.status && <button onClick={() => markQuote(saved, "sent")}>Marcar enviada</button>}{saved.status === "sent" && <><small>{(() => { const d = saved.sentAt ? Math.max(0, Math.round((Date.parse(`${today()}T12:00:00Z`) - Date.parse(`${saved.sentAt}T12:00:00Z`)) / 86400000)) : 0; return `Enviada hace ${d} día(s)${followStage(d) ? " · toca dar seguimiento" : ""}`; })()}</small>{saved.sentAt && saved.sentAt < today() && <button onClick={() => openFollow(saved)}>{followId === saved.savedAt ? "Cerrar borrador" : "Redactar seguimiento"}</button>}<button onClick={() => markQuote(saved, "won")}>Ganada</button><button onClick={() => markQuote(saved, "lost")}>Perdida</button></>}{(saved.status === "won" || saved.status === "lost") && <><small>{saved.status === "won" ? "Ganada" : "Perdida"}</small><button onClick={() => markQuote(saved, null)}>Reabrir</button></>}</div>{followId === saved.savedAt && followDraft && <div className="quote-follow-draft" role="group" aria-label="Borrador de seguimiento" style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}><small>{followDraft.to ? `Para ${followDraft.contactName || followDraft.to} (${followDraft.to})` : followDraft.contactName ? `Para ${followDraft.contactName} (sin correo registrado)` : "Sin responsable registrado para este cliente; agréguelo en Cirugías para que el borrador salga a su nombre."} Revíselo y envíelo desde su correo: el sistema no envía nada.</small><input value={followDraft.subject} onChange={(e) => setFollowDraft({ ...followDraft, subject: e.target.value })} aria-label="Asunto" /><textarea rows={9} value={followDraft.body} onChange={(e) => setFollowDraft({ ...followDraft, body: e.target.value })} aria-label="Cuerpo del correo" /><span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button onClick={async () => { try { await navigator.clipboard.writeText(`Asunto: ${followDraft.subject}\n\n${followDraft.body}`); setFollowCopied(true); recordActivity("Cotizador", "Seguimiento de oferta copiado", `${saved.number || "Sin número"} · ${saved.customer || "Cliente"}`, "export"); } catch { setFollowCopied(false); } }}>{followCopied ? "Copiado" : "Copiar"}</button><a href={`mailto:${encodeURIComponent(followDraft.to).replace(/%40/g, "@")}?subject=${encodeURIComponent(followDraft.subject)}&body=${encodeURIComponent(followDraft.body)}`}>Abrir en mi correo</a></span></div>}</article>)}</div></details>}
 
       <div className="quote-layout">
         <div className="quote-main">
