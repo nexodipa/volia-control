@@ -160,6 +160,10 @@ El resumen del lunes cierra con una sección **La semana pasada**: procesos nuev
 
 En Inventario, cada producto que conviene pedir muestra una etiqueta con la cantidad orientativa y los días que alcanza el stock. Arriba de la lista aparece **Qué conviene pedir**, con el botón **Lista de reposición**, que copia el texto para su solicitud de compra; el sistema no envía nada. El cálculo usa las ventas y los usos en cirugía de los últimos 90 días, lo reservado y el mínimo del producto; lo vencido no cuenta como disponible. Para que sea fiable, registre las salidas como movimientos y no solo como ajustes de stock, que no cuentan como consumo. El resumen del lunes agrega las secciones **Inventario por caducar** y **Reposición sugerida**.
 
+## 10 undecies. Cirugías: qué gestionar
+
+En Cirugías, la tarjeta **Qué gestionar** lista los casos que necesitan una acción hoy, de lo más urgente a lo menos: con observaciones, pago vencido, factura sin respuesta (preguntar a los 15 días de presentada, insistir a los 30, pedir respuesta por escrito a los 45), factura lista para presentar (3 días después de la cirugía), documentos pendientes (5 días después de la cirugía) y aprobada sin fecha de pago. Donde corresponde, **Redactar mensaje** arma el borrador a la institución, con el responsable que tenga registrado, para copiarlo o abrirlo en su correo; el sistema no envía nada. El borrador identifica el caso por la factura y el contrato, nunca por el nombre del paciente. Los casos se guardan solo en este dispositivo, por eso no entran al resumen por correo. Los plazos son criterios internos de Volia, no plazos de la institución, y se ajustan en `lib/case-plan.ts`.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
