@@ -172,6 +172,10 @@ En el Cotizador, dentro de **Memoria Volia**, cada oferta guardada tiene botones
 
 Cuando en **Licitaciones** un proceso pasa a **Adjudicado a Volia**, el sistema anota el día. A los 3 días el resumen de las 08:00 recuerda revisar el contrato y las garantías; a los 15, coordinar la entrega; y a los 30, si en **Finanzas** todavía no hay un ingreso a esa entidad desde la adjudicación, avisa que falta confirmar la entrega y facturar. En el proceso, dentro de **Resultado y notas**, aparece el mismo «Qué sigue». Si ya registró una factura a esa entidad (el nombre debe coincidir con el del proceso), el aviso se detiene. Solo se siguen los procesos adjudicados con el día registrado, y a los 120 días el aviso se apaga. Los plazos del contrato y de la entrega los fijan el pliego y el portal del SERCOP; los tramos del aviso son criterios internos de Volia, se ajustan en `lib/award-followup.ts`.
 
+## 10 quaterdecies. Caja de las próximas semanas
+
+El informe del lunes incluye, cuando hay cobros o pagos pendientes en **Finanzas**, un cuadro por semana de las próximas cuatro: cuánto se espera cobrar, cuánto hay que pagar y el saldo. Si en una semana los pagos superan lo que se espera cobrar, el título del cuadro lo dice y esa línea lo marca, para mover un cobro o negociar un pago con tiempo. Se calcula con las fechas de vencimiento que usted registró; un cobro suele entrar después del vencimiento, así que léalo como una guía y no como una promesa. Los cobros ya vencidos no se suman a ninguna semana, se nombran aparte. No incluye el saldo que haya en caja. Si ese lunes no hay nada más que avisar, el cuadro no se envía solo.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
