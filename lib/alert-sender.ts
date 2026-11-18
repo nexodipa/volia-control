@@ -25,7 +25,7 @@ export async function loadDigestInput(db: AlertDb) {
     try {
       const r = JSON.parse(row.data) as Partial<DigestFinance>;
       if ((r.direction === "income" || r.direction === "expense") && (r.status === "paid" || r.status === "pending")) {
-        records.push({ direction: r.direction, status: r.status, dueDate: String(r.dueDate ?? ""), date: String((r as { date?: unknown }).date ?? ""), counterparty: String(r.counterparty ?? ""), document: String(r.document ?? ""), subtotal: Number(r.subtotal) || 0, iva: Number(r.iva) || 0, withholding: Number(r.withholding) || 0 });
+        records.push({ direction: r.direction, status: r.status, dueDate: String(r.dueDate ?? ""), date: String((r as { date?: unknown }).date ?? ""), counterparty: String(r.counterparty ?? ""), document: String(r.document ?? ""), subtotal: Number(r.subtotal) || 0, iva: Number(r.iva) || 0, withholding: Number(r.withholding) || 0, paidAt: String((r as { paidAt?: unknown }).paidAt ?? "") });
       }
     } catch { /* registro ilegible: se omite */ }
   }
@@ -52,7 +52,7 @@ export async function sendDigest(db: AlertDb, cfg: AlertConfig | undefined, opts
   let digest = buildDigest(docs, records, today, APP_URL, tenders, mail);
   if (!digest && !opts.test) return { ok: true, sent: false, message: "Sin novedades: no se envió correo." };
   if (!digest) {
-    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0 } };
+    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0 } };
   } else if (opts.test) {
     digest = { ...digest, subject: `[Prueba] ${digest.subject}` };
   }

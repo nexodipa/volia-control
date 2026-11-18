@@ -46,6 +46,8 @@ type FinanceRecord = {
   withholding: number;
   paymentMethod: string;
   sourceCaseId?: string;
+  /** Día en que se marcó cobrado o pagado. */
+  paidAt?: string;
 };
 type FinanceSettings = {
   openingBalance: number;
@@ -438,7 +440,7 @@ export default function FinanceCenter() {
     const target = records.find((record) => record.id === id);
     if (!target) return;
     const nextStatus: FinanceStatus = target.status === "paid" ? "pending" : "paid";
-    setRecords((current) => current.map((record) => record.id === id ? { ...record, status: nextStatus } : record));
+    setRecords((current) => current.map((record) => record.id === id ? { ...record, status: nextStatus, paidAt: nextStatus === "paid" ? today() : "" } : record));
     recordActivity("Finanzas", nextStatus === "paid" ? "Pago confirmado" : "Pago reabierto", `${target.counterparty} · ${target.document || "Sin documento"}`);
     if (target.sourceCaseId) {
       const cases = readStoredArray<CaseLink & { paidAmount: number }>(CASES_KEY);
