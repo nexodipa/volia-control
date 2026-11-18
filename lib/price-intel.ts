@@ -5,15 +5,15 @@ import { findHecamItem, type HecamItem } from "./hecam.ts";
 
 export type SupplierItem = { p: string; n: string; c?: string; l?: string; costo?: number; pvp?: number; und?: string };
 export type PriceData = { market: MarketItem[]; hecam: HecamItem[]; suppliers: SupplierItem[] };
-export type MarketReference = { price: number; source: "mercado" | "hecam-adjudicado" | "hecam-referencial"; detail: string };
+export type MarketReference = { price: number; source: "mercado" | "hecam-adjudicado" | "hecam-referencial"; detail: string; /** Nombre del ítem con el que se emparejó, para que quien lo lea pueda juzgar si es el mismo producto. */ name?: string };
 
 /** Precio de referencia del mercado: mediana SOCE si existe; si no, precio adjudicado del HECAM; si no, su precio referencial. */
 export function marketReference(description: string, data: PriceData): MarketReference | null {
   const m = bestNameMatch(description, data.market, (i) => i.item);
-  if (m) return { price: m.value.mediana, source: "mercado", detail: `mitad del mercado en ${m.value.n} procesos` };
+  if (m) return { price: m.value.mediana, source: "mercado", detail: `mitad del mercado en ${m.value.n} procesos`, name: m.value.item };
   const h = findHecamItem(description, data.hecam);
-  if (h?.pua) return { price: h.pua, source: "hecam-adjudicado", detail: `adjudicado por el HECAM${h.g ? ` a ${h.g}` : ""}` };
-  if (h?.pur) return { price: h.pur, source: "hecam-referencial", detail: "precio referencial del HECAM 2026" };
+  if (h?.pua) return { price: h.pua, source: "hecam-adjudicado", detail: `adjudicado por el HECAM${h.g ? ` a ${h.g}` : ""}`, name: h.n };
+  if (h?.pur) return { price: h.pur, source: "hecam-referencial", detail: "precio referencial del HECAM 2026", name: h.n };
   return null;
 }
 
