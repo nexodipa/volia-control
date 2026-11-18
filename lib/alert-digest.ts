@@ -4,6 +4,7 @@ import { daysUntil, expiryStatus } from "./business-alerts.ts";
 import { deadlineReminders, type Tender } from "./tenders.ts";
 import type { MailRecord } from "./mail-sync.ts";
 import { MAIL_CATEGORIES } from "./mail-triage.ts";
+import { collectionStage, STAGE_ACTION } from "./collection-plan.ts";
 import { earlyRenewals, holderOf, renewalLine } from "./renewal-plan.ts";
 
 export type DigestDoc = { reference: string; kind: string; subject: string; expiresAt: string | null; items?: string };
@@ -31,6 +32,7 @@ export function isMonday(today: string): boolean {
 
 const DOC_THRESHOLDS = [90, 60, 30, 15, 7, 3, 0];
 const OVERDUE_MARKS = [1, 7, 15, 30, 60, 90];
+const stageNote = (overdue: number) => { const st = collectionStage(overdue); return st ? ` · ${STAGE_ACTION[st]}` : ""; };
 const money = (n: number) => `USD ${n.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const total = (r: DigestFinance) => Math.round((r.subtotal + r.iva - r.withholding) * 100) / 100;
@@ -88,7 +90,7 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (!vencidosShown.length && !porVencer.length && !renovar.length && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
 
   const sections: { title: string; lines: string[] }[] = [];
-  if (cobros.length) sections.push({ title: `Cobros vencidos (${cobros.length}, ${money(cobros.reduce((s, r) => s + total(r), 0))})`, lines: cobros.map((r) => `${r.counterparty || "Sin cliente"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.overdue} día(s) de atraso`) });
+  if (cobros.length) sections.push({ title: `Cobros vencidos (${cobros.length}, ${money(cobros.reduce((s, r) => s + total(r), 0))})`, lines: cobros.map((r) => `${r.counterparty || "Sin cliente"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.overdue} día(s) de atraso${stageNote(r.overdue)}`) });
   if (pagos.length) sections.push({ title: `Pagos por vencer o vencidos (${pagos.length}, ${money(pagos.reduce((s, r) => s + total(r), 0))})`, lines: pagos.map((r) => `${r.counterparty || "Sin proveedor"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.days < 0 ? `vencido hace ${-r.days} día(s)` : r.days === 0 ? "vence hoy" : `vence en ${r.days} día(s)`}`) });
   if (procesos.length) sections.push({ title: `Procesos del SERCOP con fecha límite cercana (${procesos.length})`, lines: procesos.map((p) => `${p.ref}${p.buyer ? ` · ${p.buyer}` : ""} · ${p.status === "preparing" ? "oferta en preparación" : "aún sin ofertar"} · ${p.days < 0 ? `la fecha límite pasó hace ${-p.days} día(s)` : p.days === 0 ? "vence hoy" : `vence en ${p.days} día(s) (${p.deadline})`}`) });
   if (correo.total) sections.push({ title: `Correo (${correo.total})`, lines: correo.lines });
