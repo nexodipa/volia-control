@@ -1,4 +1,5 @@
 import { quoteId } from "./shared-adapters";
+import type { QuoteStatus } from "./quote-followup";
 import { readStoredArray, STORAGE_KEYS, writeStoredJson } from "./storage";
 
 export type MemorySummary = {
@@ -20,6 +21,10 @@ export type StoredQuote = {
   total: number;
   savedAt: string;
   data: unknown;
+  /** Seguimiento: solo las «enviadas» entran al aviso de ofertas sin respuesta. */
+  status?: QuoteStatus;
+  /** Día (AAAA-MM-DD) en que se marcó enviada. */
+  sentAt?: string;
 };
 
 const readArrayLength = (key: string) => {
@@ -64,8 +69,11 @@ export function getSavedQuotes(): StoredQuote[] {
 export function saveQuoteToMemory(snapshot: StoredQuote) {
   const history = getSavedQuotes();
   const identity = snapshot.number.trim() || `${snapshot.date}:${snapshot.customer}`;
+  // Guardar de nuevo una oferta no borra su seguimiento.
+  const previous = history.find((entry) => (entry.number.trim() || `${entry.date}:${entry.customer}`) === identity);
+  const kept = previous?.status ? { status: previous.status, sentAt: previous.sentAt } : {};
   const next = [
-    { ...snapshot, id: quoteId(snapshot) },
+    { ...kept, ...snapshot, id: quoteId(snapshot) },
     ...history.filter(
       (entry) =>
         (entry.number.trim() || `${entry.date}:${entry.customer}`) !== identity,
@@ -74,6 +82,21 @@ export function saveQuoteToMemory(snapshot: StoredQuote) {
   writeStoredJson(STORAGE_KEYS.quoteHistory, next);
   localStorage.setItem(STORAGE_KEYS.memoryUpdated, snapshot.savedAt);
   window.dispatchEvent(new Event("volia-memory-updated"));
+}
+
+/** Marca una oferta como enviada, ganada o perdida (o quita la marca con null). Al enviarla guarda el día. */
+export function setQuoteStatus(savedAt: string, status: QuoteStatus | null, today: string) {
+  const next = getSavedQuotes().map((entry) => {
+    if (entry.savedAt !== savedAt) return entry;
+    const { status: _old, sentAt, ...rest } = entry;
+    void _old;
+    if (!status) return rest;
+    return { ...rest, status, sentAt: status === "sent" ? today : sentAt };
+  });
+  writeStoredJson(STORAGE_KEYS.quoteHistory, next);
+  localStorage.setItem(STORAGE_KEYS.memoryUpdated, new Date().toISOString());
+  window.dispatchEvent(new Event("volia-memory-updated"));
+  return next;
 }
 
 export function removeQuoteFromMemory(savedAt: string) {

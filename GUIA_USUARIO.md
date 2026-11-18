@@ -164,6 +164,10 @@ En Inventario, cada producto que conviene pedir muestra una etiqueta con la cant
 
 En Cirugías, la tarjeta **Qué gestionar** lista los casos que necesitan una acción hoy, de lo más urgente a lo menos: con observaciones, pago vencido, factura sin respuesta (preguntar a los 15 días de presentada, insistir a los 30, pedir respuesta por escrito a los 45), factura lista para presentar (3 días después de la cirugía), documentos pendientes (5 días después de la cirugía) y aprobada sin fecha de pago. Donde corresponde, **Redactar mensaje** arma el borrador a la institución, con el responsable que tenga registrado, para copiarlo o abrirlo en su correo; el sistema no envía nada. El borrador identifica el caso por la factura y el contrato, nunca por el nombre del paciente. Los casos se guardan solo en este dispositivo, por eso no entran al resumen por correo. Los plazos son criterios internos de Volia, no plazos de la institución, y se ajustan en `lib/case-plan.ts`.
 
+## 10 duodecies. Cotizaciones: seguimiento de lo enviado
+
+En el Cotizador, dentro de **Memoria Volia**, cada oferta guardada tiene botones de seguimiento. Cuando la envíe al cliente, pulse **Marcar enviada**: el sistema anota el día. A los 5, 10 y 20 días sin respuesta le avisa en el resumen de las 08:00 y en la oferta aparece «toca dar seguimiento». **Redactar seguimiento** arma el mensaje al responsable del cliente (el que tenga registrado, o el contacto de la oferta), con la vigencia de la oferta; usted lo copia o lo abre en su correo y el sistema no envía nada. El mensaje no incluye datos del paciente. Cuando el cliente decida, marque **Ganada** o **Perdida** y deja de avisar. Solo se sigue lo que usted marcó como enviado, y a los 90 días el aviso se detiene. Guardar de nuevo una oferta no borra su estado. Los plazos son criterios internos de Volia, se ajustan en `lib/quote-followup.ts`.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
