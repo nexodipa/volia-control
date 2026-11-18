@@ -156,6 +156,10 @@ Cuando un proceso pasa a **Oferta presentada**, el sistema guarda ese día (se p
 
 El resumen del lunes cierra con una sección **La semana pasada**: procesos nuevos, ofertas presentadas, resultados (adjudicados o perdidos), la tasa de éxito acumulada y lo cobrado y pagado. Para que cuente, registre los resultados en Procesos y marque los cobros y pagos en Finanzas cuando ocurran: el sistema guarda ese día. Si un proceso se perdió y falta el precio de cierre, el resumen se lo recuerda.
 
+## 10 decies. Inventario: qué reponer y qué vence
+
+En Inventario, cada producto que conviene pedir muestra una etiqueta con la cantidad orientativa y los días que alcanza el stock. Arriba de la lista aparece **Qué conviene pedir**, con el botón **Lista de reposición**, que copia el texto para su solicitud de compra; el sistema no envía nada. El cálculo usa las ventas y los usos en cirugía de los últimos 90 días, lo reservado y el mínimo del producto; lo vencido no cuenta como disponible. Para que sea fiable, registre las salidas como movimientos y no solo como ajustes de stock, que no cuentan como consumo. El resumen del lunes agrega las secciones **Inventario por caducar** y **Reposición sugerida**.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
