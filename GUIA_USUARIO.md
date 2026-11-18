@@ -140,6 +140,10 @@ Lee los correos que cada persona etiquetó con **Volia** en su Gmail, los separa
 
 Privacidad: es solo lectura, no se guardan contraseñas ni números de tarjeta, no se guarda el contenido de los adjuntos y los correos se borran de Volia Control a los 90 días. Todo el equipo ve los correos compartidos: etiquete solo lo que quiera compartir.
 
+## 10 sexies. Vigencias: pedir la renovación a tiempo
+
+El resumen de las 08:00 avisa con anticipación según el tipo de documento: 180 días antes para registros sanitarios, 150 para notificaciones sanitarias y 120 para certificados ISO, con el nombre de quien debe renovarlo. En **Vigencias**, cada documento que ya está en ese plazo (o vencido) tiene el botón **Pedir renovación**: arma un borrador de correo para el titular con la referencia, la fecha de vencimiento y los ítems que respalda. Usted lo revisa y lo copia o lo abre en su correo; el sistema no envía nada. Los plazos son internos de Volia, no legales; se ajustan en `lib/renewal-plan.ts`.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.

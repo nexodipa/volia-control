@@ -14,11 +14,11 @@ export function alertsConfigured(cfg: AlertConfig | undefined): cfg is Required<
   return !!cfg?.url && /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(cfg.url) && !!cfg.secret;
 }
 
-type DocRow = { reference: string; kind: string; subject: string; expires_at: string | null };
+type DocRow = { reference: string; kind: string; subject: string; expires_at: string | null; covered_items?: string };
 type RecRow = { data: string };
 
 export async function loadDigestInput(db: AlertDb) {
-  const docs = (await db.prepare("SELECT reference, kind, subject, expires_at FROM regulatory_documents").all<DocRow>()).results.map<DigestDoc>((r) => ({ reference: r.reference, kind: r.kind.replace(/_/g, " "), subject: r.subject, expiresAt: r.expires_at }));
+  const docs = (await db.prepare("SELECT reference, kind, subject, expires_at, covered_items FROM regulatory_documents").all<DocRow>()).results.map<DigestDoc>((r) => ({ reference: r.reference, kind: r.kind.replace(/_/g, " "), subject: r.subject, expiresAt: r.expires_at, items: r.covered_items }));
   const records: DigestFinance[] = [];
   const rows = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'finance' AND deleted = 0").all<RecRow>()).results;
   for (const row of rows) {
@@ -52,7 +52,7 @@ export async function sendDigest(db: AlertDb, cfg: AlertConfig | undefined, opts
   let digest = buildDigest(docs, records, today, APP_URL, tenders, mail);
   if (!digest && !opts.test) return { ok: true, sent: false, message: "Sin novedades: no se envió correo." };
   if (!digest) {
-    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0 } };
+    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0 } };
   } else if (opts.test) {
     digest = { ...digest, subject: `[Prueba] ${digest.subject}` };
   }
