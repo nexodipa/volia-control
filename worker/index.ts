@@ -102,9 +102,7 @@ const worker = {
         if (r.sent || !r.ok) console.log(`[informe] ${r.message}`);
         return r.ok;
       };
-      const [digest, sercop] = await Promise.all([guard(runDigest()), guard(runSercop())]);
-      await guard(runMonthly());
-      // Correo: lee solo lo que cada persona etiquetó «Volia» en su propio Gmail; un fallo aquí no afecta al latido.
+      // Correo primero, para que el resumen de las 08:00 ya incluya lo que llegó: lee solo lo que cada persona etiquetó «Volia» en su Gmail; un fallo aquí no afecta al latido.
       const runMail = async () => {
         const sources = parseMailSources(env.MAIL_SOURCES);
         if (!sources.length) return true;
@@ -114,6 +112,8 @@ const worker = {
         return results.every((r) => r.ok);
       };
       await guard(runMail());
+      const [digest, sercop] = await Promise.all([guard(runDigest()), guard(runSercop())]);
+      await guard(runMonthly());
       // El SERCOP responde lento y a veces cae: por la mañana su fallo no alarma porque a las 14:00 se reintenta.
       const pinged = await pingHealthcheck(env.HEALTHCHECK_URL, digest && (sercop || !retry));
       console.log(`[latido] resumen=${digest} sercop=${sercop} vigilante=${pinged}`);

@@ -30,6 +30,7 @@ Después se lee solo cada día hábil a las 08:00 (hasta 5 buzones, 40 correos p
 
 - **Procesos del SERCOP:** si un correo del SERCOP trae un código de proceso, el proceso queda en **Procesos** como «Por revisar», con la fecha límite si el correo la menciona. Es una vez por código: si ya existe (aunque lo haya descartado) no se toca. Nada se ofertó ni se presentó: es solo un aviso para revisar el pliego.
 - **Cotizaciones y pedidos:** el sistema extrae los renglones pedidos («200 hojas de bisturí», «Guantes talla M x 50»). El botón **Armar cotización** abre el cotizador con el importador de requerimientos ya lleno, el cliente puesto y los precios del mercado y de sus proveedores a la vista. Usted revisa y presiona Analizar; no se crea ninguna cotización sin su revisión.
+- **Resumen de las 08:00:** el correo se lee justo antes de armar el resumen diario, así que ese mismo correo trae una sección «Correo» con lo pendiente por categoría, los plazos que vencen en la semana y cuántos correos del SERCOP ya están en Procesos. El lunes es el informe completo (todo lo que sigue sin revisar y plazos a 7 días); de martes a viernes solo lo que llegó desde ayer y los plazos que cumplen 3, 1 o 0 días. Lo que marque como revisado o descartado deja de aparecer. Si no hay nada, no se envía correo.
 
 ## Temas y reglas
 

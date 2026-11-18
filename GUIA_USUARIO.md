@@ -134,7 +134,7 @@ La columna **Mercado** solo muestra un precio cuando el producto de referencia e
 Lee los correos que cada persona etiquetó con **Volia** en su Gmail, los separa por tema (contratación pública, cotizaciones, pedidos, cobros y pagos, regulatorio, proveedores) y muestra los datos que encontró: plazo, código de proceso, montos, factura y RUC. Se abre desde **Más herramientas, Correo**.
 
 1. Cada persona conecta su propio buzón una sola vez (pasos en `docs/correo.md`) y decide qué comparte etiquetando el correo con **Volia**. Lo que no tiene la etiqueta no se lee.
-2. El sistema lee solo cada día hábil a las 08:00; **Revisar correo ahora** lo hace al momento.
+2. El sistema lee solo cada día hábil a las 08:00 y el resumen de esa mañana ya incluye una sección «Correo» (pendientes por tema y plazos cercanos); **Revisar correo ahora** lo hace al momento.
 3. Por cada correo puede **Abrir en Gmail**, **Seguir proceso** (si trae un código del SERCOP), **Armar cotización** (si pide productos), **Marcar revisado** o **Descartar**.
 4. Los procesos del SERCOP que llegan por correo pasan solos a **Procesos** como «Por revisar». **Armar cotización** abre el cotizador con los renglones pedidos para que los revise; no crea nada sin su visto bueno.
 
