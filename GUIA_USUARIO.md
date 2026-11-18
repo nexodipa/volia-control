@@ -168,6 +168,10 @@ En Cirugías, la tarjeta **Qué gestionar** lista los casos que necesitan una ac
 
 En el Cotizador, dentro de **Memoria Volia**, cada oferta guardada tiene botones de seguimiento. Cuando la envíe al cliente, pulse **Marcar enviada**: el sistema anota el día. A los 5, 10 y 20 días sin respuesta le avisa en el resumen de las 08:00 y en la oferta aparece «toca dar seguimiento». **Redactar seguimiento** arma el mensaje al responsable del cliente (el que tenga registrado, o el contacto de la oferta), con la vigencia de la oferta; usted lo copia o lo abre en su correo y el sistema no envía nada. El mensaje no incluye datos del paciente. Cuando el cliente decida, marque **Ganada** o **Perdida** y deja de avisar. Solo se sigue lo que usted marcó como enviado, y a los 90 días el aviso se detiene. Guardar de nuevo una oferta no borra su estado. Los plazos son criterios internos de Volia, se ajustan en `lib/quote-followup.ts`.
 
+## 10 terdecies. Procesos adjudicados: qué sigue
+
+Cuando en **Licitaciones** un proceso pasa a **Adjudicado a Volia**, el sistema anota el día. A los 3 días el resumen de las 08:00 recuerda revisar el contrato y las garantías; a los 15, coordinar la entrega; y a los 30, si en **Finanzas** todavía no hay un ingreso a esa entidad desde la adjudicación, avisa que falta confirmar la entrega y facturar. En el proceso, dentro de **Resultado y notas**, aparece el mismo «Qué sigue». Si ya registró una factura a esa entidad (el nombre debe coincidir con el del proceso), el aviso se detiene. Solo se siguen los procesos adjudicados con el día registrado, y a los 120 días el aviso se apaga. Los plazos del contrato y de la entrega los fijan el pliego y el portal del SERCOP; los tramos del aviso son criterios internos de Volia, se ajustan en `lib/award-followup.ts`.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.

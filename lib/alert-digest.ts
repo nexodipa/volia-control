@@ -7,6 +7,7 @@ import { MAIL_CATEGORIES } from "./mail-triage.ts";
 import { weeklyRecap } from "./weekly-recap.ts";
 import { stockDigest, type PlanItem, type PlanMove } from "./stock-plan.ts";
 import { quoteFollowUps, followLine, type FollowQuote } from "./quote-followup.ts";
+import { awardFollowUps, awardLine } from "./award-followup.ts";
 import { FOLLOW_ACTION, offerFollowUps } from "./offer-followup.ts";
 import { collectionStage, STAGE_ACTION } from "./collection-plan.ts";
 import { earlyRenewals, holderOf, renewalLine } from "./renewal-plan.ts";
@@ -26,7 +27,7 @@ export type DigestFinance = {
   /** Día en que se marcó cobrado o pagado (AAAA-MM-DD); lo usa el resumen semanal. */
   paidAt?: string;
 };
-export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number; inventario: number; reposicion: number; cotizaciones: number } };
+export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number; inventario: number; reposicion: number; cotizaciones: number; adjudicados: number } };
 
 /** Fecha de hoy en Ecuador (UTC-5, sin horario de verano). */
 export function ecuadorToday(now = new Date()): string {
@@ -94,10 +95,11 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   const renovar = earlyRenewals(docs, today, full);
   const ofertas = offerFollowUps(tenders, today, full);
   const cotizar = quoteFollowUps(quotes, today, full);
+  const adjudicados = awardFollowUps(tenders, records, today, full);
   const inv = stockDigest(stock.items, stock.moves, today, full);
   const semana = full ? weeklyRecap(tenders, records, today) : { total: 0, lines: [] as string[] };
 
-  if (!vencidosShown.length && !porVencer.length && !renovar.length && !ofertas.length && !cotizar.length && !inv.expiry.total && !inv.reorder.total && !semana.total && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
+  if (!vencidosShown.length && !porVencer.length && !renovar.length && !ofertas.length && !cotizar.length && !adjudicados.length && !inv.expiry.total && !inv.reorder.total && !semana.total && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
 
   const sections: { title: string; lines: string[] }[] = [];
   if (cobros.length) sections.push({ title: `Cobros vencidos (${cobros.length}, ${money(cobros.reduce((s, r) => s + total(r), 0))})`, lines: cobros.map((r) => `${r.counterparty || "Sin cliente"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.overdue} día(s) de atraso${stageNote(r.overdue)}`) });
@@ -107,6 +109,7 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (vencidosShown.length) sections.push({ title: `Documentos regulatorios vencidos (${vencidosShown.length})`, lines: vencidosShown.map((d) => `${d.reference} (${d.kind}) · ${d.subject || "sin descripción"} · venció el ${d.expiresAt}`) });
   if (porVencer.length) sections.push({ title: `Documentos regulatorios por vencer (${porVencer.length})`, lines: porVencer.map((d) => { const h = holderOf(d); return `${d.reference} (${d.kind}) · ${d.subject || "sin descripción"} · vence el ${d.expiresAt} (${d.days === 0 ? "hoy" : `en ${d.days} día(s)`})${h ? ` · pedir a ${h}` : ""}`; }) });
   if (ofertas.length) sections.push({ title: `Ofertas presentadas por seguir (${ofertas.length})`, lines: ofertas.map((o) => `${o.tender.ref} · ${o.tender.buyer || "entidad no indicada"} · presentada hace ${o.days} día(s) · ${FOLLOW_ACTION[o.stage]}`) });
+  if (adjudicados.length) sections.push({ title: `Adjudicados por gestionar (${adjudicados.length})`, lines: [...adjudicados.map(awardLine), "Son criterios internos de Volia; los plazos del contrato y de la entrega los fija el pliego y el portal del SERCOP."] });
   if (cotizar.length) sections.push({ title: `Cotizaciones enviadas sin respuesta (${cotizar.length})`, lines: [...cotizar.map(followLine), "En el Cotizador, Memoria Volia, «Redactar seguimiento» arma el borrador del mensaje."] });
   if (inv.expiry.total) sections.push({ title: `Inventario por caducar (${inv.expiry.total}${inv.expiry.value > 0 ? `, ${money(inv.expiry.value)} a costo` : ""})`, lines: inv.expiry.lines });
   if (inv.reorder.total) sections.push({ title: `Reposición sugerida (${inv.reorder.total})`, lines: [...inv.reorder.lines, "En Inventario, «Lista de reposición» la deja lista para copiar. Son cantidades orientativas."] });
@@ -126,8 +129,8 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (inv.reorder.agotados) first.push(`${inv.reorder.agotados} producto(s) agotado(s) que se estaban vendiendo`);
   if (first.length && sections.length >= 3) sections.unshift({ title: "Lo primero", lines: first.slice(0, 5) });
 
-  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length };
-  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean) as string[];
+  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length, adjudicados: adjudicados.length };
+  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.adjudicados && `${counts.adjudicados} adjudicado(s) por gestionar`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean) as string[];
   const headText = head.length > 4 ? `${head.slice(0, 4).join(", ")} y ${head.length - 4} más` : head.join(", ");
   const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${headText}`;
   const text = [`Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})`, "", ...sections.flatMap((s) => [s.title, ...s.lines.map((l) => `- ${l}`), ""]), `Abrir el sistema: ${appUrl}`].join("\n");
