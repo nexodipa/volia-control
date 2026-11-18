@@ -3,6 +3,7 @@
 import type { DigestDoc, DigestFinance } from "./alert-digest.ts";
 import { daysUntil } from "./business-alerts.ts";
 import { tenderStats, type Tender } from "./tenders.ts";
+import { monthQuotes, quoteLines, type QuoteLogEntry } from "./quote-stats.ts";
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const money = (n: number) => `USD ${n.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -77,7 +78,7 @@ function barRows(rows: { label: string; value: number; display: string }[], colo
   return `<table role="presentation" style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:34%"><col style="width:40%"><col style="width:26%"></colgroup>${rows.map((r) => `<tr><td style="padding:3px 8px 3px 0;font-size:13px;overflow-wrap:anywhere">${esc(r.label)}</td><td style="padding:3px 0"><div style="background:#e8efec;border-radius:4px;height:12px"><div style="background:${color};border-radius:4px;height:12px;width:${r.value > 0 ? Math.max(2, Math.round((r.value / max) * 100)) : 0}%"></div></div></td><td style="padding:3px 0 3px 8px;text-align:right;font-size:13px;white-space:nowrap">${esc(r.display)}</td></tr>`).join("")}</table>`;
 }
 
-export function buildMonthlyReport(input: { records: DigestFinance[]; tenders: Tender[]; docs: DigestDoc[] }, today: string, appUrl: string): MonthlyReport | null {
+export function buildMonthlyReport(input: { records: DigestFinance[]; tenders: Tender[]; docs: DigestDoc[]; quotes?: QuoteLogEntry[] }, today: string, appUrl: string): MonthlyReport | null {
   const month = monthBefore(today, 1), before = monthBefore(today, 2);
   const cur = monthFinance(input.records, month.key), prev = monthFinance(input.records, before.key);
   if (!cur.count && !prev.count && !input.tenders.length) return null;
@@ -87,6 +88,7 @@ export function buildMonthlyReport(input: { records: DigestFinance[]; tenders: T
   const overdueTotal = round2(aging.reduce((s, b) => s + b.amount, 0));
   const clients = topClients(input.records, month.key);
   const stats = tenderStats(input.tenders);
+  const quoteSummary = quoteLines(monthQuotes(input.quotes ?? [], month.key, today));
   const docsDated = input.docs.filter((d) => d.expiresAt).map((d) => daysUntil(d.expiresAt as string, today));
   const docsExpired = docsDated.filter((d) => d < 0).length, docsSoon = docsDated.filter((d) => d >= 0 && d <= 90).length;
 
@@ -103,6 +105,7 @@ export function buildMonthlyReport(input: { records: DigestFinance[]; tenders: T
     ...aging.filter((b) => b.count).map((b) => `- ${b.label}: ${money(b.amount)} (${b.count})`),
     "",
     ...(clients.length ? ["Principales clientes del mes", ...clients.map((c) => `- ${c.name}: ${money(c.amount)}`), ""] : []),
+    ...(quoteSummary.length ? ["Cotizaciones", ...quoteSummary.map((l) => `- ${l}`), ""] : []),
     "Procesos del SERCOP",
     `- ${stats.open} abierto(s) por ${money(stats.inPlay)} de presupuesto · ${stats.winRate === null ? "aún sin resultados" : `tasa de éxito ${Math.round(stats.winRate * 100)} % (${stats.byStatus.won} de ${stats.decided})`}`,
     "",
@@ -118,6 +121,7 @@ export function buildMonthlyReport(input: { records: DigestFinance[]; tenders: T
 ${change === null ? "" : `<p style="margin:4px 0 14px;color:#5f716d">${change >= 0 ? "Subió" : "Bajó"} ${Math.abs(change)} % frente a ${esc(before.label)}. Egresos ${esc(money(cur.expenses))}; resultado sin IVA ${esc(money(cur.result))}.</p>`}
 <h3 style="margin:18px 0 6px">Cartera vencida: ${esc(money(overdueTotal))}</h3>${aging.some((b) => b.count) ? barRows(aging.map((b) => ({ label: b.label, value: b.amount, display: `${money(b.amount)} (${b.count})` })), "#e4583e") : '<p style="color:#5f716d;margin:0">No hay cobros vencidos.</p>'}
 ${clients.length ? `<h3 style="margin:18px 0 6px">Principales clientes del mes</h3>${barRows(clients.map((c) => ({ label: c.name, value: c.amount, display: money(c.amount) })), "#1b7a66")}` : ""}
+${quoteSummary.length ? `<h3 style="margin:18px 0 6px">Cotizaciones</h3><ul style="margin:0;padding-left:18px">${quoteSummary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}
 <h3 style="margin:18px 0 6px">Procesos del SERCOP</h3><p style="margin:0">${stats.open} abierto(s) por ${esc(money(stats.inPlay))} de presupuesto. ${stats.winRate === null ? "Aún sin resultados registrados." : `Tasa de éxito ${Math.round(stats.winRate * 100)} % (${stats.byStatus.won} de ${stats.decided} resueltos).`}</p>
 <h3 style="margin:18px 0 6px">Registros sanitarios</h3><p style="margin:0">${docsExpired} vencido(s) y ${docsSoon} por vencer en los próximos 90 días.</p>
 <p style="margin-top:20px"><a href="${esc(appUrl)}">Abrir el sistema</a></p></div>`;

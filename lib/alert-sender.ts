@@ -4,6 +4,7 @@ import { normalizeTender, type Tender } from "./tenders.ts";
 import type { MailRecord } from "./mail-sync.ts";
 import type { PlanItem, PlanMove } from "./stock-plan.ts";
 import type { FollowQuote } from "./quote-followup.ts";
+import type { QuoteLogEntry } from "./quote-stats.ts";
 
 export const APP_URL = "https://volia-control.nexodipa.workers.dev";
 
@@ -53,7 +54,12 @@ export async function loadDigestInput(db: AlertDb) {
     const rows = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'quotes' AND deleted = 0").all<RecRow>()).results;
     for (const row of rows) { try { const q = JSON.parse(row.data) as Partial<FollowQuote>; if (q?.status === "sent" && q.sentAt) quotes.push({ number: String(q.number ?? ""), date: String(q.date ?? ""), customer: String(q.customer ?? ""), total: Number(q.total) || 0, status: "sent", sentAt: String(q.sentAt), data: q.data }); } catch { /* registro ilegible */ } }
   } catch { /* sin cotizaciones todavía */ }
-  return { docs, records, tenders, mail, stock, quotes };
+  const quoteLog: QuoteLogEntry[] = [];
+  try {
+    const rows = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'quotes' AND deleted = 0").all<RecRow>()).results;
+    for (const row of rows) { try { const q = JSON.parse(row.data) as Partial<QuoteLogEntry>; if (q?.status === "sent" || q?.status === "won" || q?.status === "lost") quoteLog.push({ number: String(q.number ?? ""), customer: String(q.customer ?? ""), total: Number(q.total) || 0, status: q.status, sentAt: String(q.sentAt ?? ""), decidedAt: String(q.decidedAt ?? "") }); } catch { /* registro ilegible */ } }
+  } catch { /* sin cotizaciones todavía */ }
+  return { docs, records, tenders, mail, stock, quotes, quoteLog };
 }
 
 export type SendResult = { ok: boolean; sent: boolean; message: string; counts?: Digest["counts"] };

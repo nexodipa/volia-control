@@ -176,6 +176,10 @@ Cuando en **Licitaciones** un proceso pasa a **Adjudicado a Volia**, el sistema 
 
 El informe del lunes incluye, cuando hay cobros o pagos pendientes en **Finanzas**, un cuadro por semana de las próximas cuatro: cuánto se espera cobrar, cuánto hay que pagar y el saldo. Si en una semana los pagos superan lo que se espera cobrar, el título del cuadro lo dice y esa línea lo marca, para mover un cobro o negociar un pago con tiempo. Se calcula con las fechas de vencimiento que usted registró; un cobro suele entrar después del vencimiento, así que léalo como una guía y no como una promesa. Los cobros ya vencidos no se suman a ninguna semana, se nombran aparte. No incluye el saldo que haya en caja. Si ese lunes no hay nada más que avisar, el cuadro no se envía solo.
 
+## 10 quindecies. Cotizaciones en el informe mensual
+
+El informe mensual (primer día hábil de cada mes) suma un bloque **Cotizaciones**: cuántas ofertas se enviaron el mes anterior y por cuánto, cuántas se ganaron o perdieron en ese mes, qué porcentaje de lo decidido se ganó y cuántas siguen sin respuesta (y cuántas de ellas llevan 30 días o más). Para que cuente, marque cada oferta en el Cotizador, dentro de **Memoria Volia**: **Marcar enviada**, y luego **Ganada** o **Perdida** cuando el cliente decida; el sistema anota el día de cada marca. Lo que no se marca no entra en las cuentas, y las ofertas que ya estaban marcadas ganadas o perdidas antes de esta función no tienen el día de la decisión, así que no aparecen en el mes. El porcentaje es de lo decidido, no de todo lo enviado.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.

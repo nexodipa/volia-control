@@ -25,6 +25,8 @@ export type StoredQuote = {
   status?: QuoteStatus;
   /** Día (AAAA-MM-DD) en que se marcó enviada. */
   sentAt?: string;
+  /** Día (AAAA-MM-DD) en que se marcó ganada o perdida; lo usa el informe mensual. */
+  decidedAt?: string;
 };
 
 const readArrayLength = (key: string) => {
@@ -71,7 +73,7 @@ export function saveQuoteToMemory(snapshot: StoredQuote) {
   const identity = snapshot.number.trim() || `${snapshot.date}:${snapshot.customer}`;
   // Guardar de nuevo una oferta no borra su seguimiento.
   const previous = history.find((entry) => (entry.number.trim() || `${entry.date}:${entry.customer}`) === identity);
-  const kept = previous?.status ? { status: previous.status, sentAt: previous.sentAt } : {};
+  const kept = previous?.status ? { status: previous.status, sentAt: previous.sentAt, decidedAt: previous.decidedAt } : {};
   const next = [
     { ...kept, ...snapshot, id: quoteId(snapshot) },
     ...history.filter(
@@ -88,10 +90,10 @@ export function saveQuoteToMemory(snapshot: StoredQuote) {
 export function setQuoteStatus(savedAt: string, status: QuoteStatus | null, today: string) {
   const next = getSavedQuotes().map((entry) => {
     if (entry.savedAt !== savedAt) return entry;
-    const { status: _old, sentAt, ...rest } = entry;
-    void _old;
+    const { status: _old, sentAt, decidedAt: _decided, ...rest } = entry;
+    void _old; void _decided;
     if (!status) return rest;
-    return { ...rest, status, sentAt: status === "sent" ? today : sentAt };
+    return { ...rest, status, sentAt: status === "sent" ? today : sentAt, ...(status === "sent" ? {} : { decidedAt: today }) };
   });
   writeStoredJson(STORAGE_KEYS.quoteHistory, next);
   localStorage.setItem(STORAGE_KEYS.memoryUpdated, new Date().toISOString());
