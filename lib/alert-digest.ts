@@ -114,9 +114,22 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (full && sinFecha) sections.push({ title: "Control pendiente", lines: [`${sinFecha} documento(s) regulatorios sin fecha de vencimiento.`] });
 
   if (semana.total) sections.push({ title: "La semana pasada", lines: semana.lines });
+  // «Lo primero»: lo que no puede esperar al resto del correo, en una línea por tema y sin repetir el detalle de abajo.
+  const first: string[] = [];
+  const closing = procesos.filter((p) => p.days <= 1);
+  if (closing.length) first.push(`${closing.length} proceso(s) del SERCOP con fecha límite hoy o mañana: ${closing.slice(0, 3).map((p) => p.ref).join(", ")}${closing.length > 3 ? " y más" : ""}`);
+  const payNow = pagos.filter((r) => r.days <= 0);
+  if (payNow.length) first.push(`${payNow.length} pago(s) vencen hoy o ya vencieron (${money(payNow.reduce((s, r) => s + total(r), 0))})`);
+  const lateCharges = cobros.filter((r) => r.overdue >= 30);
+  if (lateCharges.length) first.push(`${lateCharges.length} cobro(s) con 30 días o más de mora (${money(lateCharges.reduce((s, r) => s + total(r), 0))})`);
+  if (vencidosShown.length) first.push(`${vencidosShown.length} documento(s) regulatorio(s) vencido(s)`);
+  if (inv.reorder.agotados) first.push(`${inv.reorder.agotados} producto(s) agotado(s) que se estaban vendiendo`);
+  if (first.length && sections.length >= 3) sections.unshift({ title: "Lo primero", lines: first.slice(0, 5) });
+
   const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length };
-  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean).join(", ");
-  const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${head}`;
+  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean) as string[];
+  const headText = head.length > 4 ? `${head.slice(0, 4).join(", ")} y ${head.length - 4} más` : head.join(", ");
+  const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${headText}`;
   const text = [`Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})`, "", ...sections.flatMap((s) => [s.title, ...s.lines.map((l) => `- ${l}`), ""]), `Abrir el sistema: ${appUrl}`].join("\n");
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2933"><h2 style="margin:0 0 12px">Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})</h2>${sections.map((s) => `<h3 style="margin:16px 0 6px">${esc(s.title)}</h3><ul style="margin:0;padding-left:18px">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`).join("")}<p style="margin-top:18px"><a href="${esc(appUrl)}">Abrir el sistema</a></p></div>`;
   return { subject, text, html, counts };
