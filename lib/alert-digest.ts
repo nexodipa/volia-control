@@ -8,6 +8,7 @@ import { weeklyRecap } from "./weekly-recap.ts";
 import { stockDigest, type PlanItem, type PlanMove } from "./stock-plan.ts";
 import { quoteFollowUps, followLine, type FollowQuote } from "./quote-followup.ts";
 import { awardFollowUps, awardLine } from "./award-followup.ts";
+import { cashOutlook } from "./cash-outlook.ts";
 import { FOLLOW_ACTION, offerFollowUps } from "./offer-followup.ts";
 import { collectionStage, STAGE_ACTION } from "./collection-plan.ts";
 import { earlyRenewals, holderOf, renewalLine } from "./renewal-plan.ts";
@@ -27,7 +28,7 @@ export type DigestFinance = {
   /** Día en que se marcó cobrado o pagado (AAAA-MM-DD); lo usa el resumen semanal. */
   paidAt?: string;
 };
-export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number; inventario: number; reposicion: number; cotizaciones: number; adjudicados: number } };
+export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number; inventario: number; reposicion: number; cotizaciones: number; adjudicados: number; caja: number } };
 
 /** Fecha de hoy en Ecuador (UTC-5, sin horario de verano). */
 export function ecuadorToday(now = new Date()): string {
@@ -116,6 +117,9 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (renovar.length) sections.push({ title: `Renovaciones por iniciar (${renovar.length})`, lines: [...renovar.map(renewalLine), "En Vigencias, el botón «Pedir renovación» arma el borrador del correo."] });
   if (full && sinFecha) sections.push({ title: "Control pendiente", lines: [`${sinFecha} documento(s) regulatorios sin fecha de vencimiento.`] });
 
+  // La caja de las próximas semanas solo acompaña al resto: no basta para enviar un correo por sí sola.
+  const caja = full && sections.length ? cashOutlook(records, today) : { total: 0, lines: [] as string[], tight: 0 };
+  if (caja.total) sections.push({ title: `Caja de las próximas 4 semanas${caja.tight ? ` (${caja.tight} con saldo negativo)` : ""}`, lines: caja.lines });
   if (semana.total) sections.push({ title: "La semana pasada", lines: semana.lines });
   // «Lo primero»: lo que no puede esperar al resto del correo, en una línea por tema y sin repetir el detalle de abajo.
   const first: string[] = [];
@@ -127,9 +131,9 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (lateCharges.length) first.push(`${lateCharges.length} cobro(s) con 30 días o más de mora (${money(lateCharges.reduce((s, r) => s + total(r), 0))})`);
   if (vencidosShown.length) first.push(`${vencidosShown.length} documento(s) regulatorio(s) vencido(s)`);
   if (inv.reorder.agotados) first.push(`${inv.reorder.agotados} producto(s) agotado(s) que se estaban vendiendo`);
-  if (first.length && sections.length >= 3) sections.unshift({ title: "Lo primero", lines: first.slice(0, 5) });
+  if (first.length && sections.length - (caja.total ? 1 : 0) >= 3) sections.unshift({ title: "Lo primero", lines: first.slice(0, 5) });
 
-  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length, adjudicados: adjudicados.length };
+  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length, adjudicados: adjudicados.length, caja: caja.total };
   const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.adjudicados && `${counts.adjudicados} adjudicado(s) por gestionar`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean) as string[];
   const headText = head.length > 4 ? `${head.slice(0, 4).join(", ")} y ${head.length - 4} más` : head.join(", ");
   const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${headText}`;

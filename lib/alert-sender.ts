@@ -66,7 +66,7 @@ export async function sendDigest(db: AlertDb, cfg: AlertConfig | undefined, opts
   let digest = buildDigest(docs, records, today, APP_URL, tenders, mail, stock, quotes);
   if (!digest && !opts.test) return { ok: true, sent: false, message: "Sin novedades: no se envió correo." };
   if (!digest) {
-    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0, inventario: 0, reposicion: 0, cotizaciones: 0, adjudicados: 0 } };
+    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0, inventario: 0, reposicion: 0, cotizaciones: 0, adjudicados: 0, caja: 0 } };
   } else if (opts.test) {
     digest = { ...digest, subject: `[Prueba] ${digest.subject}` };
   }
