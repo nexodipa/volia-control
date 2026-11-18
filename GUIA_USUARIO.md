@@ -129,6 +129,16 @@ Las tasas por defecto (FODINFA 0,5 %, IVA 15 %, ISD 5 %) se pueden cambiar en **
 
 La columna **Mercado** solo muestra un precio cuando el producto de referencia es el mismo; si el más parecido es otro producto, lo avisa en lugar de compararlo.
 
+## 10 quinquies. Correo: bandeja inteligente
+
+Lee los correos que cada persona etiquetó con **Volia** en su Gmail, los separa por tema (contratación pública, cotizaciones, pedidos, cobros y pagos, regulatorio, proveedores) y muestra los datos que encontró: plazo, código de proceso, montos, factura y RUC. Se abre desde **Más herramientas, Correo**.
+
+1. Cada persona conecta su propio buzón una sola vez (pasos en `docs/correo.md`) y decide qué comparte etiquetando el correo con **Volia**. Lo que no tiene la etiqueta no se lee.
+2. El sistema lee solo cada día hábil a las 08:00; **Revisar correo ahora** lo hace al momento.
+3. Por cada correo puede **Abrir en Gmail**, **Seguir proceso** (si trae un código del SERCOP), **Marcar revisado** o **Descartar**.
+
+Privacidad: es solo lectura, no se guardan contraseñas ni números de tarjeta, no se guarda el contenido de los adjuntos y los correos se borran de Volia Control a los 90 días. Todo el equipo ve los correos compartidos: etiquete solo lo que quiera compartir.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.

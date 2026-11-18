@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { ecuadorToday } from "../lib/alert-digest";
 import { needsRetry, pingHealthcheck, readMeta, RETRY_CRON, runAndRecordDigest } from "../lib/heartbeat";
+import { parseMailSources, pruneMail, syncAll } from "../lib/mail-sync";
 import { sendMonthlyReport } from "../lib/monthly-sender";
 import { readLastSercop, runAndRecordSercop } from "../lib/sercop-alerts";
 
@@ -16,6 +17,7 @@ interface Env {
   GEMINI_API_KEY?: string;
   ALERT_WEBHOOK_URL?: string;
   ALERT_SECRET?: string;
+  MAIL_SOURCES?: string;
   VOLIA_VIEWER_EMAILS?: string;
   HEALTHCHECK_URL?: string;
   IMAGES: {
@@ -47,6 +49,7 @@ const worker = {
       __VOLIA_GEMINI_KEY__?: string;
       __VOLIA_ALERTS__?: { url?: string; secret?: string };
       __VOLIA_ROLES__?: { viewers?: string };
+      __VOLIA_MAIL__?: string;
       __VOLIA_CTX__?: ExecutionContext;
     };
     runtime.__VOLIA_CTX__ = ctx;
@@ -55,6 +58,7 @@ const worker = {
     runtime.__VOLIA_GEMINI_KEY__ = env.GEMINI_API_KEY;
     runtime.__VOLIA_ALERTS__ = { url: env.ALERT_WEBHOOK_URL?.trim(), secret: env.ALERT_SECRET?.trim() };
     runtime.__VOLIA_ROLES__ = { viewers: env.VOLIA_VIEWER_EMAILS };
+    runtime.__VOLIA_MAIL__ = env.MAIL_SOURCES;
     runtime.__VOLIA_AUTH__ = { mode: env.VOLIA_AUTH_MODE, teamDomain: env.CF_ACCESS_TEAM_DOMAIN, aud: env.CF_ACCESS_AUD };
     const url = new URL(request.url);
 
@@ -100,6 +104,16 @@ const worker = {
       };
       const [digest, sercop] = await Promise.all([guard(runDigest()), guard(runSercop())]);
       await guard(runMonthly());
+      // Correo: lee solo lo que cada persona etiquetó «Volia» en su propio Gmail; un fallo aquí no afecta al latido.
+      const runMail = async () => {
+        const sources = parseMailSources(env.MAIL_SOURCES);
+        if (!sources.length) return true;
+        const results = await syncAll(db, sources);
+        await pruneMail(db);
+        for (const r of results) console.log(`[correo] ${r.source}: ${r.message}`);
+        return results.every((r) => r.ok);
+      };
+      await guard(runMail());
       // El SERCOP responde lento y a veces cae: por la mañana su fallo no alarma porque a las 14:00 se reintenta.
       const pinged = await pingHealthcheck(env.HEALTHCHECK_URL, digest && (sercop || !retry));
       console.log(`[latido] resumen=${digest} sercop=${sercop} vigilante=${pinged}`);
