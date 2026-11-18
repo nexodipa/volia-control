@@ -9,8 +9,8 @@ export async function sendMonthlyReport(db: AlertDb & { batch(statements: unknow
   if (!alertsConfigured(cfg)) return { ok: false, sent: false, message: "Las alertas por correo no están configuradas (falta la dirección del script o la clave)." };
   const today = ecuadorToday(opts.now);
   if (!opts.test && !inReportWindow(today)) return { ok: true, sent: false, message: "Hoy no toca informe mensual." };
-  const { docs, records, tenders } = await loadDigestInput(db);
-  const report = buildMonthlyReport({ records, tenders, docs }, today, APP_URL);
+  const { docs, records, tenders, quoteLog } = await loadDigestInput(db);
+  const report = buildMonthlyReport({ records, tenders, docs, quotes: quoteLog }, today, APP_URL);
   if (!report) return { ok: true, sent: false, message: "Todavía no hay datos suficientes para un informe mensual." };
   const id = `monthly-${report.monthKey}`;
   if (!opts.test && (await readMeta(db, id))?.sent) return { ok: true, sent: false, message: `El informe de ${report.monthKey} ya se envió.` };
