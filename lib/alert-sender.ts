@@ -2,6 +2,7 @@
 import { buildDigest, ecuadorToday, type Digest, type DigestDoc, type DigestFinance } from "./alert-digest.ts";
 import { normalizeTender, type Tender } from "./tenders.ts";
 import type { MailRecord } from "./mail-sync.ts";
+import type { PlanItem, PlanMove } from "./stock-plan.ts";
 
 export const APP_URL = "https://volia-control.nexodipa.workers.dev";
 
@@ -39,7 +40,14 @@ export async function loadDigestInput(db: AlertDb) {
     const rows = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'mail' AND deleted = 0").all<RecRow>()).results;
     for (const row of rows) { try { const m = JSON.parse(row.data) as MailRecord; if (m?.status === "nuevo" && m.fields && m.syncedAt) mail.push(m); } catch { /* registro ilegible */ } }
   } catch { /* sin correo conectado */ }
-  return { docs, records, tenders, mail };
+  const stock: { items: PlanItem[]; moves: PlanMove[] } = { items: [], moves: [] };
+  try {
+    const inv = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'inventory' AND deleted = 0").all<RecRow>()).results;
+    for (const row of inv) { try { const i = JSON.parse(row.data) as Partial<PlanItem>; if (i && typeof i.product === "string") stock.items.push({ id: i.id ? String(i.id) : undefined, code: String(i.code ?? ""), product: i.product, lot: String(i.lot ?? ""), expiry: String(i.expiry ?? ""), stock: Number(i.stock) || 0, reserved: Number(i.reserved) || 0, minimum: Number(i.minimum) || 0, unitCost: Number(i.unitCost) || 0 }); } catch { /* registro ilegible */ } }
+    const mov = (await db.prepare("SELECT data FROM shared_records WHERE collection = 'movements' AND deleted = 0").all<RecRow>()).results;
+    for (const row of mov) { try { const m = JSON.parse(row.data) as Partial<PlanMove>; if (m && typeof m.type === "string" && typeof m.date === "string") stock.moves.push({ date: m.date, type: m.type, itemId: m.itemId ? String(m.itemId) : undefined, code: String(m.code ?? ""), product: String(m.product ?? ""), quantity: Number(m.quantity) || 0 }); } catch { /* registro ilegible */ } }
+  } catch { /* sin inventario todavía */ }
+  return { docs, records, tenders, mail, stock };
 }
 
 export type SendResult = { ok: boolean; sent: boolean; message: string; counts?: Digest["counts"] };
@@ -48,11 +56,11 @@ export type SendResult = { ok: boolean; sent: boolean; message: string; counts?:
 export async function sendDigest(db: AlertDb, cfg: AlertConfig | undefined, opts: { test?: boolean; now?: Date } = {}): Promise<SendResult> {
   if (!alertsConfigured(cfg)) return { ok: false, sent: false, message: "Las alertas por correo no están configuradas (falta la dirección del script o la clave)." };
   const today = ecuadorToday(opts.now);
-  const { docs, records, tenders, mail } = await loadDigestInput(db);
-  let digest = buildDigest(docs, records, today, APP_URL, tenders, mail);
+  const { docs, records, tenders, mail, stock } = await loadDigestInput(db);
+  let digest = buildDigest(docs, records, today, APP_URL, tenders, mail, stock);
   if (!digest && !opts.test) return { ok: true, sent: false, message: "Sin novedades: no se envió correo." };
   if (!digest) {
-    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0 } };
+    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0, inventario: 0, reposicion: 0 } };
   } else if (opts.test) {
     digest = { ...digest, subject: `[Prueba] ${digest.subject}` };
   }
