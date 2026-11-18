@@ -23,7 +23,7 @@ export function supplierOffers(description: string, suppliers: SupplierItem[]) {
   for (const s of suppliers) byProvider.set(s.p, [...(byProvider.get(s.p) ?? []), s]);
   const out: { item: SupplierItem; price: number; kind: "costo" | "lista" }[] = [];
   for (const list of byProvider.values()) {
-    const m = bestNameMatch(description, list, (s) => s.n);
+    const m = bestNameMatch(description, list, (s) => s.n, { contain: true });
     if (!m) continue;
     const price = m.value.costo ?? m.value.pvp;
     if (price) out.push({ item: m.value, price, kind: m.value.costo ? "costo" : "lista" });
