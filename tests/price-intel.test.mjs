@@ -21,6 +21,14 @@ test("supplier offers are sorted and come from the price lists", () => {
   for (let i = 1; i < offers.length; i++) assert.ok(offers[i - 1].price <= offers[i].price);
 });
 
+test("supplier offers never give the cost of a different variant (con/sin balón, reforzado)", () => {
+  const names = (q) => supplierOffers(q, data.suppliers).map((o) => o.item.n);
+  // Antes se ofrecía el costo del tubo CON balón para uno SIN balón, y el normal para el reforzado.
+  assert.deepEqual(names("Tubo endotraqueal I.D. 2.5 mm, con balón"), []);
+  assert.deepEqual(names("Tubo endotraqueal reforzado I.D. 6.0 mm"), []);
+  assert.deepEqual(names("Tubo endotraqueal I.D. 3.0 mm, sin balón"), ["TUBO ENDOTRAQUEAL S/BALON 3,0MM"]);
+});
+
 test("suggested price undercuts the market but respects the margin floor", async () => {
   const { suggestPrice } = await import("../lib/price-intel.ts");
   const a = suggestPrice(0.05, 25, { median: 0.09 });
