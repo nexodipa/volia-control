@@ -15,6 +15,13 @@ if not errorlevel 1 (
   echo Se abrira el navegador para autorizar a Wrangler en su cuenta de Cloudflare.
   call npx.cmd wrangler login
 )
+echo Preparando dependencias...
+call npm.cmd install --no-audit --no-fund
+if errorlevel 1 (
+  echo No se pudieron instalar las dependencias. Revise la conexion a internet y vuelva a intentarlo.
+  pause
+  exit /b 1
+)
 node scripts\deploy-cloudflare.mjs %*
 echo.
 echo El detalle quedo en deploy-log.txt
