@@ -25,6 +25,7 @@ import ProductCatalog from "../components/ProductCatalog";
 import HelpCenter from "../components/HelpCenter";
 import ActivityCenter from "../components/ActivityCenter";
 import KnowledgeCenter from "../components/KnowledgeCenter";
+import OsteoAtlas from "../components/OsteoAtlas";
 import AccessibilityToolbar from "../components/AccessibilityToolbar";
 import {
   exportBusinessPdf,
@@ -54,6 +55,7 @@ type Module =
   | "translator"
   | "activity"
   | "knowledge"
+  | "atlas"
   | "help";
 
 const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
@@ -74,6 +76,7 @@ const MODULE_INFO: Record<Module, { eyebrow: string; title: string }> = {
   translator: { eyebrow: "IDIOMAS · BETA", title: "Traductor de documentos (beta)" },
   activity: { eyebrow: "CONTROL INTERNO", title: "Historial de actividad" },
   knowledge: { eyebrow: "INTELIGENCIA Y MEMORIA", title: "Memoria y Base de Conocimiento" },
+  atlas: { eyebrow: "FORMACIÓN", title: "Atlas de osteosíntesis" },
   help: { eyebrow: "ASISTENCIA", title: "Guía de uso de Volia Control" },
 };
 
@@ -300,7 +303,7 @@ function Icon({
 
 export default function Home() {
   const [module, setModule] = useState<Module>("home");
-  const MORE_MODULES: Module[] = ["mail", "imports", "catalog", "audit", "regulatory", "analytics", "documents", "translator", "knowledge", "activity", "help"];
+  const MORE_MODULES: Module[] = ["mail", "imports", "catalog", "audit", "regulatory", "analytics", "documents", "translator", "knowledge", "atlas", "activity", "help"];
   // El enlace «Dar seguimiento» del correo del SERCOP abre directamente la pantalla de Procesos.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has("seguir")) return;
@@ -598,6 +601,7 @@ export default function Home() {
               Traductor <span className="beta-tag">beta</span>
             </button>
             <button className={`nav-item ${module === "knowledge" ? "active" : ""}`} onClick={() => navigateTo("knowledge")}><Icon name="knowledge" />Memoria y reglas</button>
+            <button className={`nav-item ${module === "atlas" ? "active" : ""}`} onClick={() => navigateTo("atlas")}><Icon name="catalog" />Atlas de osteosíntesis</button>
             <button className={`nav-item ${module === "activity" ? "active" : ""}`} onClick={() => navigateTo("activity")}><Icon name="activity" />Historial</button>
             <button className={`nav-item ${module === "help" ? "active" : ""}`} onClick={() => navigateTo("help")}><Icon name="help" />Guía de uso</button>
 
@@ -713,6 +717,7 @@ export default function Home() {
             <button className={`module-tab ${module === "mail" ? "active" : ""}`} onClick={() => setModule("mail")} role="tab" aria-selected={module === "mail"}><Icon name="documents" />Correo</button>
             <button className={`module-tab ${module === "translator" ? "active" : ""}`} onClick={() => setModule("translator")} role="tab" aria-selected={module === "translator"}><Icon name="documents" />Traductor <span className="beta-tag">beta</span></button>
             <button className={`module-tab ${module === "knowledge" ? "active" : ""}`} onClick={() => setModule("knowledge")} role="tab" aria-selected={module === "knowledge"}><Icon name="knowledge" />Memoria</button>
+            <button className={`module-tab ${module === "atlas" ? "active" : ""}`} onClick={() => setModule("atlas")} role="tab" aria-selected={module === "atlas"}><Icon name="catalog" />Atlas</button>
             <button className={`module-tab ${module === "activity" ? "active" : ""}`} onClick={() => setModule("activity")} role="tab" aria-selected={module === "activity"}><Icon name="activity" />Historial</button>
             <button className={`module-tab ${module === "help" ? "active" : ""}`} onClick={() => setModule("help")} role="tab" aria-selected={module === "help"}><Icon name="help" />Ayuda</button>
           </div>
@@ -1182,6 +1187,8 @@ export default function Home() {
             <TranslatorCenter />
           ) : module === "knowledge" ? (
             <KnowledgeCenter />
+          ) : module === "atlas" ? (
+            <OsteoAtlas onOpenQuote={() => navigateTo("quote")} />
           ) : module === "activity" ? (
             <ActivityCenter />
           ) : (

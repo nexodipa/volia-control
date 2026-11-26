@@ -5580,3 +5580,71 @@ details.setup-card[open] > summary { margin-bottom: 4px; }
 @media (max-width: 860px) { .fichas-layout { grid-template-columns: 1fr; } .fichas-list { position: static; } }
 .fichas-aviso-linea { display: block; margin-top: 4px; color: var(--muted, #5b6f6b); font-size: .78rem; line-height: 1.3; }
 .fichas-pliego select { max-width: 100%; }
+
+/* ---------- Atlas de osteosíntesis ---------- */
+.atlas { display: grid; gap: 14px; }
+.atlas-intro { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; align-items: baseline; }
+.atlas-intro strong { display: block; font-size: 1.05rem; }
+.atlas-intro span { color: var(--muted); font-size: .9rem; }
+.atlas-intro small { color: var(--muted); font-size: .78rem; max-width: 460px; }
+.atlas-stage { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .9fr); gap: 16px; align-items: start; }
+.atlas-viewer { position: relative; border-radius: 14px; overflow: hidden; background: #15191b; border: 1px solid #0c0f10; }
+.atlas-canvas { height: min(72vh, 640px); min-height: 380px; width: 100%; }
+.atlas-overlay { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: #d9dfe2; font-size: .92rem; background: rgba(21, 25, 27, .82); }
+.atlas-views { position: absolute; top: 10px; left: 10px; display: flex; gap: 4px; }
+.atlas-views button { background: rgba(255,255,255,.1); color: #e8ecee; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 5px 10px; font-size: .78rem; cursor: pointer; }
+.atlas-views button.active { background: #c92a3a; border-color: #c92a3a; color: #fff; }
+.atlas-hint { position: absolute; left: 10px; right: 10px; bottom: 10px; color: #aeb7bb; font-size: .76rem; text-align: center; pointer-events: none; }
+.atlas-hint.on { color: #fff; font-size: .9rem; font-weight: 600; }
+.atlas-panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.atlas-tabs { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.atlas-tabs button { flex: 1; padding: 11px 10px; background: none; border: 0; border-bottom: 3px solid transparent; font-size: .85rem; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.atlas-tabs button.active { color: var(--ink); border-bottom-color: #c92a3a; }
+.atlas-body { padding: 14px; display: grid; gap: 12px; max-height: min(72vh, 640px); overflow-y: auto; }
+.atlas-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; background: #fbfcfc; }
+.atlas-card h3 { margin: 0; font-size: 1rem; }
+.atlas-card h4 { margin: 4px 0 0; font-size: .86rem; }
+.atlas-card p { margin: 0; font-size: .88rem; line-height: 1.5; }
+.atlas-card ul, .atlas-card ol { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: .86rem; line-height: 1.45; }
+.atlas-card small { color: var(--muted); }
+.atlas-card-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.atlas-classic { color: var(--muted); font-style: italic; }
+.atlas-watch { background: #fdeceb; border-left: 3px solid #c92a3a; padding: 8px 10px; border-radius: 6px; color: #5c1a17; }
+.atlas-why { background: var(--mint); padding: 8px 10px; border-radius: 8px; }
+.atlas-note { font-size: .8rem; color: var(--muted); margin: 0; }
+.atlas-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.atlas-actions button, .atlas-card-head button, .atlas-switch button, .atlas-parts button, .atlas-options button, .atlas-choice button { border: 1px solid #b9c9c5; background: #fff; border-radius: 9px; padding: 7px 11px; font-size: .82rem; cursor: pointer; color: var(--ink); }
+.atlas-actions button.active, .atlas-card-head button.active, .atlas-switch button.active, .atlas-parts button.active, .atlas-choice button.active { background: #c92a3a; border-color: #c92a3a; color: #fff; }
+.atlas-actions button.ghost { border-color: transparent; color: var(--muted); }
+.atlas-switch { display: inline-flex; gap: 0; width: fit-content; }
+.atlas-switch button:first-child { border-radius: 9px 0 0 9px; }
+.atlas-switch button:last-child { border-radius: 0 9px 9px 0; }
+.atlas-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.atlas-parts button { font-size: .76rem; padding: 5px 9px; }
+.atlas-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.atlas-choice button { text-align: left; display: grid; gap: 2px; padding: 9px 11px; }
+.atlas-choice button b { font-size: .92rem; }
+.atlas-choice button span { font-size: .74rem; line-height: 1.3; opacity: .85; }
+.atlas-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.atlas-table caption { text-align: left; font-weight: 700; padding-bottom: 6px; font-size: .82rem; }
+.atlas-table th, .atlas-table td { padding: 6px 4px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+.atlas-table thead th { color: var(--muted); font-weight: 600; font-size: .72rem; }
+.atlas-table th small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; font-size: .7rem; line-height: 1.25; }
+.atlas-card details { border-top: 1px solid var(--line); padding-top: 6px; }
+.atlas-card summary { cursor: pointer; font-weight: 600; font-size: .84rem; }
+.atlas-lesson-head { display: flex; gap: 12px; align-items: flex-start; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; }
+.atlas-lesson-head b { display: block; font-size: .92rem; }
+.atlas-lesson-head small { display: block; font-size: .78rem; margin-top: 2px; }
+.atlas-lesson-n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #c92a3a; color: #fff; display: grid; place-items: center; font-size: .8rem; font-weight: 700; }
+.atlas-lesson-body { display: grid; gap: 8px; padding-top: 4px; }
+.atlas-options { display: grid; gap: 7px; }
+.atlas-options button { text-align: left; padding: 9px 12px; }
+.atlas-options button.right { background: #e3f4ea; border-color: #2e8b57; }
+.atlas-options button.wrong { background: #fdeceb; border-color: #c92a3a; }
+.atlas-sources { font-size: .8rem; }
+.atlas-sources ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+@media (max-width: 900px) {
+  .atlas-stage { grid-template-columns: 1fr; }
+  .atlas-canvas { height: 52vh; min-height: 320px; }
+  .atlas-body { max-height: none; }
+}
