@@ -1,6 +1,25 @@
 # Volia Control
 
-**Aplicación en línea:** https://nexodipa.github.io/volia-control/
+**Live app:** https://nexodipa.github.io/volia-control/
+
+## 60-second pitch
+
+**Problem.** A small medical-supplies company (Volia S.A.S.) ran quotes, tenders, inventory, collections and regulatory paperwork across spreadsheets, e-mail and paper, and lost time and money to missed deadlines and re-typed data.
+
+**Solution.** A web system I designed and maintain for a four-person team: a quote builder (PDF, Word and CSV export), a local OCR document audit, a public-procurement tender tracker, inventory, finance and regulatory modules, and automated e-mail alerts for overdue payments and expiring documents.
+
+**Stack.** TypeScript (about 18,000 lines), React, Next.js, Cloudflare Workers and D1 with Drizzle ORM, Cloudflare Access with role-based permissions, Tesseract.js for local OCR, GitHub Actions for a monthly public-procurement (SERCOP) data refresh with validation and human review, and an automated test suite.
+
+**Decisions worth a look.**
+1. OCR runs in the browser, so client documents never leave the user's machine.
+2. Server-side authentication and roles, so each person only sees and edits what their role allows.
+3. External data (SERCOP) is validated and reviewed by a person before it reaches the catalog.
+
+Built with the owner's verbal authorization to document this case study publicly. Real client data is never committed to this repository.
+
+---
+
+## Documentación en español
 
 Sistema local de gestión comercial, operativa y financiera para **VOLIA S.A.S.** Permite preparar cotizaciones, auditar documentos, controlar cirugías y cobros, administrar inventario, registrar movimientos, revisar indicadores financieros y generar documentos institucionales.
 
@@ -57,7 +76,7 @@ Las pruebas verifican la compilación, fecha empresarial de Quito, seguridad de 
 
 ## Información y respaldos
 
-Los datos operativos se guardan en `localStorage`. Esto significa:
+Los respaldos y preferencias locales se guardan en `localStorage`. Esto significa:
 
 1. Cada navegador y computadora conserva su propia base local.
 2. Borrar los datos del navegador elimina los registros si no existe respaldo.
@@ -86,7 +105,7 @@ worker/         Entrada de despliegue
 
 ## Límites actuales
 
-Volia Control es una aplicación local. No sincroniza automáticamente información entre computadoras y no ofrece autenticación individual centralizada. Para una operación simultánea de varias personas se requiere una fase posterior con base de datos cifrada, roles, bitácora de servidor y políticas de retención de datos.
+Los registros operativos compartidos se guardan en el servidor (Cloudflare D1) con acceso autenticado mediante Cloudflare Access y permisos por rol. Los datos locales del navegador (`localStorage`) se usan para preferencias y respaldos. El sistema no reemplaza el cifrado de disco ni una política formal de retención de datos.
 
 ## Propiedad
 
