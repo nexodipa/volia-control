@@ -181,9 +181,9 @@ export function createScene(
     request();
   };
 
-  // Valor 1 = fractura desplazada; 0 = reducida.
-  let t = 1;
-  let targetT = 1;
+  // Valor 1 = fractura desplazada; 0 = reducida. Sin fractura (estado inicial) el hueso está en su sitio.
+  let t = 0;
+  let targetT = 0;
   const place = (group: T.Object3D, pose: Pose) => {
     const p = lerpPose(pose, t);
     group.position.set(pose.pivot[0] + p.dx, pose.pivot[1] + p.dy, pose.pivot[2] + p.dz);
@@ -348,7 +348,7 @@ export function createScene(
   observer.observe(container);
 
   buildRadius("none");
-  t = 1; targetT = 1;
+  t = 0; targetT = 0;
   applyPoses();
 
   return {

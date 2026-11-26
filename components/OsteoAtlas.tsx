@@ -6,14 +6,19 @@ import {
   type FractureKey, type ImplantId, type ZoneId,
 } from "../lib/osteo-atlas";
 import type { HecamItem } from "../lib/hecam";
+import {
+  FAMILIES, FAMILY_BY_ID, MATERIALS, MATERIALS_GUIDE, REGIONS, bestPrice, buildCatalog, familyCounts, filterRows,
+  type FamilyId, type Material, type Region,
+} from "../lib/osteo-catalog";
 import type { SceneController, ViewName } from "./osteo-scene";
 
-type Tab = "explorar" | "fracturas" | "implantes" | "lecciones" | "quiz";
+type Tab = "explorar" | "fracturas" | "implantes" | "catalogo" | "lecciones" | "quiz";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "explorar", label: "Explorar" },
   { id: "fracturas", label: "Fracturas" },
   { id: "implantes", label: "Implantes" },
+  { id: "catalogo", label: "Catálogo" },
   { id: "lecciones", label: "Lecciones" },
   { id: "quiz", label: "Quiz" },
 ];
@@ -36,6 +41,10 @@ const ZONE_VIEW: Partial<Record<ZoneId, ViewName>> = {
   "radius-lister": "dorsal", "radius-sigmoid": "volar", plate: "volar",
 };
 
+/** Familias del catálogo que tienen su implante dibujado en el modelo 3D. */
+const FAMILY_MODEL: Partial<Record<FamilyId, ImplantId>> = { "placas-anatomicas": "plate", "agujas-cables": "kwires", fijadores: "exfix" };
+const PAGE = 40;
+
 const usd = (v?: number) => v === undefined || v === null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: v < 10 ? 2 : 0 }).format(v);
 const qty = (v?: number) => v === undefined || v === null ? "—" : new Intl.NumberFormat("es-EC", { maximumFractionDigits: 0 }).format(v);
 
@@ -56,6 +65,13 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
   const [shown, setShown] = useState<Set<ImplantId>>(new Set());
   const [hecam, setHecam] = useState<HecamItem[] | null>(null);
   const [hecamError, setHecamError] = useState("");
+  const [family, setFamily] = useState<FamilyId | "">("");
+  const [query, setQuery] = useState("");
+  const [region, setRegion] = useState<Region | "">("");
+  const [material, setMaterial] = useState<Material | "">("");
+  const [onlyPriced, setOnlyPriced] = useState(false);
+  const [sort, setSort] = useState<"codigo" | "menor" | "mayor">("codigo");
+  const [limit, setLimit] = useState(PAGE);
   const [lesson, setLesson] = useState<string | null>(null);
   const [answers, setAnswers] = useState<(number | undefined)[]>([]);
   const [step, setStep] = useState(0);
@@ -88,7 +104,7 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
 
   // Los precios se cargan solo cuando se abre la pestaña de implantes.
   useEffect(() => {
-    if (tab !== "implantes" || hecam) return;
+    if ((tab !== "implantes" && tab !== "catalogo") || hecam) return;
     let alive = true;
     fetch("/data/hecam-2026.json", { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -98,6 +114,16 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
   }, [tab, hecam]);
 
   const byCode = useMemo(() => new Map((hecam ?? []).map((i) => [i.c, i])), [hecam]);
+  const catalog = useMemo(() => buildCatalog(hecam ?? []), [hecam]);
+  const counts = useMemo(() => familyCounts(catalog), [catalog]);
+  const rows = useMemo(() => {
+    const out = filterRows(catalog, { family, query, region, material, onlyPriced });
+    if (sort === "codigo") return out.sort((a, b) => a.code.localeCompare(b.code));
+    const p = (r: (typeof out)[number]) => bestPrice(r) ?? (sort === "menor" ? Infinity : -Infinity);
+    return out.sort((a, b) => (sort === "menor" ? p(a) - p(b) : p(b) - p(a)));
+  }, [catalog, family, query, region, material, onlyPriced, sort]);
+  const selectedFamily = family ? FAMILY_BY_ID[family] : null;
+  const resetCatalogPage = () => setLimit(PAGE);
 
   const pickFracture = (id: FractureKey) => {
     setFracture(id);
@@ -277,6 +303,107 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
                 );
               })}
               <p className="atlas-note">Los precios son los públicos del hospital, no el precio de venta de Volia. Para cotizar un caso real use el cotizador.</p>
+              {onOpenQuote && <div className="atlas-actions"><button type="button" onClick={onOpenQuote}>Ir al cotizador</button></div>}
+            </div>
+          )}
+
+          {tab === "catalogo" && (
+            <div className="atlas-body">
+              {hecamError && <p className="atlas-watch">{hecamError}</p>}
+              <p className="atlas-note">Todos los implantes de Traumatología de la programación 2026 del HECAM, agrupados por familia. Elija una familia para ver qué es, cómo funciona y qué mirar al cotizar.</p>
+              <div className="atlas-chips" role="group" aria-label="Familias de implantes">
+                <button type="button" className={family === "" ? "active" : ""} aria-pressed={family === ""} onClick={() => { setFamily(""); resetCatalogPage(); }}>Todas{hecam ? ` (${catalog.length})` : ""}</button>
+                {FAMILIES.filter((f) => !hecam || counts[f.id] > 0).map((f) => (
+                  <button key={f.id} type="button" className={family === f.id ? "active" : ""} aria-pressed={family === f.id} onClick={() => { setFamily(f.id); resetCatalogPage(); }}>
+                    {f.name}{hecam ? ` (${counts[f.id]})` : ""}
+                  </button>
+                ))}
+              </div>
+
+              {selectedFamily && (
+                <article className="atlas-card">
+                  <div className="atlas-card-head">
+                    <h3>{selectedFamily.name}</h3>
+                    {FAMILY_MODEL[selectedFamily.id] && (
+                      <button type="button" onClick={() => { const id = FAMILY_MODEL[selectedFamily.id]!; if (!shown.has(id)) toggleImplant(id); }}>Ver en el modelo 3D</button>
+                    )}
+                  </div>
+                  <p>{selectedFamily.what}</p>
+                  <h4>Cómo funciona</h4>
+                  <p>{selectedFamily.principle}</p>
+                  <h4>Dónde se usa</h4>
+                  <p>{selectedFamily.where}</p>
+                  {selectedFamily.watch.length > 0 && (
+                    <details>
+                      <summary>Qué hay que saber</summary>
+                      <ul>{selectedFamily.watch.map((p) => <li key={p}>{p}</li>)}</ul>
+                    </details>
+                  )}
+                  {selectedFamily.tender.length > 0 && (
+                    <details>
+                      <summary>Al cotizar o leer el pliego</summary>
+                      <ul>{selectedFamily.tender.map((p) => <li key={p}>{p}</li>)}</ul>
+                    </details>
+                  )}
+                </article>
+              )}
+
+              <div className="atlas-filters">
+                <input type="search" value={query} placeholder="Buscar por nombre o código" aria-label="Buscar en el catálogo" onChange={(e) => { setQuery(e.target.value); resetCatalogPage(); }} />
+                <select value={region} aria-label="Región" onChange={(e) => { setRegion(e.target.value as Region | ""); resetCatalogPage(); }}>
+                  <option value="">Todas las regiones</option>
+                  {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                <select value={material} aria-label="Material" onChange={(e) => { setMaterial(e.target.value as Material | ""); resetCatalogPage(); }}>
+                  <option value="">Todos los materiales</option>
+                  {MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={sort} aria-label="Orden" onChange={(e) => setSort(e.target.value as "codigo" | "menor" | "mayor")}>
+                  <option value="codigo">Orden por código</option>
+                  <option value="menor">Precio de menor a mayor</option>
+                  <option value="mayor">Precio de mayor a menor</option>
+                </select>
+                <label className="atlas-check"><input type="checkbox" checked={onlyPriced} onChange={(e) => { setOnlyPriced(e.target.checked); resetCatalogPage(); }} /> Solo con precio</label>
+              </div>
+
+              {!hecam && !hecamError && <p className="atlas-note">Cargando el catálogo…</p>}
+              {hecam && (
+                <>
+                  <p className="atlas-note" aria-live="polite">{rows.length} {rows.length === 1 ? "ítem" : "ítems"}</p>
+                  <ul className="atlas-items">
+                    {rows.slice(0, limit).map((r) => (
+                      <li key={r.code}>
+                        <div className="atlas-item-name"><b>{r.code}</b> {r.name}</div>
+                        <small>{FAMILY_BY_ID[r.family].name} · {r.region}{r.material !== "No indicado" ? ` · ${r.material}` : ""}</small>
+                        <dl className="atlas-item-prices">
+                          <div><dt>Referencial</dt><dd>{usd(r.pur)}</dd></div>
+                          <div><dt>Adjudicado</dt><dd>{usd(r.pua)}</dd></div>
+                          <div><dt>Programado</dt><dd>{qty(r.q)}</dd></div>
+                        </dl>
+                        {r.low && <small className="atlas-flag">Precio muy bajo para su familia: revisar unidad y presentación en el pliego.</small>}
+                      </li>
+                    ))}
+                  </ul>
+                  {rows.length === 0 && <p className="atlas-note">Ningún ítem coincide con los filtros.</p>}
+                  {rows.length > limit && (
+                    <div className="atlas-actions"><button type="button" onClick={() => setLimit((n) => n + PAGE)}>Mostrar {Math.min(PAGE, rows.length - limit)} más</button></div>
+                  )}
+                </>
+              )}
+
+              <details className="atlas-card">
+                <summary>De qué están hechos los implantes</summary>
+                {MATERIALS_GUIDE.map((m) => (
+                  <section key={m.name}>
+                    <h4>{m.name}</h4>
+                    <ul>{m.properties.map((p) => <li key={p}>{p}</li>)}</ul>
+                    <p><b>Uso típico:</b> {m.typicalUse}</p>
+                    <p><small>{m.note}</small></p>
+                  </section>
+                ))}
+              </details>
+
+              <p className="atlas-note">Los precios son los públicos del hospital (referencial de la programación y adjudicado cuando ya se contrató), no el precio de venta de Volia. La clasificación por familia, región y material se hizo con el nombre del ítem y puede equivocarse: la fuente es el pliego.</p>
               {onOpenQuote && <div className="atlas-actions"><button type="button" onClick={onOpenQuote}>Ir al cotizador</button></div>}
             </div>
           )}
