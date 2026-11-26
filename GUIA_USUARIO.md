@@ -180,6 +180,10 @@ El informe del lunes incluye, cuando hay cobros o pagos pendientes en **Finanzas
 
 El informe mensual (primer día hábil de cada mes) suma un bloque **Cotizaciones**: cuántas ofertas se enviaron el mes anterior y por cuánto, cuántas se ganaron o perdieron en ese mes, qué porcentaje de lo decidido se ganó y cuántas siguen sin respuesta (y cuántas de ellas llevan 30 días o más). Para que cuente, marque cada oferta en el Cotizador, dentro de **Memoria Volia**: **Marcar enviada**, y luego **Ganada** o **Perdida** cuando el cliente decida; el sistema anota el día de cada marca. Lo que no se marca no entra en las cuentas, y las ofertas que ya estaban marcadas ganadas o perdidas antes de esta función no tienen el día de la decisión, así que no aparecen en el mes. El porcentaje es de lo decidido, no de todo lo enviado.
 
+## 10 sexdecies. Atlas de osteosíntesis
+
+En **Más herramientas > Atlas de osteosíntesis** hay un modelo 3D del radio distal para aprender y explicar el producto. Gire el modelo arrastrando, acérquelo con los dedos y toque cualquier parte del hueso o de un implante: a la derecha aparece qué es, qué se cuida y qué implante lo cubre. Las pestañas son: **Explorar** (partes y las cinco medidas de la radiografía), **Fracturas** (tres patrones AO/OTA con la fractura desplazada y reducida), **Implantes** (placa volar bloqueada, agujas de Kirschner y fijador externo, con técnica, complicaciones y los precios de referencia del HECAM 2026), **Lecciones** y **Quiz**. Los precios son los públicos del hospital, no el precio de venta de Volia. El contenido es material interno de formación y está pendiente de revisión por un traumatólogo; no lleva datos de pacientes.
+
 ## 10 bis. Traducir un documento del inglés
 
 1. Abra **Traductor**.
@@ -203,7 +207,7 @@ Es una traducción automática: siempre debe revisarla una persona. Si el archiv
 
 Nunca envíe el respaldo por un canal público ni lo suba a GitHub.
 
-**Menú.** Lo de uso diario (Inicio, Cirugías y cobros, Inventario, Finanzas, Cotizador, Procesos y Mercado SERCOP) está siempre a la vista. El resto (Catálogo maestro, Auditor inteligente, Vigencias, Estadísticas, Documentos, Traductor, Memoria y reglas, Historial y Guía de uso) está en **Más herramientas**, que se despliega con un clic y se abre sola si entra a uno de esos módulos.
+**Menú.** Lo de uso diario (Inicio, Cirugías y cobros, Inventario, Finanzas, Cotizador, Procesos y Mercado SERCOP) está siempre a la vista. El resto (Catálogo maestro, Auditor inteligente, Vigencias, Estadísticas, Documentos, Traductor, Memoria y reglas, Atlas de osteosíntesis, Historial y Guía de uso) está en **Más herramientas**, que se despliega con un clic y se abre sola si entra a uno de esos módulos.
 
 ## 11 bis. Mercado SERCOP: qué procesos conviene ofertar
 
