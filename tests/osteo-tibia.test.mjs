@@ -29,7 +29,7 @@ const yRange = (m) => {
 };
 
 test("todas las regiones del atlas tienen contenido coherente", () => {
-  assert.deepEqual(ATLAS_REGIONS.map((r) => r.id), ["radius", "tibia"]);
+  assert.deepEqual(ATLAS_REGIONS.map((r) => r.id), ["radius", "tibia", "femur"]);
   for (const r of ATLAS_REGIONS) assert.deepEqual(validateRegion(r), [], r.id);
   assert.equal(atlasRegion("tibia"), TIBIA_REGION);
   assert.equal(atlasRegion("no-existe"), RADIUS_REGION);
