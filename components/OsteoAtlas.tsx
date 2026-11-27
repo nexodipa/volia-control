@@ -25,6 +25,7 @@ const TABS: { id: Tab; label: string }[] = [
 const SCENES: Record<SceneId, () => Promise<{ createScene: SceneFactory }>> = {
   radius: () => import("./osteo-scene"),
   tibia: () => import("./osteo-scene-tibia"),
+  femur: () => import("./osteo-scene-femur"),
 };
 const PAGE = 40;
 
@@ -32,7 +33,7 @@ const usd = (v?: number) => v === undefined || v === null ? "—" : new Intl.Num
 const qty = (v?: number) => v === undefined || v === null ? "—" : new Intl.NumberFormat("es-EC", { maximumFractionDigits: 0 }).format(v);
 
 /**
- * Atlas interno de osteosíntesis de Volia: modelo 3D interactivo por región (radio distal, tibia) con fracturas,
+ * Atlas interno de osteosíntesis de Volia: modelo 3D interactivo por región (radio distal, tibia, fémur proximal) con fracturas,
  * implantes, lecciones y un quiz. Los precios salen de la programación 2026 del HECAM. Contenido pendiente de revisión
  * por un traumatólogo; no lleva datos de pacientes.
  */

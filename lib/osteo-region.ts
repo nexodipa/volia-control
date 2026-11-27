@@ -2,7 +2,7 @@
 // (zonas, implantes, patrones de fractura, lecciones, quiz) como datos; el componente solo lo dibuja y el motor 3D
 // lo muestra. Los identificadores son texto para que cualquier región defina los suyos.
 
-export type SceneId = "radius" | "tibia";
+export type SceneId = "radius" | "tibia" | "femur";
 
 export type RegionZone = {
   id: string;

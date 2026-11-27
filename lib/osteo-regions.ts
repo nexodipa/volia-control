@@ -5,6 +5,7 @@ import {
   IMPLANTS, LESSONS, MEASURES, PATTERNS, QUIZ, SOURCES, ZONES,
 } from "./osteo-atlas.ts";
 import type { RegionContent } from "./osteo-region.ts";
+import { FEMUR_REGION } from "./osteo-femur.ts";
 import { TIBIA_REGION } from "./osteo-tibia.ts";
 
 export const RADIUS_REGION: RegionContent = {
@@ -41,7 +42,7 @@ export const RADIUS_REGION: RegionContent = {
   catalogModel: { "placas-anatomicas": "plate", "agujas-cables": "kwires", fijadores: "exfix" },
 };
 
-export const ATLAS_REGIONS: RegionContent[] = [RADIUS_REGION, TIBIA_REGION];
+export const ATLAS_REGIONS: RegionContent[] = [RADIUS_REGION, TIBIA_REGION, FEMUR_REGION];
 
 export function atlasRegion(id: string): RegionContent {
   return ATLAS_REGIONS.find((r) => r.id === id) ?? RADIUS_REGION;
