@@ -37,7 +37,13 @@ const qty = (v?: number) => v === undefined || v === null ? "—" : new Intl.Num
  * implantes, lecciones y un quiz. Los precios salen de la programación 2026 del HECAM. Contenido pendiente de revisión
  * por un traumatólogo; no lleva datos de pacientes.
  */
-export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }) {
+export default function OsteoAtlas({ onOpenQuote, publicMode = false, dataUrl = "/data/hecam-2026.json" }: {
+  onOpenQuote?: () => void;
+  /** Versión pública (Atlas aparte): sin precios ni cotizador; el catálogo solo muestra códigos, nombres y familias. */
+  publicMode?: boolean;
+  /** Dónde está la lista del HECAM; en la versión pública es una copia sin precios. */
+  dataUrl?: string;
+}) {
   const holder = useRef<HTMLDivElement>(null);
   const scene = useRef<SceneController | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -93,12 +99,12 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
   useEffect(() => {
     if ((tab !== "implantes" && tab !== "catalogo") || hecam) return;
     let alive = true;
-    fetch("/data/hecam-2026.json", { cache: "no-cache" })
+    fetch(dataUrl, { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => { if (alive) setHecam(d.items); })
-      .catch((e) => { if (alive) setHecamError(`No se pudieron cargar los precios del HECAM (${e.message}).`); });
+      .catch((e) => { if (alive) setHecamError(`No se pudo cargar el catálogo del HECAM (${e.message}).`); });
     return () => { alive = false; };
-  }, [tab, hecam]);
+  }, [tab, hecam, dataUrl]);
 
   const byCode = useMemo(() => new Map((hecam ?? []).map((i) => [i.c, i])), [hecam]);
   const catalog = useMemo(() => buildCatalog(hecam ?? []), [hecam]);
@@ -168,7 +174,7 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
             <button key={r.id} type="button" className={r.id === regionId ? "active" : ""} aria-pressed={r.id === regionId} onClick={() => changeRegion(r.id)}>{r.label}</button>
           ))}
         </div>
-        <small>Material interno de formación. Contenido pendiente de revisión por un traumatólogo; no reemplaza el criterio del cirujano.</small>
+        <small>{publicMode ? "Material de formación de Volia." : "Material interno de formación."} Contenido pendiente de revisión por un traumatólogo; no reemplaza el criterio del cirujano.</small>
       </div>
 
       <div className="atlas-stage">
@@ -291,17 +297,19 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
                       <ul>{imp.complications.map((p) => <li key={p}>{p}</li>)}</ul>
                     </details>
                     <table className="atlas-table prices">
-                      <caption>Precios de referencia en el HECAM 2026</caption>
-                      <thead><tr><th>Ítem</th><th>Referencial</th><th>Adjudicado</th><th>Programado</th></tr></thead>
+                      <caption>{publicMode ? "Ítems en el HECAM 2026" : "Precios de referencia en el HECAM 2026"}</caption>
+                      <thead><tr><th>Ítem</th>{!publicMode && <><th>Referencial</th><th>Adjudicado</th><th>Programado</th></>}</tr></thead>
                       <tbody>
                         {imp.hecam.map((h) => {
                           const row = byCode.get(h.code);
                           return (
                             <tr key={h.code}>
                               <th scope="row"><b>{h.code}</b> {h.role}{row && <small>{row.n}</small>}</th>
-                              <td>{hecam ? usd(row?.pur) : "…"}</td>
-                              <td>{hecam ? usd(row?.pua) : "…"}</td>
-                              <td>{hecam ? qty(row?.q) : "…"}</td>
+                              {!publicMode && <>
+                                <td>{hecam ? usd(row?.pur) : "…"}</td>
+                                <td>{hecam ? usd(row?.pua) : "…"}</td>
+                                <td>{hecam ? qty(row?.q) : "…"}</td>
+                              </>}
                             </tr>
                           );
                         })}
@@ -310,7 +318,9 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
                   </article>
                 );
               })}
-              <p className="atlas-note">Los precios son los públicos del hospital, no el precio de venta de Volia. Para cotizar un caso real use el cotizador.</p>
+              <p className="atlas-note">{publicMode
+                ? "Los códigos y nombres son los de la programación 2026 del hospital (HECAM). Para precios y disponibilidad consulte con Volia."
+                : "Los precios son los públicos del hospital, no el precio de venta de Volia. Para cotizar un caso real use el cotizador."}</p>
               {onOpenQuote && <div className="atlas-actions"><button type="button" onClick={onOpenQuote}>Ir al cotizador</button></div>}
             </div>
           )}
@@ -366,12 +376,14 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
                   <option value="">Todos los materiales</option>
                   {MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <select value={sort} aria-label="Orden" onChange={(e) => setSort(e.target.value as "codigo" | "menor" | "mayor")}>
-                  <option value="codigo">Orden por código</option>
-                  <option value="menor">Precio de menor a mayor</option>
-                  <option value="mayor">Precio de mayor a menor</option>
-                </select>
-                <label className="atlas-check"><input type="checkbox" checked={onlyPriced} onChange={(e) => { setOnlyPriced(e.target.checked); resetCatalogPage(); }} /> Solo con precio</label>
+                {!publicMode && <>
+                  <select value={sort} aria-label="Orden" onChange={(e) => setSort(e.target.value as "codigo" | "menor" | "mayor")}>
+                    <option value="codigo">Orden por código</option>
+                    <option value="menor">Precio de menor a mayor</option>
+                    <option value="mayor">Precio de mayor a menor</option>
+                  </select>
+                  <label className="atlas-check"><input type="checkbox" checked={onlyPriced} onChange={(e) => { setOnlyPriced(e.target.checked); resetCatalogPage(); }} /> Solo con precio</label>
+                </>}
               </div>
 
               {!hecam && !hecamError && <p className="atlas-note">Cargando el catálogo…</p>}
@@ -383,12 +395,12 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
                       <li key={r.code}>
                         <div className="atlas-item-name"><b>{r.code}</b> {r.name}</div>
                         <small>{FAMILY_BY_ID[r.family].name} · {r.region}{r.material !== "No indicado" ? ` · ${r.material}` : ""}</small>
-                        <dl className="atlas-item-prices">
+                        {!publicMode && <dl className="atlas-item-prices">
                           <div><dt>Referencial</dt><dd>{usd(r.pur)}</dd></div>
                           <div><dt>Adjudicado</dt><dd>{usd(r.pua)}</dd></div>
                           <div><dt>Programado</dt><dd>{qty(r.q)}</dd></div>
-                        </dl>
-                        {r.low && <small className="atlas-flag">Precio muy bajo para su familia: revisar unidad y presentación en el pliego.</small>}
+                        </dl>}
+                        {!publicMode && r.low && <small className="atlas-flag">Precio muy bajo para su familia: revisar unidad y presentación en el pliego.</small>}
                       </li>
                     ))}
                   </ul>
@@ -411,7 +423,7 @@ export default function OsteoAtlas({ onOpenQuote }: { onOpenQuote?: () => void }
                 ))}
               </details>
 
-              <p className="atlas-note">Los precios son los públicos del hospital (referencial de la programación y adjudicado cuando ya se contrató), no el precio de venta de Volia. La clasificación por familia, región y material se hizo con el nombre del ítem y puede equivocarse: la fuente es el pliego.</p>
+              <p className="atlas-note">{publicMode ? "" : "Los precios son los públicos del hospital (referencial de la programación y adjudicado cuando ya se contrató), no el precio de venta de Volia. "}La clasificación por familia, región y material se hizo con el nombre del ítem y puede equivocarse: la fuente es el pliego.</p>
               {onOpenQuote && <div className="atlas-actions"><button type="button" onClick={onOpenQuote}>Ir al cotizador</button></div>}
             </div>
           )}

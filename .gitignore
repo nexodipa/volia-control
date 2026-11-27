@@ -50,3 +50,12 @@ next-env.d.ts
 # Registro local del despliegue
 deploy-log.txt
 .dev.vars
+
+# Atlas aparte (se genera con scripts/build-atlas.mjs)
+/atlas-aparte/dist/
+/atlas-aparte/src/atlas.generated.css
+/atlas-aparte/public/data/
+/atlas-aparte/public/fonts/
+/atlas-aparte/public/app-icon*
+/atlas-aparte/public/apple-touch-icon.png
+/atlas-aparte/public/favicon.svg

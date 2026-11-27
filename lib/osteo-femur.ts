@@ -200,7 +200,7 @@ export const FEMUR_REGION: RegionContent = {
         "Falla del implante o pseudoartrosis en fracturas inestables.",
       ],
       hecam: [
-        { code: "09-0842", role: "Sistema de clavo cefalomedular antirrotacional" },
+        { code: "09-0842", role: "Sistema de clavo cefalomedular antirotacional" },
         { code: "09-0843", role: "Sistema de clavo cefalomedular de compresión" },
         { code: "09-0214", role: "Sistema de clavos cefalomedulares de titanio (sin cantidad programada en el HECAM 2026)" },
       ],

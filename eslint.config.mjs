@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "dist/**",
+    "atlas-aparte/dist/**",
     "docs/assets/**",
     "next-env.d.ts",
   ]),
