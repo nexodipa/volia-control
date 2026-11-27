@@ -12,6 +12,7 @@ import { cashOutlook } from "./cash-outlook.ts";
 import { FOLLOW_ACTION, offerFollowUps } from "./offer-followup.ts";
 import { collectionStage, STAGE_ACTION } from "./collection-plan.ts";
 import { earlyRenewals, holderOf, renewalLine } from "./renewal-plan.ts";
+import { sriDigest } from "./sri-calendar.ts";
 
 export type DigestDoc = { reference: string; kind: string; subject: string; expiresAt: string | null; items?: string };
 export type DigestFinance = {
@@ -28,7 +29,7 @@ export type DigestFinance = {
   /** Día en que se marcó cobrado o pagado (AAAA-MM-DD); lo usa el resumen semanal. */
   paidAt?: string;
 };
-export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number; inventario: number; reposicion: number; cotizaciones: number; adjudicados: number; caja: number } };
+export type Digest = { subject: string; text: string; html: string; counts: { vencidos: number; porVencer: number; cobros: number; pagos: number; sinFecha: number; procesos: number; correo: number; renovaciones: number; ofertas: number; semana: number; inventario: number; reposicion: number; cotizaciones: number; adjudicados: number; caja: number; sri: number } };
 
 /** Fecha de hoy en Ecuador (UTC-5, sin horario de verano). */
 export function ecuadorToday(now = new Date()): string {
@@ -70,7 +71,7 @@ export function mailDigest(mail: MailRecord[], today: string, full: boolean): { 
   return { total: shown.size, lines };
 }
 
-export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: string, appUrl: string, tenders: Tender[] = [], mail: MailRecord[] = [], stock: { items: PlanItem[]; moves: PlanMove[] } = { items: [], moves: [] }, quotes: FollowQuote[] = []): Digest | null {
+export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: string, appUrl: string, tenders: Tender[] = [], mail: MailRecord[] = [], stock: { items: PlanItem[]; moves: PlanMove[] } = { items: [], moves: [] }, quotes: FollowQuote[] = [], sriRuc: string | null = null): Digest | null {
   const full = isMonday(today);
 
   const dated = docs.filter((d): d is DigestDoc & { expiresAt: string } => !!d.expiresAt).map((d) => ({ ...d, days: daysUntil(d.expiresAt, today) }));
@@ -99,13 +100,15 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   const adjudicados = awardFollowUps(tenders, records, today, full);
   const inv = stockDigest(stock.items, stock.moves, today, full);
   const semana = full ? weeklyRecap(tenders, records, today) : { total: 0, lines: [] as string[] };
+  const sri = sriRuc ? sriDigest(sriRuc, today, full) : { total: 0, lines: [] as string[] };
 
-  if (!vencidosShown.length && !porVencer.length && !renovar.length && !ofertas.length && !cotizar.length && !adjudicados.length && !inv.expiry.total && !inv.reorder.total && !semana.total && !cobros.length && !pagos.length && !procesos.length && !correo.total) return null;
+  if (!vencidosShown.length && !porVencer.length && !renovar.length && !ofertas.length && !cotizar.length && !adjudicados.length && !inv.expiry.total && !inv.reorder.total && !semana.total && !cobros.length && !pagos.length && !procesos.length && !correo.total && !sri.total) return null;
 
   const sections: { title: string; lines: string[] }[] = [];
   if (cobros.length) sections.push({ title: `Cobros vencidos (${cobros.length}, ${money(cobros.reduce((s, r) => s + total(r), 0))})`, lines: cobros.map((r) => `${r.counterparty || "Sin cliente"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.overdue} día(s) de atraso${stageNote(r.overdue)}`) });
   if (pagos.length) sections.push({ title: `Pagos por vencer o vencidos (${pagos.length}, ${money(pagos.reduce((s, r) => s + total(r), 0))})`, lines: pagos.map((r) => `${r.counterparty || "Sin proveedor"} · ${r.document || "sin documento"} · ${money(total(r))} · ${r.days < 0 ? `vencido hace ${-r.days} día(s)` : r.days === 0 ? "vence hoy" : `vence en ${r.days} día(s)`}`) });
   if (procesos.length) sections.push({ title: `Procesos del SERCOP con fecha límite cercana (${procesos.length})`, lines: procesos.map((p) => `${p.ref}${p.buyer ? ` · ${p.buyer}` : ""} · ${p.status === "preparing" ? "oferta en preparación" : "aún sin ofertar"} · ${p.days < 0 ? `la fecha límite pasó hace ${-p.days} día(s)` : p.days === 0 ? "vence hoy" : `vence en ${p.days} día(s) (${p.deadline})`}`) });
+  if (sri.total) sections.push({ title: "SRI: declaración mensual", lines: sri.lines });
   if (correo.total) sections.push({ title: `Correo (${correo.total})`, lines: correo.lines });
   if (vencidosShown.length) sections.push({ title: `Documentos regulatorios vencidos (${vencidosShown.length})`, lines: vencidosShown.map((d) => `${d.reference} (${d.kind}) · ${d.subject || "sin descripción"} · venció el ${d.expiresAt}`) });
   if (porVencer.length) sections.push({ title: `Documentos regulatorios por vencer (${porVencer.length})`, lines: porVencer.map((d) => { const h = holderOf(d); return `${d.reference} (${d.kind}) · ${d.subject || "sin descripción"} · vence el ${d.expiresAt} (${d.days === 0 ? "hoy" : `en ${d.days} día(s)`})${h ? ` · pedir a ${h}` : ""}`; }) });
@@ -133,8 +136,8 @@ export function buildDigest(docs: DigestDoc[], records: DigestFinance[], today: 
   if (inv.reorder.agotados) first.push(`${inv.reorder.agotados} producto(s) agotado(s) que se estaban vendiendo`);
   if (first.length && sections.length - (caja.total ? 1 : 0) >= 3) sections.unshift({ title: "Lo primero", lines: first.slice(0, 5) });
 
-  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length, adjudicados: adjudicados.length, caja: caja.total };
-  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.adjudicados && `${counts.adjudicados} adjudicado(s) por gestionar`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean) as string[];
+  const counts = { vencidos: vencidosShown.length, porVencer: porVencer.length, cobros: cobros.length, pagos: pagos.length, sinFecha, procesos: procesos.length, correo: correo.total, renovaciones: renovar.length, ofertas: ofertas.length, semana: semana.total, inventario: inv.expiry.total, reposicion: inv.reorder.total, cotizaciones: cotizar.length, adjudicados: adjudicados.length, caja: caja.total, sri: sri.total };
+  const head = [counts.cobros && `${counts.cobros} cobro(s) vencido(s)`, counts.pagos && `${counts.pagos} pago(s)`, counts.vencidos && `${counts.vencidos} documento(s) vencido(s)`, counts.porVencer && `${counts.porVencer} por vencer`, counts.procesos && `${counts.procesos} proceso(s) por ofertar`, counts.sri && "declaración del SRI", counts.correo && `${counts.correo} correo(s)`, counts.renovaciones && `${counts.renovaciones} renovación(es) por iniciar`, counts.ofertas && `${counts.ofertas} oferta(s) por seguir`, counts.adjudicados && `${counts.adjudicados} adjudicado(s) por gestionar`, counts.cotizaciones && `${counts.cotizaciones} cotización(es) sin respuesta`, counts.inventario && `${counts.inventario} lote(s) por caducar`, counts.reposicion && `${counts.reposicion} producto(s) por reponer`].filter(Boolean) as string[];
   const headText = head.length > 4 ? `${head.slice(0, 4).join(", ")} y ${head.length - 4} más` : head.join(", ");
   const subject = `Volia Control · ${full ? "Informe semanal" : "Novedades"} del ${today}: ${headText}`;
   const text = [`Volia Control · ${full ? "informe semanal" : "novedades del día"} (${today})`, "", ...sections.flatMap((s) => [s.title, ...s.lines.map((l) => `- ${l}`), ""]), `Abrir el sistema: ${appUrl}`].join("\n");

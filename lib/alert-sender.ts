@@ -1,4 +1,5 @@
 // Arma el resumen desde la base (D1) y lo envía al Apps Script de Gmail. Lo usan el cron del Worker y la ruta de prueba.
+import { VOLIA_RUC } from "./sri-calendar.ts";
 import { buildDigest, ecuadorToday, type Digest, type DigestDoc, type DigestFinance } from "./alert-digest.ts";
 import { normalizeTender, type Tender } from "./tenders.ts";
 import type { MailRecord } from "./mail-sync.ts";
@@ -69,10 +70,10 @@ export async function sendDigest(db: AlertDb, cfg: AlertConfig | undefined, opts
   if (!alertsConfigured(cfg)) return { ok: false, sent: false, message: "Las alertas por correo no están configuradas (falta la dirección del script o la clave)." };
   const today = ecuadorToday(opts.now);
   const { docs, records, tenders, mail, stock, quotes } = await loadDigestInput(db);
-  let digest = buildDigest(docs, records, today, APP_URL, tenders, mail, stock, quotes);
+  let digest = buildDigest(docs, records, today, APP_URL, tenders, mail, stock, quotes, VOLIA_RUC);
   if (!digest && !opts.test) return { ok: true, sent: false, message: "Sin novedades: no se envió correo." };
   if (!digest) {
-    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0, inventario: 0, reposicion: 0, cotizaciones: 0, adjudicados: 0, caja: 0 } };
+    digest = { subject: `Volia Control · Prueba de alertas (${today})`, text: `Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.\n\nAbrir el sistema: ${APP_URL}`, html: `<p>Las alertas por correo funcionan. Hoy no hay cobros vencidos ni documentos por vencer.</p><p><a href="${APP_URL}">Abrir el sistema</a></p>`, counts: { vencidos: 0, porVencer: 0, cobros: 0, pagos: 0, sinFecha: 0, procesos: 0, correo: 0, renovaciones: 0, ofertas: 0, semana: 0, inventario: 0, reposicion: 0, cotizaciones: 0, adjudicados: 0, caja: 0, sri: 0 } };
   } else if (opts.test) {
     digest = { ...digest, subject: `[Prueba] ${digest.subject}` };
   }
