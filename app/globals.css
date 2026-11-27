@@ -5587,11 +5587,14 @@ details.setup-card[open] > summary { margin-bottom: 4px; }
 .atlas-intro strong { display: block; font-size: 1.05rem; }
 .atlas-intro span { color: var(--muted); font-size: .9rem; }
 .atlas-intro small { color: var(--muted); font-size: .78rem; max-width: 460px; }
+.atlas-regions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.atlas-regions button { border: 1px solid #b9c9c5; background: #fff; border-radius: 999px; padding: 6px 14px; font-size: .84rem; cursor: pointer; color: var(--ink); }
+.atlas-regions button.active { background: #c92a3a; border-color: #c92a3a; color: #fff; }
 .atlas-stage { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .9fr); gap: 16px; align-items: start; }
 .atlas-viewer { position: relative; border-radius: 14px; overflow: hidden; background: #15191b; border: 1px solid #0c0f10; }
 .atlas-canvas { height: min(72vh, 640px); min-height: 380px; width: 100%; }
 .atlas-overlay { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: #d9dfe2; font-size: .92rem; background: rgba(21, 25, 27, .82); }
-.atlas-views { position: absolute; top: 10px; left: 10px; display: flex; gap: 4px; }
+.atlas-views { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
 .atlas-views button { background: rgba(255,255,255,.1); color: #e8ecee; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 5px 10px; font-size: .78rem; cursor: pointer; }
 .atlas-views button.active { background: #c92a3a; border-color: #c92a3a; color: #fff; }
 .atlas-hint { position: absolute; left: 10px; right: 10px; bottom: 10px; color: #aeb7bb; font-size: .76rem; text-align: center; pointer-events: none; }
