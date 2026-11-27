@@ -7,6 +7,7 @@ const fakeDb = (docs, finance) => ({
   prepare: (q) => ({ bind() { return this; }, all: async () => ({ results: q.includes("regulatory_documents") ? docs : finance }) }),
 });
 const NOW = new Date("2026-10-26T14:00:00Z"); // lunes en Ecuador
+const QUIET = new Date("2026-11-09T14:00:00Z"); // lunes lejos del vencimiento del SRI (30 de noviembre)
 
 test("configuration needs a script.google.com exec URL and a secret", () => {
   assert.equal(alertsConfigured({ url: URL, secret: "x" }), true);
@@ -29,10 +30,10 @@ test("sends the digest with the secret and does not send when there is nothing",
     assert.equal(calls[0].body.secret, "s3");
     assert.match(calls[0].body.subject, /Informe semanal/);
     assert.match(calls[0].body.text, /registro sanitario/);
-    const none = await sendDigest(fakeDb([], []), { url: URL, secret: "s3" }, { now: NOW });
+    const none = await sendDigest(fakeDb([], []), { url: URL, secret: "s3" }, { now: QUIET });
     assert.equal(none.sent, false);
     assert.equal(calls.length, 1);
-    const test = await sendDigest(fakeDb([], []), { url: URL, secret: "s3" }, { now: NOW, test: true });
+    const test = await sendDigest(fakeDb([], []), { url: URL, secret: "s3" }, { now: QUIET, test: true });
     assert.equal(test.sent, true);
     assert.match(calls[1].body.subject, /Prueba/);
   } finally { globalThis.fetch = realFetch; }
