@@ -1,0 +1,20 @@
+{
+  "name": "Atlas de osteosíntesis · Volia",
+  "short_name": "Atlas Volia",
+  "id": "/",
+  "description": "Atlas 3D de osteosíntesis: fracturas, implantes, lecciones y quiz.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f8f7",
+  "theme_color": "#102d29",
+  "lang": "es-EC",
+  "categories": ["education", "medical"],
+  "icons": [
+    { "src": "/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

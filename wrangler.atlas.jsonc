@@ -1,0 +1,11 @@
+{
+  // Atlas de osteosíntesis aparte: solo archivos estáticos, enlace propio y público (sin Cloudflare Access).
+  "name": "volia-atlas",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./atlas-aparte/dist",
+    "not_found_handling": "single-page-application"
+  },
+  "workers_dev": true,
+  "preview_urls": false
+}

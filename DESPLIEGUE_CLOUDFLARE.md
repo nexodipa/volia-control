@@ -44,3 +44,18 @@ Para validar sin publicar: `node scripts/deploy-cloudflare.mjs --check`.
 
 Edite `VOLIA_ALLOWED_EMAILS` en `.env.cloudflare` **y** la política de Access en el dashboard, y vuelva a publicar.
 Las dos listas deben coincidir: Access decide quién llega a la app; la lista de la app decide quién ve los datos.
+
+## Atlas de osteosíntesis aparte (enlace propio y público)
+
+El Atlas también se publica como aplicación independiente, en su propio Worker (`volia-atlas`), sin base de datos, sin cuenta
+y sin Cloudflare Access: cualquiera con el enlace lo abre y puede instalarlo en el celular. Es solo archivos estáticos.
+
+- Publicar: doble clic en `publicar-atlas.cmd` (o `node scripts/build-atlas.mjs` y luego `npx wrangler deploy -c wrangler.atlas.jsonc`).
+  Usa el mismo inicio de sesión de Wrangler que Volia Control; no necesita `.env.cloudflare`.
+- El enlace queda como `https://volia-atlas.<su-subdominio>.workers.dev`, que Wrangler muestra al terminar.
+- Es la misma pantalla del Atlas de Volia Control en modo público: sin precios, sin cotizador. El catálogo lleva solo código,
+  nombre, presentación y especialidad de cada ítem; `scripts/build-atlas.mjs` genera esa copia y falla si queda algún campo de precio,
+  cantidad o contratista.
+- Los estilos salen de `app/globals.css` (bloque «Atlas de osteosíntesis») y el contenido, de `lib/osteo-*.ts`, así que un cambio en
+  el Atlas de Volia Control se refleja en el aparte al volver a publicarlo.
+- Para dejar de publicarlo: en el dashboard, **Workers & Pages** → `volia-atlas` → **Settings** → eliminar.
